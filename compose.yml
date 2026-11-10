@@ -1,0 +1,117 @@
+services:
+  kokoro:
+    container_name: kokoro
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:${KOKORO_VERSION:?KOKORO_VERSION is required}
+
+    # Security + resources — pinned engine, ~1 GB resident
+    mem_limit: 2g
+    security_opt:
+      - no-new-privileges:true
+
+    # Configuration — every value is set here, with its default. Compose reads
+    # `.env` for interpolation; comment a line out to fall back to the app's
+    # built-in default.
+    environment:
+      # Timezone for logs and date-stamped output.
+      - TZ=${TZ:-UTC}
+      # Bearer the gateway sends upstream; also the engine's API_KEYS.
+      - API_KEYS=${KOKORO_FASTAPI_API_KEY:?KOKORO_FASTAPI_API_KEY is required}
+      - PYTHONUNBUFFERED=1
+
+    # Lifecycle — the image ships no healthcheck; this one gates the gateway
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8880/health', timeout=5)"
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "{{.Name}}"
+    restart: unless-stopped
+
+  kokoro-tone:
+    container_name: kokoro-tone
+    build:
+      context: .
+
+    # Security + resources — stateless shim, no model, no shell needed
+    mem_limit: 512m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    pids_limit: 128
+
+    # Configuration — every value is set here, with its default. Compose reads
+    # `.env` for interpolation; comment a line out to fall back to the app's
+    # built-in default.
+    environment:
+      # Timezone for logs.
+      - TZ=${TZ:-UTC}
+      # Engine seam. The default hostname is the `kokoro` service above.
+      - UPSTREAM_BASE_URL=${UPSTREAM_BASE_URL:-http://kokoro:8880/v1}
+      # Engine mapping key; `hexgrad/kokoro-82m` for the OpenRouter fallback.
+      - UPSTREAM_MODEL=${UPSTREAM_MODEL:-kokoro}
+      # Optional explicit engine key; empty reuses KOKORO_FASTAPI_API_KEY.
+      - UPSTREAM_API_KEY=${UPSTREAM_API_KEY:-}
+      # Bearer the gateway sends upstream. Required by both services.
+      - KOKORO_FASTAPI_API_KEY=${KOKORO_FASTAPI_API_KEY:?KOKORO_FASTAPI_API_KEY is required}
+      # Client bearer(s). Empty disables auth; use only on a trusted LAN.
+      - KOKORO_TONE_API_KEY=${KOKORO_TONE_API_KEY:-}
+      - KOKORO_TONE_API_KEYS=${KOKORO_TONE_API_KEYS:-}
+      # Voice used when the request does not name one.
+      - DEFAULT_VOICE=${DEFAULT_VOICE:-af_heart}
+      # Mastering target in LUFS, clamped to -30..-12.
+      - LOUDNESS_LUFS=${LOUDNESS_LUFS:--16}
+      # Request bounds. Defaults mirror src/kokoro_tone/limits.py.
+      - MIN_RATE=${MIN_RATE:-0.75}
+      - MAX_RATE=${MAX_RATE:-1.3}
+      - MIN_PITCH=${MIN_PITCH:--3.0}
+      - MAX_PITCH=${MAX_PITCH:-3.0}
+      - MIN_SPEED=${MIN_SPEED:-0.25}
+      - MAX_SPEED=${MAX_SPEED:-4.0}
+      - MAX_PAUSE_MS=${MAX_PAUSE_MS:-30000}
+      - MAX_TOTAL_PAUSE_MS=${MAX_TOTAL_PAUSE_MS:-60000}
+      - MAX_TURNS=${MAX_TURNS:-100}
+      - MAX_ALIASES=${MAX_ALIASES:-64}
+      - MAX_INSTRUCTIONS_CHARS=${MAX_INSTRUCTIONS_CHARS:-2000}
+      - MAX_INPUT_CHARS=${MAX_INPUT_CHARS:-4096}
+      - MAX_VOICE_CHARS=${MAX_VOICE_CHARS:-200}
+      - MAX_BODY_BYTES=${MAX_BODY_BYTES:-1048576}
+      - SEGMENT_CHARS=${SEGMENT_CHARS:-1000}
+      - TURN_GAP_MS=${TURN_GAP_MS:-350}
+      - PYTHONDONTWRITEBYTECODE=1
+
+    # Transient storage — ffmpeg scratch space, nothing persists
+    tmpfs:
+      - /tmp
+
+    # Lifecycle
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    depends_on:
+      kokoro:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        tag: "{{.Name}}"
+    restart: unless-stopped

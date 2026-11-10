@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Format, lint, security and pin checks
+        run: make check
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Tests
+        run: make test
+
+  tag-check:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Tag matches __version__
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/kokoro_tone/__init__.py)
+          echo "tag=$tag version=$version"
+          if [[ -z $version || $tag != "$version" ]]; then
+            echo "tag and __version__ disagree" >&2
+            exit 1
+          fi
