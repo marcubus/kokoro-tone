@@ -11,7 +11,7 @@ characters are stripped before the text reaches the engine.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from .limits import DEFAULT_LIMITS, Limits
 
@@ -314,15 +314,11 @@ def split_long(turns: list[Turn], limit: int) -> list[Turn]:
         chunks = _split_text(turn.text, limit)
         for index, chunk in enumerate(chunks):
             out.append(
-                Turn(
+                replace(
+                    turn,
                     text=chunk,
-                    voice=turn.voice,
-                    emotion=turn.emotion,
-                    rate=turn.rate,
-                    instructions=turn.instructions,
                     gap_ms=turn.gap_ms if index == len(chunks) - 1 else 0,
                     lead_ms=turn.lead_ms if index == 0 else 0,
-                    markers=turn.markers,
                 )
             )
     return out

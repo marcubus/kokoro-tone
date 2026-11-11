@@ -8,7 +8,8 @@ treated as unset.
 from __future__ import annotations
 
 import os
-import sys
+
+from .log import warning
 
 _TRUTHY = frozenset({"1", "true", "yes", "on"})
 _FALSY = frozenset({"0", "false", "no", "off"})
@@ -26,10 +27,10 @@ def read_int(name: str, default: int) -> int:
     try:
         value = int(float(raw))
     except ValueError:
-        print(f"{name}={raw!r} is not a number; using {default}", file=sys.stderr)
+        warning(f"{name}={raw!r} is not a number; using {default}")
         return default
     if value <= 0:
-        print(f"{name}={value} must be positive; using {default}", file=sys.stderr)
+        warning(f"{name}={value} must be positive; using {default}")
         return default
     return value
 
@@ -41,7 +42,7 @@ def read_float(name: str, default: float) -> float:
     try:
         return float(raw)
     except ValueError:
-        print(f"{name}={raw!r} is not a number; using {default}", file=sys.stderr)
+        warning(f"{name}={raw!r} is not a number; using {default}")
         return default
 
 
@@ -53,5 +54,5 @@ def read_bool(name: str, default: bool) -> bool:
         return True
     if raw in _FALSY:
         return False
-    print(f"{name}={raw!r} is not a boolean; using {default}", file=sys.stderr)
+    warning(f"{name}={raw!r} is not a boolean; using {default}")
     return default

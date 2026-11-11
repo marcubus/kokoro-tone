@@ -599,12 +599,10 @@ def test_a_rewrite_that_exceeds_the_input_cap_is_rejected(gateway):
 
 def test_the_health_probe_asks_the_engine_root(gateway):
     """Kokoro-FastAPI serves /health at the root, not under the /v1 base."""
-    from kokoro_tone import upstream
-
-    _, server = gateway
+    client, server = gateway
     port = server.server_address[1]
 
-    assert upstream.upstream_health_urls() == (
+    assert client.app.state.ctx.upstream.health_urls() == (
         f"http://127.0.0.1:{port}/health",
         f"http://127.0.0.1:{port}/v1/models",
     )

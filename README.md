@@ -82,7 +82,7 @@ independently.
 
 | Capability | Engine's OpenAI endpoint | kokoro-tone | Proven by |
 |---|---|---|---|
-| `instructions` | accepted but not applied; the response has no prosody change | matched to a prosody preset (warm, bright, sad, tired, angry, whisper, excited) | `tests/test_prosody.py` |
+| `instructions` | accepted but not applied; the response has no prosody change | keyword-matched to one preset (warm, bright, sad, tired, angry, whisper, excited); the file-wide default that `[emotion:]` overrides per turn | `tests/test_prosody.py` |
 | Pitch | applies `rate`, but not pitch or volume | formant-preserving shift via `rubberband`, clamped | `tests/test_audio.py` |
 | Per-preset tone | not part of the endpoint | rate, pitch, gain and EQ per preset, each measured | `tests/test_audio.py` |
 | Mastering | dry model output | low-shelf, high-shelf, compression, tanh saturation, one linear gain to −16 LUFS, limiter at −1 dBFS sample peak | `tests/test_audio.py` |
@@ -90,7 +90,6 @@ independently.
 | Voice loudness | dry model output, 9.2 dB spread across English voices | static per-voice casting gain for all 72 measured voices, blends interpolated, on both the mastered and passthrough paths | `tests/test_levelling.py` |
 | Multi-turn `input` | the OpenAI endpoint takes a string only | an array of `{text, voice, instructions}` turns, rendered with gaps into one file | `tests/test_api.py` |
 | `[emotion:…]` | not a recognised tag | preset selector, sticky across turns and voices; `[emotion:neutral]` clears it | `tests/test_parse.py` |
-| `instructions` | free text with no effect | keyword-matched to one preset; the file-wide default that `[emotion:]` overrides per turn | `tests/test_prosody.py` |
 | OpenAI SSE | `stream: true` returns chunked audio, not the OpenAI event contract | `stream_format: "sse"` → `speech.audio.delta` frames + `speech.audio.done` | `tests/test_api.py` |
 | OpenAI errors | FastAPI `{"detail": …}` | `{"error": {message, type, param, code}}`, 400/401/413/502 mapped | `tests/test_api.py` |
 | Alias maps | `voice_aliases` is server-side config, not an OpenAI request field | `voice` accepts a map, with an `id` entry setting the default | `tests/test_api.py` |

@@ -1,23 +1,22 @@
-"""Deployment settings, read once at import and reloaded by the tests.
+"""Deployment settings, composed from the environment.
 
 `env.py` is the leaf that reads and validates individual variables; `limits.py`
 owns the request bounds. This module composes them into the one `Settings`
 object the gateway passes around, plus the loudness constants the health check
 and the mastering target share.
 
-Nothing here imports the HTTP layer or the lexicon, so there is no cycle and a
-test can reload this module alone to re-read the environment.
+Nothing here imports the HTTP layer or the lexicon, so there is no cycle.
 """
 
 from __future__ import annotations
 
 import math
 import os
-import sys
 from dataclasses import dataclass
 
 from . import env, normalise
 from .limits import Limits, load_limits
+from .log import warning
 
 # -16 LUFS is the usual podcast deliverable. The lower bound leaves room for
 # ACX-style audiobooks (-20) and quiet narration; the upper bound keeps enough
@@ -41,6 +40,7 @@ class Settings:
     normalise: normalise.NormaliseSettings
     lexicon_path: str
     lexicon_overlay_path: str
+    log_level: str
 
 
 def _token_list(*values: str) -> tuple[str, ...]:
@@ -64,11 +64,23 @@ def _loudness() -> float:
         target = PODCAST_LUFS
     clamped = max(LOUDNESS_MIN, min(LOUDNESS_MAX, target))
     if clamped != target:
-        print(
-            f"LOUDNESS_LUFS {target} is outside {LOUDNESS_MIN}..{LOUDNESS_MAX}; using {clamped}",
-            file=sys.stderr,
+        warning(
+            f"LOUDNESS_LUFS {target} is outside {LOUDNESS_MIN}..{LOUDNESS_MAX}; using {clamped}"
         )
     return clamped
+
+
+_LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
+
+
+def _log_level() -> str:
+    raw = os.environ.get("LOG_LEVEL", "").strip().upper()
+    if not raw:
+        return "INFO"
+    if raw not in _LOG_LEVELS:
+        warning(f"LOG_LEVEL={raw!r} is not one of {sorted(_LOG_LEVELS)}; using INFO")
+        return "INFO"
+    return raw
 
 
 def load_settings() -> Settings:
@@ -94,7 +106,5 @@ def load_settings() -> Settings:
         lexicon_overlay_path=os.environ.get(
             "PRONUNCIATION_OVERRIDES", "/etc/kokoro-tone/custom.json"
         ),
+        log_level=_log_level(),
     )
-
-
-SETTINGS = load_settings()

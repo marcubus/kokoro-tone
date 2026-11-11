@@ -38,7 +38,8 @@ array are OpenAI-shaped inputs that this gateway translates into DSP.
 
 ```bash
 make test      # pytest
-make check     # ruff format --check, ruff lint, security-check, pin-check
+make check     # ruff format --check, ruff lint, mypy, security-check, pin-check
+make verify    # check + test, the full local CI set
 make fmt       # rewrite formatting
 make narrate FILE=script.txt OUT=out.mp3
 make analyse FILE=out.mp3
@@ -101,12 +102,18 @@ These were learned the hard way. Following them avoids re-deriving them.
 
 ## Deployment
 
-This repo is the source; a separate deployment checkout owns the compose file,
-the environment and the start script. Deploy from there:
+The compose file, environment and start commands live in this repo.
 
 ```bash
-./start.sh        # stop, pull the engine, up --build
+cp .env.example .env   # set KOKORO_FASTAPI_API_KEY and KOKORO_TONE_API_KEY
+make up                # build the gateway, pull the pinned engine, start both
+make ps                # container state and health
+make logs              # follow both logs
 ```
+
+`make up` reads `engine.version` and passes it to compose as `KOKORO_VERSION`.
+The gateway publishes no host port by default, so reach `/health` from another
+container on the compose network or add a port mapping locally.
 
 Then check `/health` on the gateway: it reports `version` and the enabled
 features. A stale image reports an older `version` and omits newer blocks, so

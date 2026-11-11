@@ -26,6 +26,7 @@ import re
 from bisect import bisect_right
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Protocol, runtime_checkable
 
 from . import normalise
 from .lexicon import LexiconData, Rule
@@ -33,6 +34,19 @@ from .limits import Limits
 from .parse import MarkupError
 
 _WORD_RE = re.compile(r"[^\W_]+", re.UNICODE)
+
+
+class Matcher(Protocol):
+    """Anything that can scan one bound text left to right."""
+
+    def bind(self, text: str) -> Callable[[int], tuple[int, str] | None]: ...
+
+
+@runtime_checkable
+class AmbiguityMatcher(Protocol):
+    """A matcher that can also report an unresolved heteronym."""
+
+    def guess_at(self, index: int) -> tuple[Ambiguity, int, str] | None: ...
 
 
 @dataclass(frozen=True)
@@ -253,7 +267,7 @@ class _RuleMatcher:
 
     def _match(self, index: int) -> tuple[int, str] | None:
         sentence = bisect_right(self.starts, index) - 1
-        words = self.groups.get(sentence, ())
+        words = self.groups.get(sentence) or []
         head = self.text[index].casefold()
         best: tuple[int, str] | None = None
         for rule, folded in self.by_head.get(head, ()):
@@ -327,7 +341,7 @@ class _NumberMatcher:
 class Rewriter:
     """One left-to-right scan. Emitted text is never re-scanned."""
 
-    def __init__(self, matchers: list[object]) -> None:
+    def __init__(self, matchers: list[Matcher]) -> None:
         self.matchers = matchers
 
     def apply(
@@ -373,10 +387,9 @@ class Rewriter:
         self, index: int, found: list[Ambiguity], guess: bool
     ) -> tuple[int, str] | None:
         for matcher in self.matchers:
-            probe = getattr(matcher, "guess_at", None)
-            if probe is None:
+            if not isinstance(matcher, AmbiguityMatcher):
                 continue
-            hit = probe(index)
+            hit = matcher.guess_at(index)
             if hit is None:
                 continue
             ambiguity, end, say = hit
@@ -423,7 +436,7 @@ def build_rewriter(
     settings: normalise.NormaliseSettings,
     limits: Limits,
 ) -> Rewriter:
-    matchers: list[object] = []
+    matchers: list[Matcher] = []
     rules = tuple(
         rule for from_deployment, rule in effective.rules if flags.lexicon or not from_deployment
     )

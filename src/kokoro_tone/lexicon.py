@@ -12,14 +12,13 @@ cannot stop the gateway from starting.
 from __future__ import annotations
 
 import json
-import os
-import sys
 import threading
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from . import normalise
 from .limits import Limits
-from .log import event
+from .log import event, warning
 from .parse import MarkupError, sanitise_text, validate_voice
 
 _SET_KEYS = frozenset({"rules", "acronyms", "protect", "letters", "locale"})
@@ -249,13 +248,13 @@ def parse_set(value: object, limits: Limits, where: str) -> tuple[RuleSet, list[
     if "protect" in value:
         raw = value["protect"]
         if isinstance(raw, list):
-            kept: list[str] = []
+            protected: list[str] = []
             for item in raw:
                 try:
-                    kept.append(_acronym_key(item, limits))
+                    protected.append(_acronym_key(item, limits))
                 except MarkupError as exc:
                     problems.append(f"{where}.protect: {exc}")
-            protect = tuple(kept)
+            protect = tuple(protected)
         else:
             problems.append(f"{where}.protect: must be a list")
 
@@ -313,21 +312,21 @@ def _drop_cycles(aliases: dict[str, str]) -> tuple[dict[str, str], list[str]]:
     return kept, problems
 
 
-def load_lexicon(path: str, limits: Limits) -> LexiconData:
+def load_lexicon(path: str | Path, limits: Limits) -> LexiconData:
     """Read and verify the deployment file. Never raises: problems are data."""
     if not path:
         return EMPTY_LEXICON
+    file = Path(path)
     try:
-        size = os.path.getsize(path)
+        size = file.stat().st_size
     except OSError as exc:
-        return LexiconData(problems=(f"{path}: {exc.strerror or exc}",))
+        return LexiconData(problems=(f"{file}: {exc.strerror or exc}",))
     if size > limits.lexicon_bytes:
-        return LexiconData(problems=(f"{path}: {size} bytes exceeds {limits.lexicon_bytes}",))
+        return LexiconData(problems=(f"{file}: {size} bytes exceeds {limits.lexicon_bytes}",))
     try:
-        with open(path, encoding="utf-8") as handle:
-            raw = json.load(handle)
+        raw = json.loads(file.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
-        return LexiconData(problems=(f"{path}: {exc}",))
+        return LexiconData(problems=(f"{file}: {exc}",))
     if not isinstance(raw, dict):
         return LexiconData(problems=(f"{path}: top level must be an object",))
 
@@ -429,7 +428,7 @@ def _stamp(path: str | None) -> tuple[int, int] | None:
     if not path:
         return None
     try:
-        info = os.stat(path)
+        info = Path(path).stat()
     except OSError:
         return None
     return (info.st_mtime_ns, info.st_size)
@@ -453,24 +452,29 @@ class Lexicon:
     def current(self) -> LexiconData:
         stamp = (_stamp(self.path), _stamp(self.overlay_path))
         with self._lock:
-            if stamp != self._stamp:
-                base = load_lexicon(self.path, self.limits) if stamp[0] else EMPTY_LEXICON
-                overlay = (
-                    load_lexicon(self.overlay_path, self.limits)
-                    if self.overlay_path and stamp[1]
-                    else EMPTY_LEXICON
-                )
-                self._data = compose(base, overlay)
-                for problem in self._data.problems:
-                    print(f"pronunciation lexicon: {problem}", file=sys.stderr)
-                event(
-                    "lexicon",
-                    rules=len(self._data.defaults.rules),
-                    voices=len(self._data.voices),
-                    aliases=len(self._data.aliases),
-                    locale=self._data.defaults.locale,
-                    overlay="yes" if stamp[1] else "no",
-                    problems=len(self._data.problems),
-                )
-                self._stamp = stamp
-            return self._data
+            if stamp == self._stamp:
+                return self._data
+
+        # Read outside the lock: a slow disk must not block every request.
+        base = load_lexicon(self.path, self.limits) if stamp[0] else EMPTY_LEXICON
+        overlay = (
+            load_lexicon(self.overlay_path, self.limits)
+            if self.overlay_path and stamp[1]
+            else EMPTY_LEXICON
+        )
+        data = compose(base, overlay)
+        with self._lock:
+            self._data = data
+            self._stamp = stamp
+        for problem in data.problems:
+            warning(f"pronunciation lexicon: {problem}")
+        event(
+            "lexicon",
+            rules=len(data.defaults.rules),
+            voices=len(data.voices),
+            aliases=len(data.aliases),
+            locale=data.defaults.locale,
+            overlay="yes" if stamp[1] else "no",
+            problems=len(data.problems),
+        )
+        return data

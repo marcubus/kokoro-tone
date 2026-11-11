@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import importlib
 import json
 import math
 import struct
 import threading
+from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
@@ -99,69 +99,67 @@ def _start_server() -> ThreadingHTTPServer:
     return server
 
 
-def _reload(monkeypatch, server) -> object:
-    """Reload the modules that cache settings, in dependency order.
-
-    `settings` is read at import by `routes` (the lexicon) and by `main` (the
-    body limit), so both must be rebuilt after it. A module that caches
-    `settings.SETTINGS` at import has to be added here.
-    """
+def build_app(monkeypatch, server, **env: object):
+    """Build one app from the fake engine and the given environment."""
     monkeypatch.setenv("UPSTREAM_BASE_URL", f"http://127.0.0.1:{server.server_address[1]}/v1")
     monkeypatch.setenv("UPSTREAM_API_KEY", "engine-key")
+    for name, value in env.items():
+        if value is None:
+            monkeypatch.delenv(name, raising=False)
+        else:
+            monkeypatch.setenv(name, str(value))
 
-    import kokoro_tone.main as main
-    import kokoro_tone.routes as routes
-    import kokoro_tone.settings as settings
+    from kokoro_tone.main import create_app
+    from kokoro_tone.settings import load_settings
 
-    importlib.reload(settings)
-    importlib.reload(routes)
-    importlib.reload(main)
-    return main
+    return create_app(load_settings())
+
+
+@contextmanager
+def _client(monkeypatch, server, **env: object):
+    from fastapi.testclient import TestClient
+
+    with TestClient(build_app(monkeypatch, server, **env)) as client:
+        yield client
 
 
 @pytest.fixture()
 def gateway(monkeypatch):
     server = _start_server()
-    monkeypatch.setenv("KOKORO_TONE_API_KEY", "secret")
-    monkeypatch.delenv("KOKORO_TONE_API_KEYS", raising=False)
-    main = _reload(monkeypatch, server)
-
-    from fastapi.testclient import TestClient
-
-    with TestClient(main.app) as client:
+    with _client(
+        monkeypatch,
+        server,
+        KOKORO_TONE_API_KEY="secret",
+        KOKORO_TONE_API_KEYS=None,
+    ) as client:
         yield client, server
-
     server.shutdown()
 
 
 @pytest.fixture()
 def unlevelled_gateway(monkeypatch):
     server = _start_server()
-    monkeypatch.setenv("KOKORO_TONE_API_KEY", "secret")
-    monkeypatch.delenv("KOKORO_TONE_API_KEYS", raising=False)
-    monkeypatch.setenv("VOICE_LEVELLING", "false")
-    main = _reload(monkeypatch, server)
-
-    from fastapi.testclient import TestClient
-
-    with TestClient(main.app) as client:
+    with _client(
+        monkeypatch,
+        server,
+        KOKORO_TONE_API_KEY="secret",
+        KOKORO_TONE_API_KEYS=None,
+        VOICE_LEVELLING="false",
+    ) as client:
         yield client, server
-
     server.shutdown()
 
 
 @pytest.fixture()
 def multi_token_gateway(monkeypatch):
     server = _start_server()
-    monkeypatch.delenv("KOKORO_TONE_API_KEY", raising=False)
-    monkeypatch.setenv("KOKORO_TONE_API_KEYS", "one, two ,one")
-    main = _reload(monkeypatch, server)
-
-    from fastapi.testclient import TestClient
-
-    with TestClient(main.app) as client:
-        yield client, main
-
+    with _client(
+        monkeypatch,
+        server,
+        KOKORO_TONE_API_KEY=None,
+        KOKORO_TONE_API_KEYS="one, two ,one",
+    ) as client:
+        yield client, server
     server.shutdown()
 
 
@@ -181,16 +179,14 @@ def lexicon_gateway(monkeypatch, tmp_path):
     path.write_text(json.dumps(LEXICON_FIXTURE), encoding="utf-8")
 
     server = _start_server()
-    monkeypatch.setenv("KOKORO_TONE_API_KEY", "secret")
-    monkeypatch.delenv("KOKORO_TONE_API_KEYS", raising=False)
-    monkeypatch.setenv("PRONUNCIATION_LEXICON", str(path))
-    main = _reload(monkeypatch, server)
-
-    from fastapi.testclient import TestClient
-
-    with TestClient(main.app) as client:
+    with _client(
+        monkeypatch,
+        server,
+        KOKORO_TONE_API_KEY="secret",
+        KOKORO_TONE_API_KEYS=None,
+        PRONUNCIATION_LEXICON=str(path),
+    ) as client:
         yield client, server
-
     server.shutdown()
 
 
@@ -234,18 +230,16 @@ def overlay_gateway(monkeypatch, tmp_path):
     )
 
     server = _start_server()
-    monkeypatch.setenv("KOKORO_TONE_API_KEY", "secret")
-    monkeypatch.delenv("KOKORO_TONE_API_KEYS", raising=False)
-    monkeypatch.setenv("PRONUNCIATION_LEXICON", str(base))
-    monkeypatch.setenv("PRONUNCIATION_OVERRIDES", str(overlay))
-    monkeypatch.setenv("NORMALISE_DEFAULT", "true")
-    main = _reload(monkeypatch, server)
-
-    from fastapi.testclient import TestClient
-
-    with TestClient(main.app) as client:
+    with _client(
+        monkeypatch,
+        server,
+        KOKORO_TONE_API_KEY="secret",
+        KOKORO_TONE_API_KEYS=None,
+        PRONUNCIATION_LEXICON=str(base),
+        PRONUNCIATION_OVERRIDES=str(overlay),
+        NORMALISE_DEFAULT="true",
+    ) as client:
         yield client, server
-
     server.shutdown()
 
 
@@ -255,15 +249,13 @@ def ambiguous_gateway(monkeypatch, tmp_path):
     path.write_text(json.dumps(AMBIGUOUS_FIXTURE), encoding="utf-8")
 
     server = _start_server()
-    monkeypatch.setenv("KOKORO_TONE_API_KEY", "secret")
-    monkeypatch.delenv("KOKORO_TONE_API_KEYS", raising=False)
-    monkeypatch.setenv("PRONUNCIATION_LEXICON", str(path))
-    monkeypatch.setenv("NORMALISE_DEFAULT", "true")
-    main = _reload(monkeypatch, server)
-
-    from fastapi.testclient import TestClient
-
-    with TestClient(main.app) as client:
+    with _client(
+        monkeypatch,
+        server,
+        KOKORO_TONE_API_KEY="secret",
+        KOKORO_TONE_API_KEYS=None,
+        PRONUNCIATION_LEXICON=str(path),
+        NORMALISE_DEFAULT="true",
+    ) as client:
         yield client, server
-
     server.shutdown()

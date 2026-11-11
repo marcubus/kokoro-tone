@@ -16,6 +16,8 @@ services:
       - TZ=${TZ:-UTC}
       # Bearer the gateway sends upstream; also the engine's API_KEYS.
       - API_KEYS=${KOKORO_FASTAPI_API_KEY:?KOKORO_FASTAPI_API_KEY is required}
+      # The engine's DEBUG level prints every text chunk, which is the script.
+      - API_LOG_LEVEL=INFO
       - PYTHONUNBUFFERED=1
 
     # Lifecycle - the image ships no healthcheck; this one gates the gateway
@@ -56,6 +58,8 @@ services:
     environment:
       # Timezone for logs.
       - TZ=${TZ:-UTC}
+      # Gateway log level: DEBUG, INFO, WARNING, ERROR or CRITICAL.
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
       # Engine seam. The default hostname is the `kokoro` service above.
       - UPSTREAM_BASE_URL=${UPSTREAM_BASE_URL:-http://kokoro:8880/v1}
       # Engine mapping key; `hexgrad/kokoro-82m` for the OpenRouter fallback.

@@ -18,7 +18,7 @@ slower or a request stricter.
 | `MAX_PAUSE_MS` | `30000` | one `[pause:]` tag |
 | `MAX_TOTAL_PAUSE_MS` | `60000` | all `[pause:]` tags in a request |
 | `MAX_TURNS` | `100` | turns in an array `input` |
-| `MAX_ALIASES` | `64` | entries in the merged alias map (request + server) |
+| `MAX_ALIASES` | `64` | aliases a request may add; server aliases are deployment-controlled and not counted |
 | `MAX_INSTRUCTIONS_CHARS` | `2000` | `instructions` per request or turn |
 | `MAX_INPUT_CHARS` | `4096` | total input characters |
 | `MAX_VOICE_CHARS` | `200` | one voice name or blend |
@@ -75,6 +75,7 @@ script, so leave it there.
 | `UPSTREAM_BASE_URL` | `http://kokoro:8880/v1` | engine seam |
 | `UPSTREAM_API_KEY` | - | explicit engine key; empty reuses `KOKORO_FASTAPI_API_KEY` |
 | `UPSTREAM_MODEL` | `kokoro` | engine mapping key; `hexgrad/kokoro-82m` for OpenRouter |
+| `LOG_LEVEL` | `INFO` | gateway log level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
 | `DEFAULT_VOICE` | `af_heart` | voice when the request omits one |
 | `LOUDNESS_LUFS` | `-16` | podcast target; clamped to −30…−12 |
 | `VOICE_LEVELLING` | `true` | static per-voice casting gain; `false` leaves the engine's raw level |

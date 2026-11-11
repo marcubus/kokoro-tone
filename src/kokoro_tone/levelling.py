@@ -171,4 +171,4 @@ def multiplier(voice: str | None) -> float:
     """The engine's linear `volume_multiplier` for a voice or blend."""
     value = 10.0 ** (gain_db(voice) / 20.0)
     # The engine accepts 0..10; the measured table never comes close.
-    return round(max(0.0, min(10.0, value)), 4)
+    return float(round(max(0.0, min(10.0, value)), 4))

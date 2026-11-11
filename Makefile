@@ -13,7 +13,7 @@ OUT     ?= narration.mp3
 export KOKORO_VERSION := $(shell cat engine.version)
 
 .DEFAULT_GOAL := help
-.PHONY: help install lint fmt fmt-check check security-check pin-check test \
+.PHONY: help install lint fmt fmt-check type-check check verify security-check pin-check test \
         version engine config build up down restart ps logs \
         narrate analyse clean
 
@@ -33,7 +33,12 @@ fmt: ## Format with ruff
 fmt-check: ## Verify formatting
 	uv run ruff format --check .
 
-check: fmt-check lint security-check pin-check ## Format, lint, security and pin checks
+verify: check test ## Everything CI runs
+
+type-check: ## Type-check with mypy
+	uv run mypy
+
+check: fmt-check lint type-check security-check pin-check ## Format, lint, type, security and pin checks
 
 security-check: ## Refuse dynamic-evaluation sinks in src/
 	@! grep -rnE "\beval\(|\bexec\(|pickle|yaml\.load|shell\s*=\s*True|os\.system|os\.popen|__import__|literal_eval" src/ \

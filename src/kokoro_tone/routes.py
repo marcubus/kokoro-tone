@@ -13,40 +13,19 @@ import json
 import math
 import secrets
 import time
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from . import (
-    __version__,
-    audio,
-    levelling,
-    lexicon,
-    parse,
-    pronounce,
-    prosody,
-    request,
-    settings,
-)
+from . import __version__, audio, levelling, pipeline, pronounce, prosody
+from .context import Context, get_context
 from .log import event
 from .request import MODELS, SpeechRequest
-from .upstream import (
-    UpstreamError,
-    list_voices,
-    open_stream,
-    probe,
-    synthesise,
-)
-
-VOICES_TTL_SECONDS = 300
-
-LEXICON = lexicon.Lexicon(
-    settings.SETTINGS.lexicon_path,
-    settings.SETTINGS.limits,
-    settings.SETTINGS.lexicon_overlay_path,
-)
+from .upstream import UpstreamError
 
 router = APIRouter()
+Ctx = Annotated[Context, Depends(get_context)]
 
 
 def _guessed(found: list[pronounce.Ambiguity], mode: str) -> str | None:
@@ -71,23 +50,15 @@ def _layers(flags: pronounce.Flags) -> str:
     return "+".join(on) or "none"
 
 
-def _volume_multiplier(voice: str | None) -> float | None:
-    """The static casting gain for a voice, or None when it is unity/disabled."""
-    if not settings.SETTINGS.voice_levelling:
-        return None
-    value = levelling.multiplier(voice or settings.SETTINGS.default_voice)
-    return value if abs(value - 1.0) > 1e-4 else None
-
-
-def require_auth(request: Request) -> None:
-    if not settings.SETTINGS.gateway_keys:
+def require_auth(request: Request, ctx: Ctx) -> None:
+    if not ctx.settings.gateway_keys:
         return
     scheme, _, presented = request.headers.get("authorization", "").partition(" ")
     presented = presented.strip()
     matched = False
     if scheme.lower() == "bearer" and presented:
         # No early exit: response timing must not reveal which token matched.
-        for key in settings.SETTINGS.gateway_keys:
+        for key in ctx.settings.gateway_keys:
             matched |= secrets.compare_digest(presented, key)
     if not matched:
         raise HTTPException(
@@ -97,27 +68,30 @@ def require_auth(request: Request) -> None:
         )
 
 
+Auth = Annotated[None, Depends(require_auth)]
+
+
 @router.get("/health")
-def health() -> JSONResponse:
-    ok, detail = probe()
-    data = LEXICON.current()
+def health(ctx: Ctx) -> JSONResponse:
+    ok, detail = ctx.upstream.probe()
+    data = ctx.lexicon.current()
     payload = {
         "status": "ok" if ok else "degraded",
         "detail": detail,
         "version": __version__,
         "model": MODELS[0],
-        "upstream": settings.SETTINGS.upstream_base_url,
+        "upstream": ctx.settings.upstream_base_url,
         "rubberband": audio.has_rubberband(),
         "voice_levelling": {
-            "enabled": settings.SETTINGS.voice_levelling,
+            "enabled": ctx.settings.voice_levelling,
             "voices": len(levelling.VOICE_GAIN_DB),
         },
         "normalise": {
-            "default": settings.SETTINGS.normalise.default_on,
-            "lexicon": settings.SETTINGS.normalise.lexicon,
-            "acronyms": settings.SETTINGS.normalise.acronyms,
-            "numbers": settings.SETTINGS.normalise.numbers,
-            "locale": settings.SETTINGS.normalise.locale,
+            "default": ctx.settings.normalise.default_on,
+            "lexicon": ctx.settings.normalise.lexicon,
+            "acronyms": ctx.settings.normalise.acronyms,
+            "numbers": ctx.settings.normalise.numbers,
+            "locale": ctx.settings.normalise.locale,
             "rules": len(data.defaults.rules),
             "voice_sets": len(data.voices),
             "server_aliases": len(data.aliases),
@@ -127,7 +101,7 @@ def health() -> JSONResponse:
 
 
 @router.get("/v1/models")
-def models(_: None = Depends(require_auth)) -> dict:
+def models(_: Auth) -> dict:
     return {
         "object": "list",
         "data": [
@@ -137,154 +111,46 @@ def models(_: None = Depends(require_auth)) -> dict:
     }
 
 
-_voices_cache: dict[str, object] = {"at": 0.0, "data": None}
-
-
 @router.get("/v1/audio/voices")
-def voices(_: None = Depends(require_auth)) -> object:
-    now = time.monotonic()
-    cached = _voices_cache["data"]
-    if cached is not None and now - float(_voices_cache["at"]) < VOICES_TTL_SECONDS:
-        return cached
+def voices(ctx: Ctx, _: Auth) -> object:
     try:
-        _voices_cache["data"] = list_voices()
+        return ctx.upstream.voices()
     except UpstreamError as exc:
         raise HTTPException(exc.status, exc.detail) from exc
-    _voices_cache["at"] = now
-    return _voices_cache["data"]
 
 
 @router.post("/v1/audio/speech")
-def speech(body: SpeechRequest, _: None = Depends(require_auth)) -> Response:
-    limits = settings.SETTINGS.limits
-    request.check_model(body.model)
-
-    if body.speed is not None and not (limits.speed_min <= body.speed <= limits.speed_max):
-        raise HTTPException(400, f"speed must be between {limits.speed_min} and {limits.speed_max}")
-    if (body.response_format or "mp3").lower() not in audio.FORMATS:
-        known = ", ".join(sorted(audio.FORMATS))
-        raise HTTPException(400, f"unsupported response_format; use {known}")
-    stream_format = (body.stream_format or "audio").lower()
-    if stream_format not in ("audio", "sse"):
-        raise HTTPException(400, "stream_format must be 'audio' or 'sse'")
-    ambiguity = (body.ambiguity or "guess").strip().lower()
-    if ambiguity not in ("guess", "ignore"):
-        raise HTTPException(400, "ambiguity must be 'guess' or 'ignore'")
-
-    instructions = request.clean_instructions(body.instructions, limits)
-    data = LEXICON.current()
-    aliases, voice = request.voice_spec(body.voice, limits, data)
-    default_voice = voice or settings.SETTINGS.default_voice
-    payload = request.sanitise_input(body.input)
-
-    try:
-        flags = pronounce.parse_flags(body.normalise, settings.SETTINGS.normalise)
-        request_global, request_alias = lexicon.parse_request_sets(body.pronunciations, limits)
-    except parse.MarkupError as exc:
-        raise HTTPException(400, str(exc)) from exc
-
-    token = request.voice_token(body.voice)
-    found: list[pronounce.Ambiguity] = []
-    collect = found if ambiguity != "ignore" else None
-    guessing = ambiguity == "guess"
-    plain = isinstance(payload, str) and not parse.has_markup(payload)
-    if plain:
-        payload = request.rewrite(
-            payload,
-            token,
-            default_voice,
-            request_global,
-            request_alias,
-            data,
-            flags,
-            settings.SETTINGS.normalise,
-            limits,
-            collect,
-            guessing,
-        )
-        if len(payload) > limits.input_chars:
-            raise HTTPException(400, f"input exceeds {limits.input_chars} characters")
-
-    try:
-        turns = parse.parse_input(payload, default_voice, limits)
-    except parse.MarkupError as exc:
-        raise HTTPException(400, str(exc)) from exc
-
-    tokens = [turn.voice for turn in turns]
-    request.apply_aliases(turns, aliases)
-
-    if not plain:
-        for turn, turn_token in zip(turns, tokens, strict=False):
-            turn.text = request.rewrite(
-                turn.text,
-                turn_token,
-                turn.voice,
-                request_global,
-                request_alias,
-                data,
-                flags,
-                settings.SETTINGS.normalise,
-                limits,
-                collect,
-                guessing,
-                turn.markers,
-            )
-        total = sum(len(turn.text) for turn in turns)
-        if total > limits.input_chars:
-            raise HTTPException(400, f"input exceeds {limits.input_chars} characters")
-
-    # Every field below is a count, a name or a duration. The text itself never
-    # reaches the log; it is the caller's script, not the operator's business.
+def speech(body: SpeechRequest, ctx: Ctx, _: Auth) -> Response:
+    prepared = pipeline.prepare(body, ctx)
     started = time.perf_counter()
-    upstream_ms = 0.0
-    spoken = {"chars": sum(len(turn.text) for turn in turns), "turns": len(turns)}
+    spoken = {"chars": prepared.chars, "turns": len(prepared.turns)}
 
-    def render_turn(text: str, voice: str | None) -> bytes:
-        nonlocal upstream_ms
-        at = time.perf_counter()
-        try:
-            return synthesise(
-                text,
-                voice,
-                volume_multiplier=_volume_multiplier(voice or default_voice),
-            )
-        finally:
-            upstream_ms += (time.perf_counter() - at) * 1000.0
-
-    if request.is_passthrough(payload, instructions):
+    if prepared.passthrough:
+        assert isinstance(prepared.payload, str)
         response = _passthrough(
             body,
-            default_voice,
-            payload,
-            volume_multiplier=_volume_multiplier(default_voice),
-            sse=stream_format == "sse",
+            prepared.voice,
+            prepared.payload,
+            ctx,
+            volume_multiplier=pipeline.volume_multiplier(prepared.voice, ctx),
+            sse=prepared.stream_format == "sse",
         )
         event(
             "speech",
             status=200,
             passthrough="yes",
-            stream=stream_format,
+            stream=prepared.stream_format,
             **spoken,
-            voice=default_voice,
+            voice=prepared.voice,
             fmt=body.response_format,
-            normalise=_layers(flags),
-            guess=_guessed(found, ambiguity),
+            normalise=_layers(prepared.flags),
+            guess=_guessed(prepared.found, prepared.ambiguity),
             ms=round((time.perf_counter() - started) * 1000.0),
         )
-        return _mark_guessed(response, found, ambiguity)
-
-    turns = parse.split_long(turns, limits.segment_chars)
+        return _mark_guessed(response, prepared.found, prepared.ambiguity)
 
     try:
-        pcm = audio.render(
-            turns,
-            render_turn,
-            speed=body.speed or 1.0,
-            instructions=instructions,
-            target_lufs=settings.SETTINGS.loudness_lufs,
-            limits=limits,
-        )
-        data, media_type = audio.encode(pcm, body.response_format)
+        rendered = pipeline.render(prepared, body, ctx)
     except prosody.UnknownEmotion as exc:
         raise HTTPException(400, str(exc)) from exc
     except ValueError as exc:
@@ -299,36 +165,45 @@ def speech(body: SpeechRequest, _: None = Depends(require_auth)) -> Response:
         "speech",
         status=200,
         passthrough="no",
-        stream=stream_format,
+        stream=prepared.stream_format,
         **spoken,
-        voice=default_voice,
+        voice=prepared.voice,
         fmt=body.response_format,
-        normalise=_layers(flags),
-        guess=_guessed(found, ambiguity),
-        upstream_ms=round(upstream_ms),
-        render_ms=round(total_ms - upstream_ms),
-        bytes=len(data),
+        normalise=_layers(prepared.flags),
+        guess=_guessed(prepared.found, prepared.ambiguity),
+        upstream_ms=round(rendered.upstream_ms),
+        render_ms=round(total_ms - rendered.upstream_ms),
+        bytes=len(rendered.data),
     )
 
-    if stream_format == "sse":
+    if prepared.stream_format == "sse":
         # Mastered output cannot be emitted before the file is complete, so the
         # events arrive after rendering rather than during it.
-        return _mark_guessed(_sse_response(_chunks(data), _usage(payload)), found, ambiguity)
+        return _mark_guessed(
+            _sse_response(_chunks(rendered.data), _usage(prepared.payload)),
+            prepared.found,
+            prepared.ambiguity,
+        )
 
-    return _mark_guessed(Response(content=data, media_type=media_type), found, ambiguity)
+    return _mark_guessed(
+        Response(content=rendered.data, media_type=rendered.media_type),
+        prepared.found,
+        prepared.ambiguity,
+    )
 
 
 def _passthrough(
     body: SpeechRequest,
     voice: str,
     text: str,
+    ctx: Context,
     *,
     volume_multiplier: float | None = None,
     sse: bool = False,
 ) -> Response:
     # SSE needs the engine to emit incrementally; otherwise honour `stream`.
     try:
-        upstream = open_stream(
+        upstream = ctx.upstream.open_stream(
             text,
             voice,
             body.response_format,

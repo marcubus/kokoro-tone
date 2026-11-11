@@ -49,25 +49,19 @@ _BASE_LETTERS = {
     "Y": "Why",
 }
 
-LOCALES: dict[str, dict[str, object]] = {
-    "en-AU": {
-        "letters": {**_BASE_LETTERS, "Z": "Zed"},
-        "zero": "nought",
-        "percent": "per cent",
-        "and": True,
-    },
-    "en-GB": {
-        "letters": {**_BASE_LETTERS, "Z": "Zed"},
-        "zero": "nought",
-        "percent": "per cent",
-        "and": True,
-    },
-    "en-US": {
-        "letters": {**_BASE_LETTERS, "Z": "Zee"},
-        "zero": "zero",
-        "percent": "percent",
-        "and": False,
-    },
+
+@dataclass(frozen=True)
+class LocaleTable:
+    letters: dict[str, str]
+    zero: str
+    percent: str
+    hundreds_and: bool
+
+
+LOCALES: dict[str, LocaleTable] = {
+    "en-AU": LocaleTable({**_BASE_LETTERS, "Z": "Zed"}, "nought", "per cent", True),
+    "en-GB": LocaleTable({**_BASE_LETTERS, "Z": "Zed"}, "nought", "per cent", True),
+    "en-US": LocaleTable({**_BASE_LETTERS, "Z": "Zee"}, "zero", "percent", False),
 }
 DEFAULT_LOCALE = "en-AU"
 
@@ -205,15 +199,15 @@ def load_normalise_settings() -> NormaliseSettings:
 
 def letters_for(locale: str) -> dict[str, str]:
     table = LOCALES.get(locale) or LOCALES[DEFAULT_LOCALE]
-    return dict(table["letters"])  # type: ignore[arg-type]
+    return dict(table.letters)
 
 
 def style_for(locale: str, max_words: int) -> NumberStyle:
     table = LOCALES.get(locale) or LOCALES[DEFAULT_LOCALE]
     return NumberStyle(
-        zero=str(table["zero"]),
-        percent=str(table["percent"]),
-        hundreds_and=bool(table["and"]),
+        zero=table.zero,
+        percent=table.percent,
+        hundreds_and=table.hundreds_and,
         number_max=999_999_999_999,
         year_min=1_000,
         year_max=2_999,

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass, replace
+from typing import Any, cast
 
 from .env import read_float, read_int
 
@@ -105,4 +106,4 @@ def _repair(limits: Limits) -> Limits:
             fixes[high] = getattr(DEFAULT_LIMITS, high)
     if limits.total_pause_ms < limits.pause_ms:
         fixes["total_pause_ms"] = limits.pause_ms
-    return replace(limits, **fixes) if fixes else limits
+    return replace(limits, **cast(Any, fixes)) if fixes else limits

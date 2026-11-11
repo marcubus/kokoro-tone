@@ -7,6 +7,20 @@ month and increments per release; tags are prefixed with `v`.
 
 ## [Unreleased]
 
+### Changed
+
+- Split the gateway into a composition root and a pipeline. `main.create_app`
+  builds one `Context` (settings, lexicon, upstream client) per app; routes take
+  it through a dependency, `pipeline.py` owns the order of operations, and no
+  module reads settings or opens an HTTP client at import time.
+- Replaced `print(..., file=sys.stderr)` with `logging`. The logfmt `event=`
+  shape is unchanged; `LOG_LEVEL` now controls the gateway, and an unhandled
+  500 logs a traceback.
+- Added `make type-check` (mypy) to `make check`, and `make verify` for the
+  full local CI set.
+- Documented and set `API_LOG_LEVEL=INFO` on the engine, so its DEBUG text
+  chunks (the script) are not logged.
+
 ### Documentation
 
 - Clarified how the tags interact, in [`docs/usage.md`](docs/usage.md),

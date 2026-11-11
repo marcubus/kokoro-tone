@@ -11,15 +11,18 @@ The package is flat; each module owns one seam.
 | `env.py` | reading and validating individual environment variables |
 | `settings.py` | `Settings`, `load_settings` and the loudness constants |
 | `limits.py` | request bounds and their environment overrides |
-| `errors.py` | the OpenAI error envelope |
+| `log.py` | the logfmt event line and its `logging` backend |
+| `errors.py` | the OpenAI error envelope and `RequestError` |
 | `middleware.py` | the body-size limit |
-| `upstream.py` | every engine call: health probe, voices, PCM synthesis and passthrough streaming |
-| `request.py` | request validation, voice aliases, markup rewriting and passthrough detection |
-| `routes.py` | the HTTP routes, speech orchestration and SSE envelope |
+| `upstream.py` | the `Upstream` client: health probe, voices, PCM synthesis and passthrough streaming |
+| `request.py` | request validation, voice aliases and markup rewriting |
+| `context.py` | `Context` and the FastAPI dependency that supplies it |
+| `pipeline.py` | `prepare` and `render`: the order of operations, without FastAPI |
+| `routes.py` | the HTTP routes, passthrough streaming and SSE envelope |
 | `lexicon.py` | the deployment lexicon, its schema and reload |
 | `pronounce.py` | rule precedence, the scanner and the built-in layers |
 | `parse.py`, `prosody.py`, `normalise.py`, `audio.py` | markup, presets, normalisation, ffmpeg |
-| `main.py` | app assembly: lifespan, middleware, error handlers, router |
+| `main.py` | `create_app`: the composition root, lifespan, middleware, error handlers, router |
 
 ## Tasks
 
@@ -36,7 +39,9 @@ make test         # pytest
 |---|---|
 | `make install` | `uv sync --frozen` |
 | `make lint` / `make fmt` | ruff check / ruff format |
-| `make check` | format check, lint, `security-check`, `pin-check` |
+| `make type-check` | mypy over `src/` |
+| `make check` | format check, lint, type check, `security-check`, `pin-check` |
+| `make verify` | `check` then `test` |
 | `make security-check` | refuse dynamic-evaluation sinks in `src/` |
 | `make pin-check` | the engine tag appears only in `engine.version` |
 | `make test` | pytest |

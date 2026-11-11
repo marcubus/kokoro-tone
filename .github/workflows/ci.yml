@@ -63,7 +63,7 @@ jobs:
         run: docker build -t kokoro-tone:ci .
 
       - name: Smoke test the image
-        run: docker run --rm kokoro-tone:ci python -c "import kokoro_tone; print(kokoro_tone.__version__)"
+        run: docker run --rm kokoro-tone:ci python -c "import kokoro_tone, kokoro_tone.context, kokoro_tone.main, kokoro_tone.pipeline; print(kokoro_tone.__version__, 'imports ok')"
 
   tag-check:
     if: startsWith(github.ref, 'refs/tags/v')

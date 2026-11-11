@@ -13,6 +13,9 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+from collections.abc import Callable
+from functools import lru_cache
+from typing import NamedTuple
 
 from . import prosody as prosody_mod
 from .limits import DEFAULT_LIMITS, Limits
@@ -35,14 +38,22 @@ LIMITER = "alimiter=limit=0.891:level=0"  # -1 dBFS ceiling
 # units and the separators ffmpeg uses. Nothing else may appear.
 _FILTER_SAFE = re.compile(r"^[A-Za-z0-9_=:.,+\- ]*$")
 
-FORMATS: dict[str, tuple[tuple[str, ...], str]] = {
-    "mp3": (("-c:a", "libmp3lame", "-b:a", "192k", "-f", "mp3"), "audio/mpeg"),
-    "wav": (("-c:a", "pcm_s16le", "-f", "wav"), "audio/wav"),
-    "flac": (("-c:a", "flac", "-f", "flac"), "audio/flac"),
-    "opus": (("-c:a", "libopus", "-b:a", "64k", "-f", "ogg"), "audio/ogg"),
-    "aac": (("-c:a", "aac", "-b:a", "128k", "-f", "adts"), "audio/aac"),
-    "pcm": (("-f", "s16le"), "audio/pcm"),
+
+class OutputFormat(NamedTuple):
+    args: tuple[str, ...]
+    media_type: str
+
+
+FORMATS: dict[str, OutputFormat] = {
+    "mp3": OutputFormat(("-c:a", "libmp3lame", "-b:a", "192k", "-f", "mp3"), "audio/mpeg"),
+    "wav": OutputFormat(("-c:a", "pcm_s16le", "-f", "wav"), "audio/wav"),
+    "flac": OutputFormat(("-c:a", "flac", "-f", "flac"), "audio/flac"),
+    "opus": OutputFormat(("-c:a", "libopus", "-b:a", "64k", "-f", "ogg"), "audio/ogg"),
+    "aac": OutputFormat(("-c:a", "aac", "-b:a", "128k", "-f", "adts"), "audio/aac"),
+    "pcm": OutputFormat(("-f", "s16le"), "audio/pcm"),
 }
+
+Synth = Callable[[str, str | None], bytes]
 
 
 class AudioError(RuntimeError):
@@ -91,29 +102,24 @@ def _run(args: list[str], data: bytes | None = None) -> bytes:
     return proc.stdout
 
 
-_rubberband: bool | None = None
-
-
+@lru_cache(maxsize=1)
 def has_rubberband() -> bool:
     """Detected once: Debian's ffmpeg has it, a stripped build may not."""
-    global _rubberband
-    if _rubberband is None:
-        try:
-            proc = subprocess.run(
-                ["ffmpeg", "-hide_banner", "-filters"],
-                capture_output=True,
-                text=True,
-                timeout=30,
-                check=False,
-            )
-            _rubberband = re.search(r"^\s*\S+\s+rubberband\b", proc.stdout, re.M) is not None
-        except (OSError, subprocess.SubprocessError):
-            _rubberband = False
-    return _rubberband
+    try:
+        proc = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-filters"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        return re.search(r"^\s*\S+\s+rubberband\b", proc.stdout, re.M) is not None
+    except (OSError, subprocess.SubprocessError):
+        return False
 
 
 def semitone_ratio(semitones: float) -> float:
-    return 2.0 ** (semitones / 12.0)
+    return float(2.0 ** (semitones / 12.0))
 
 
 def silence(ms: int) -> bytes:
@@ -227,7 +233,7 @@ def encode(pcm: bytes, response_format: str) -> tuple[bytes, str]:
 
 def render(
     turns: list[Turn],
-    synthesise,
+    synthesise: Synth,
     *,
     speed: float = 1.0,
     instructions: str | None = None,

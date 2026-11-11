@@ -8,10 +8,10 @@ of that to turns, voices and rules; the routes only orchestrate.
 
 from __future__ import annotations
 
-from fastapi import HTTPException
 from pydantic import BaseModel
 
 from . import lexicon, normalise, parse, pronounce
+from .errors import RequestError
 from .limits import Limits
 
 MODELS = ("kokoro-v1_0",)
@@ -48,13 +48,10 @@ class SpeechRequest(BaseModel):
 def check_model(model: str | None) -> None:
     name = (model or MODELS[0]).strip()
     if name in REJECTED_MODELS:
-        raise HTTPException(
-            400,
-            "this gateway serves Kokoro only; GPT TTS models are not available",
-        )
+        raise RequestError("this gateway serves Kokoro only; GPT TTS models are not available")
     if name not in ACCEPTED_MODELS:
         known = ", ".join(sorted(ACCEPTED_MODELS))
-        raise HTTPException(400, f"unknown model; use one of {known}")
+        raise RequestError(f"unknown model; use one of {known}")
 
 
 def clean_instructions(value: str | None, limits: Limits) -> str | None:
@@ -62,7 +59,7 @@ def clean_instructions(value: str | None, limits: Limits) -> str | None:
         return None
     text = parse.sanitise_text(value)
     if len(text) > limits.instructions_chars:
-        raise HTTPException(400, f"instructions exceeds {limits.instructions_chars} characters")
+        raise RequestError(f"instructions exceeds {limits.instructions_chars} characters")
     return text
 
 
@@ -124,7 +121,7 @@ def rewrite(
     unknown = parse.unresolved_markers(rewritten, markers)
     if unknown:
         listed = ", ".join(dict.fromkeys(f"[sense:{item.replace('|', '=')}]" for item in unknown))
-        raise HTTPException(400, f"unknown sense tag: {listed}")
+        raise RequestError(f"unknown sense tag: {listed}")
     return rewritten
 
 
@@ -140,8 +137,8 @@ def voice_spec(
     """
     server = dict(lexicon_data.aliases)
     if voice is None:
-        default = lexicon_data.default_alias
-        return server, _resolve_alias(default, server) if default else None
+        default_alias = lexicon_data.default_alias
+        return server, _resolve_alias(default_alias, server) if default_alias else None
 
     if isinstance(voice, str):
         value = voice.strip()
@@ -150,11 +147,11 @@ def voice_spec(
         try:
             parse.validate_voice(value, limits.voice_chars)
         except parse.MarkupError as exc:
-            raise HTTPException(400, str(exc)) from exc
+            raise RequestError(str(exc)) from exc
         return server, _resolve_alias(value, server)
 
     if not isinstance(voice, dict):
-        raise HTTPException(400, "voice must be a string or an object of alias: voice")
+        raise RequestError("voice must be a string or an object of alias: voice")
 
     aliases: dict[str, str] = dict(server)
     default: str | None = None
@@ -162,7 +159,7 @@ def voice_spec(
 
     for name, target in voice.items():
         if not isinstance(name, str):
-            raise HTTPException(400, "voice map must be an object of alias: voice")
+            raise RequestError("voice map must be an object of alias: voice")
         name = name.strip()
 
         if name == "id":
@@ -171,18 +168,18 @@ def voice_spec(
 
         target = _voice_id(target, limits)
         if not name or not target:
-            raise HTTPException(400, "voice map entries need an alias and a voice")
+            raise RequestError("voice map entries need an alias and a voice")
         try:
             parse.validate_voice(name, limits.voice_chars)
         except parse.MarkupError as exc:
-            raise HTTPException(400, f"invalid voice map: {exc}") from exc
+            raise RequestError(f"invalid voice map: {exc}") from exc
         aliases[name.casefold()] = target
         added += 1
 
     if added > limits.aliases:
-        raise HTTPException(400, f"voice map exceeds {limits.aliases} aliases")
+        raise RequestError(f"voice map exceeds {limits.aliases} aliases")
     if not aliases and not default:
-        raise HTTPException(400, "voice map must define at least one alias")
+        raise RequestError("voice map must define at least one alias")
 
     fallback = default or lexicon_data.default_alias or next(iter(aliases.values()))
     return aliases, _resolve_alias(fallback, aliases)
@@ -193,12 +190,12 @@ def _voice_id(value: object, limits: Limits) -> str:
     if isinstance(value, dict):
         value = value.get("id")
     if not isinstance(value, str):
-        raise HTTPException(400, "voice map values must be a voice name or {'id': ...}")
+        raise RequestError("voice map values must be a voice name or {'id': ...}")
     value = value.strip()
     try:
         parse.validate_voice(value, limits.voice_chars)
     except parse.MarkupError as exc:
-        raise HTTPException(400, str(exc)) from exc
+        raise RequestError(str(exc)) from exc
     return value
 
 

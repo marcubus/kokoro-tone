@@ -6,6 +6,15 @@ validation error, a bad bearer, an oversized body and an engine failure.
 
 from __future__ import annotations
 
+
+class RequestError(ValueError):
+    """A caller-visible 400 that is not an HTTP concern.
+
+    Domain modules raise this; the app's exception handler turns it into the
+    OpenAI error envelope, so `request.py` and `pipeline.py` stay framework-free.
+    """
+
+
 _ERROR_TYPES = {
     400: "invalid_request_error",
     401: "authentication_error",
