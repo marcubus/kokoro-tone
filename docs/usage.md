@@ -99,6 +99,46 @@ Clearing removes the turn-level override, not the request-level one: if the
 request also carried `instructions`, those apply to the cleared lines as usual.
 With no `instructions`, they are neutral.
 
+### `instructions` set the file-wide tone
+
+Request-level `instructions` choose one preset for every turn that does not name
+its own, and `[emotion:neutral]` returns to it. That is how a file keeps a
+baseline tone and still punctuates it:
+
+```json
+{
+  "instructions": "warm",
+  "input": "The rain had stopped by morning.\n[emotion:excited] \"It's cleared!\" she said.\n[emotion:neutral] He looked at the sky again.",
+  "response_format": "mp3"
+}
+```
+
+Line 1 is `warm` from `instructions`, line 2 is `excited`, line 3 is `warm`
+again - `neutral` cleared the override and exposed the request default.
+
+Within a single turn there is no blending: `[emotion:excited]` alongside
+`instructions: "warm"` gives `excited`, not a mixture. The tag replaces the
+request-level choice; it does not combine with it.
+
+### Voice, emotion and rate are independent
+
+Changing `[voice:]` resets neither the emotion nor the rate:
+
+```json
+{
+  "input": "[voice:bm_lewis] [emotion:warm] [rate:0.95] The rain had stopped by morning.\n[voice:af_heart] \"Not for long,\" she said.\n[voice:bm_lewis] He looked at the sky again.",
+  "response_format": "mp3"
+}
+```
+
+All three lines are warm and at ×0.95, including the quote. If the new speaker
+should not inherit it, say so - `[voice:af_heart] [emotion:neutral]`. Rate has
+no reset tag because it is a multiplier on the preset rate: `[rate:1.0]` means
+"no change".
+
+This stickiness belongs to the markup form. In the turn array each turn stands
+alone, so an omitted `emotion` or `rate` is simply unset for that turn.
+
 ### Blend and rate
 
 ```json

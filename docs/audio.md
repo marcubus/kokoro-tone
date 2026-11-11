@@ -42,6 +42,44 @@ Pitch uses `rubberband` with formant preservation. If ffmpeg lacks it, the chain
 falls back to `asetrate` + `atempo`, which shifts formants and is audible.
 Measured delivery is within ±0.26 st of the request in both directions.
 
+### How a preset lands
+
+A preset is applied to that voice's audio, before the whole-file tone chain. It
+is a delta on top of two things that are already there, so the same preset is
+not the same sound everywhere:
+
+- **The voice's own timbre.** `am_onyx` and `bm_fable` are 2.6 dB/oct apart
+  before any preset runs, and `+5 dB @ 6 kHz` adds +0.40 to one and +0.66 to the
+  other. The preset moves each voice by a similar amount; it does not equalise
+  them.
+- **The tone chain.** The chain's shelves stack with the preset's, because the
+  preset runs first. `warm`'s `+1 dB @ 250` sits under the chain's `+2 dB @ 250`
+  for +3 dB of bass in total, and the chain's `−1.5 dB @ 6 kHz` takes back part
+  of `bright`'s `+5`. That tax is why `bright` needs a shelf that large.
+
+`[rate:]` is a multiplier on the preset rate, not a replacement, and it is
+sticky: `[rate:0.9]` set once slows every later speaker until `[rate:1.0]`.
+
+### `instructions` as the file-wide default
+
+Request-level `instructions` select one preset for every turn that does not name
+its own. `[emotion:x]` overrides that choice for the turn, and because the tag is
+sticky it keeps applying until changed. `[emotion:neutral]` removes the override,
+so the request default applies again - which is how a file keeps a baseline tone
+and punctuates it:
+
+```json
+{
+  "instructions": "warm",
+  "input": "The rain had stopped by morning.\n[emotion:excited] \"It's cleared!\" she said.\n[emotion:neutral] He looked at the sky again."
+}
+```
+
+The three turns are `warm`, `excited`, `warm`. There is no blending *within* a
+turn: a turn's `[emotion:]` replaces the request-level choice rather than
+combining with it. `[voice:]` resets neither the emotion nor the rate, so a tag
+set for one speaker follows the next until it is changed.
+
 ## Tone chain and mastering
 
 Applied once, to the whole file:

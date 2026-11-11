@@ -246,7 +246,11 @@ so a script can return to the request-level default mid-file.
 
 Free text is matched against a small keyword table; unmatched text falls back to
 `speed` and the default warmth profile. `[emotion:x]` overrides the request-level
-mapping for that turn.
+mapping for that turn, and `[emotion:neutral]` removes that override so the
+request-level choice applies again. The three tag slots are independent:
+`[voice:]` resets neither the emotion nor the rate, so a tag set for one speaker
+follows the next until it is changed. The turn array has no sticky state at all;
+each turn stands alone.
 
 | Preset | rate | pitch | gain | EQ |
 |---|---|---|---|---|
@@ -267,6 +271,11 @@ ends - a treble shelf up and a low-mid shelf down - because the tone chain's
 −1.5 dB high shelf takes back part of any treble boost. One constant per preset
 is correct: a linear shelf's gain is voice-independent, and per-voice preset
 tables were measured and rejected. See [`../audio.md`](../audio.md).
+
+A preset is applied to that voice's audio *before* the tone chain, so it is a
+delta on the voice's own timbre and the chain's shelves stack with it. The same
+preset therefore sounds different on a dark and a bright voice, and `warm`'s
++1 dB @ 250 Hz combines with the chain's +2 dB rather than replacing it.
 
 ### Warmth master (whole file, once)
 

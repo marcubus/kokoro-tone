@@ -7,6 +7,16 @@ month and increments per release; tags are prefixed with `v`.
 
 ## [Unreleased]
 
+### Documentation
+
+- Clarified how the tags interact, in [`docs/usage.md`](docs/usage.md),
+  [`docs/audio.md`](docs/audio.md) and ADR-0009: `[voice:]` resets neither the
+  emotion nor the rate, so a tag set for one speaker follows the next;
+  `instructions` set a file-wide tone that `[emotion:]` overrides per turn and
+  `[emotion:neutral]` returns to; and a preset is applied before the tone chain,
+  so it is a delta on the voice's own timbre and the chain's shelves stack with
+  it.
+
 ## [2026.11.2] - 2026-11-11
 
 ### Added

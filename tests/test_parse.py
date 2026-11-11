@@ -42,6 +42,17 @@ def test_neutral_emotion_alone_is_not_an_error():
     assert turns[0].text == "Just prose."
 
 
+def test_emotion_and_rate_survive_a_voice_change():
+    # Documented in docs/usage.md: the three tag slots are independent, so
+    # switching speaker neither clears the emotion nor resets the rate.
+    text = "[emotion:warm] [rate:0.9] A. [voice:am_michael] B. [voice:bf_emma] C."
+    turns = parse.parse_markup(text)
+
+    assert [t.emotion for t in turns] == ["warm", "warm", "warm"]
+    assert [t.rate for t in turns] == [0.9, 0.9, 0.9]
+    assert [t.voice for t in turns] == [None, "am_michael", "bf_emma"]
+
+
 def test_unknown_tag_is_left_as_text():
     turns = parse.parse_markup("[narrator] It began.")
     assert turns[0].text == "[narrator] It began."

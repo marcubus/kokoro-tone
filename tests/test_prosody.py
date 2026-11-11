@@ -1,6 +1,6 @@
 import pytest
 
-from kokoro_tone import prosody
+from kokoro_tone import parse, prosody
 from kokoro_tone.parse import Turn
 
 
@@ -45,6 +45,15 @@ def test_neutral_emotion_alone_is_neutral():
     result = prosody.resolve(Turn(text="Hi.", emotion="neutral"))
     assert result.preset is None
     assert (result.rate, result.pitch_st, result.gain_db) == (1.0, 0.0, 0.0)
+
+
+def test_instructions_are_the_file_wide_default():
+    # The pattern documented in docs/audio.md: `instructions` set the tone for
+    # every turn without its own, and `[emotion:neutral]` returns to it.
+    turns = parse.parse_markup("One.\n[emotion:excited] Two.\n[emotion:neutral] Three.")
+    presets = [prosody.resolve(turn, 1.0, "warm").preset for turn in turns]
+
+    assert presets == ["warm", "excited", "warm"]
 
 
 def test_unknown_emotion_raises():
