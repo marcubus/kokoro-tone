@@ -14,7 +14,7 @@ export KOKORO_VERSION := $(shell cat engine.version)
 
 .DEFAULT_GOAL := help
 .PHONY: help install lint fmt fmt-check check security-check pin-check test \
-        version engine build up down restart ps logs narrate analyze clean
+        version engine config build up down restart ps logs narrate analyze clean
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -53,6 +53,9 @@ version: ## Print the CalVer version
 
 engine: ## Print the pinned engine tag
 	@cat engine.version
+
+config: ## Validate compose interpolation (requires .env)
+	$(COMPOSE) config >/dev/null
 
 build: ## Build the gateway image
 	docker build -t kokoro-tone:$(VERSION) .

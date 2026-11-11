@@ -495,6 +495,7 @@ make test         # pytest
 | `make test` | pytest |
 | `make version` | print the CalVer version |
 | `make engine` | print the pinned engine tag |
+| `make config` | validate compose interpolation (requires `.env`) |
 | `make build` / `make up` / `make down` / `make logs` | container lifecycle |
 | `make narrate FILE=script.txt OUT=out.mp3` | render a transcript |
 | `make analyze FILE=out.mp3` | measure F0, syllables/s, centroid, LUFS, TP |
