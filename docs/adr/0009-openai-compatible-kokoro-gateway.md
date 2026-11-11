@@ -239,6 +239,8 @@ Markup accepted inside a string:
 
 `[voice:]` accepts anything Kokoro accepts, including blends and aliases.
 `[rate:]` and `[pause:]` keep Kokoro's semantics. `[emotion:]` is ours.
+`[emotion:neutral]` clears the sticky override rather than selecting a preset,
+so a script can return to the request-level default mid-file.
 
 ### `instructions` → prosody
 
@@ -248,16 +250,23 @@ mapping for that turn.
 
 | Preset | rate | pitch | gain | EQ |
 |---|---|---|---|---|
-| warm | ×0.95 | −1 st | +1 dB | low-shelf +1.5 dB @ 250 Hz |
-| bright | ×1.05 | +1 st | +1 dB | high-shelf +1.5 dB @ 6 kHz |
+| warm | ×0.95 | −1.2 st | +1 dB | low-shelf +1 dB @ 250 Hz, high-shelf −1 dB @ 6 kHz |
+| bright | ×1.036 | +1.1 st | +1 dB | high-shelf +5 dB @ 6 kHz, low-shelf −1 dB @ 600 Hz |
 | sad | ×0.88 | −2 st | −3 dB | lowpass 6 kHz |
 | tired | ×0.90 | −1 st | −2 dB | lowpass 8 kHz |
 | angry | ×1.15 | +1 st | +4 dB | treble +2 dB, compression 3:1 |
 | whisper | ×0.85 | 0 | −8 dB | highpass 300 Hz, lowpass 8 kHz |
-| excited | ×1.12 | +2 st | +2 dB | treble +3 dB |
+| excited | ×1.12 | +2 st | +2 dB | high-shelf +9 dB @ 6 kHz, low-shelf −1 dB @ 600 Hz |
 
 Pitch is `rubberband` with formant preservation; the fallback is `asetrate` +
 `atempo`, which shifts formants and is only used if `rubberband` is unavailable.
+
+The EQ constants are calibrated against measured post-master tilt, not derived
+from the nominal filter gain. The treble-lifting presets move tilt from both
+ends - a treble shelf up and a low-mid shelf down - because the tone chain's
+−1.5 dB high shelf takes back part of any treble boost. One constant per preset
+is correct: a linear shelf's gain is voice-independent, and per-voice preset
+tables were measured and rejected. See [`../audio.md`](../audio.md).
 
 ### Warmth master (whole file, once)
 
@@ -266,7 +275,7 @@ low-shelf  +2.0 dB @ 250 Hz
 high-shelf −1.5 dB @ 6 kHz
 acompressor ratio 2.5, attack 15 ms, release 200 ms
 tanh saturation at low drive
-alimiter −1 dBTP
+alimiter −1 dBFS sample peak (≈ −0.5 dBTP)
 single linear gain → −16 LUFS (LOUDNESS_LUFS; −20 for ACX-style audiobooks)
 ```
 

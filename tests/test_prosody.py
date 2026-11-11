@@ -33,6 +33,20 @@ def test_turn_emotion_overrides_instructions():
     assert result.rate < 1.0
 
 
+def test_neutral_emotion_falls_back_to_request_instructions():
+    # `[emotion:neutral]` clears the turn override, so the request-level
+    # `instructions` apply again rather than nothing.
+    result = prosody.resolve(Turn(text="Hi.", emotion="neutral"), 1.0, "warm")
+    assert result.preset == "warm"
+    assert result.rate < 1.0
+
+
+def test_neutral_emotion_alone_is_neutral():
+    result = prosody.resolve(Turn(text="Hi.", emotion="neutral"))
+    assert result.preset is None
+    assert (result.rate, result.pitch_st, result.gain_db) == (1.0, 0.0, 0.0)
+
+
 def test_unknown_emotion_raises():
     with pytest.raises(prosody.UnknownEmotion):
         prosody.resolve(Turn(text="Hi.", emotion="smug"))

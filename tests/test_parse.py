@@ -26,6 +26,22 @@ def test_default_voice_applies_to_untagged_text():
     assert turns[0].voice == "af_bella"
 
 
+def test_neutral_emotion_clears_the_sticky_tag():
+    text = "[emotion:warm] One. [emotion:neutral] Two. [emotion:warm] Three."
+    turns = parse.parse_markup(text)
+
+    # The tag is sticky until `neutral`, which removes the override rather than
+    # selecting a preset, so the following turns fall back to the default.
+    assert [t.emotion for t in turns] == ["warm", None, "warm"]
+    assert turns[1].text == "Two."
+
+
+def test_neutral_emotion_alone_is_not_an_error():
+    turns = parse.parse_markup("[emotion:neutral] Just prose.")
+    assert turns[0].emotion is None
+    assert turns[0].text == "Just prose."
+
+
 def test_unknown_tag_is_left_as_text():
     turns = parse.parse_markup("[narrator] It began.")
     assert turns[0].text == "[narrator] It began."

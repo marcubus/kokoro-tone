@@ -85,6 +85,20 @@ Tags are sticky: `[voice:]` and `[emotion:]` apply until changed. `[pause:]`
 adds silence after the turn it follows; `[rate:]` multiplies the current rate.
 Unknown `[tag:value]` pairs are left in the text untouched.
 
+`[emotion:neutral]` clears the emotion rather than selecting a preset, so a
+script can return to the request default mid-file:
+
+```json
+{
+  "input": "[emotion:warm] The rain had stopped by morning.\n[emotion:neutral] I did - it is over the wall.",
+  "response_format": "mp3"
+}
+```
+
+Clearing removes the turn-level override, not the request-level one: if the
+request also carried `instructions`, those apply to the cleared lines as usual.
+With no `instructions`, they are neutral.
+
 ### Blend and rate
 
 ```json

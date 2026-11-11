@@ -118,8 +118,8 @@ def test_preset_gain_is_applied():
 # The table from ADR-0009. Keeping it here means a preset edit has to be
 # deliberate: the numbers are pinned, not just the shape.
 ADR_PRESETS = {
-    "warm": (0.95, -1.0, 1.0),
-    "bright": (1.05, 1.0, 1.0),
+    "warm": (0.95, -1.2, 1.0),
+    "bright": (1.036, 1.1, 1.0),
     "sad": (0.88, -2.0, -3.0),
     "tired": (0.90, -1.0, -2.0),
     "angry": (1.15, 1.0, 4.0),
@@ -137,6 +137,25 @@ EQ_EXPECTATIONS = {
     "excited": {"high": "up"},
 }
 
+# The filters are pinned too, because the tilt presets depend on a pair: a treble
+# shelf up *and* a low-mid shelf down. Dropping the bass cut would leave `bright`
+# and `excited` measurably darker than their intent while still passing the
+# shape-only EQ test above.
+ADR_FILTERS = {
+    "warm": ("bass=g=1.0:f=250:w=0.7", "treble=g=-1.0:f=6000:w=0.7"),
+    "bright": ("treble=g=5.0:f=6000:w=0.7", "bass=g=-1.0:f=600:w=1.0"),
+    "sad": ("lowpass=f=6000",),
+    "tired": ("lowpass=f=8000",),
+    "angry": ("treble=g=2:f=6000:w=0.7", "acompressor=ratio=3:attack=10:release=150"),
+    "whisper": ("highpass=f=300", "lowpass=f=8000"),
+    "excited": ("treble=g=9.0:f=6000:w=0.7", "bass=g=-1.0:f=600:w=1.0"),
+}
+
+
+def test_preset_filters_match_the_adr():
+    for emotion, filters in ADR_FILTERS.items():
+        assert prosody.PRESETS[emotion].filters == filters
+
 
 def test_preset_table_matches_the_adr():
     assert set(prosody.PRESETS) == set(ADR_PRESETS)
@@ -149,7 +168,11 @@ def test_preset_table_matches_the_adr():
 def test_each_emotion_applies_its_rate_and_pitch(emotion):
     source = tone(1.0, frequency=220.0)
     preset = prosody.PRESETS[emotion]
-    out = audio.apply_prosody(source, prosody.resolve(Turn(text="x", emotion=emotion)))
+    # The EQ is measured separately. Keeping it out of this chain stops a large
+    # treble shelf from amplifying quantisation noise into extra zero crossings,
+    # which reads as a pitch error that is not there.
+    settings = prosody.Prosody(preset.rate, preset.pitch_st, 0.0, (), emotion)
+    out = audio.apply_prosody(source, settings)
 
     assert audio.duration_seconds(out) == pytest.approx(1.0 / preset.rate, rel=0.04)
     if abs(preset.pitch_st) > 0.1:

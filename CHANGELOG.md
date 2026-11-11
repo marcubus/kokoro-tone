@@ -7,8 +7,14 @@ month and increments per release; tags are prefixed with `v`.
 
 ## [Unreleased]
 
+## [2026.11.2] - 2026-11-11
+
 ### Added
 
+- `[emotion:neutral]` clears a sticky emotion tag instead of selecting a preset.
+  Tags apply until changed, so a script had no way back to the request default;
+  `neutral` removes the turn-level override, after which the request's
+  `instructions` apply as usual.
 - Static per-voice loudness levelling. Every turn is given the casting gain
   measured in [`docs/voice-loudness.md`](docs/voice-loudness.md) for its voice
   (all 72 measured voices), passed to the engine as `volume_multiplier` so it
@@ -22,9 +28,42 @@ month and increments per release; tags are prefixed with `v`.
 
 ### Changed
 
+- Recalibrated the `bright`, `warm` and `excited` presets against measured
+  post-master spectral tilt. The tone chain's −1.5 dB shelf at 6 kHz was taking
+  back most of any treble boost, so `bright` delivered −0.05 dB/oct (no brighter
+  than neutral) and `excited` +0.04 despite +3 dB of shelf. Tilt now moves from
+  both ends - a treble shelf up and a low-mid shelf down - because the cut is
+  about a third of the effect and lets the shelf stay 2.5 dB smaller, which
+  keeps sibilants in check. Measured deltas against neutral: `bright` +0.36
+  dB/oct and +1.3 dB of HF, `excited` +0.72 and +2.9, `warm` −0.31 and −1.6
+  (with its bass shelf halved, since it stacked with the tone chain's +2 dB).
+  `sad`, `tired`, `angry` and `whisper` are unchanged - they use filters, which
+  the tone chain does not cancel, and already delivered their intent.
+- One constant per preset, not a per-voice table. The same +5 dB shelf moves 13
+  male voices by +0.40…+0.67 dB/oct (mean +0.52, sd 0.09); closing the 2.6
+  dB/oct spread between the darkest and brightest voice would take roughly 32 dB
+  of treble, so per-voice preset tuning was measured and rejected.
 - Renamed the whole-file warmth master to the **tone chain**:
   `WARMTH_CHAIN`/`apply_warmth` are now `TONE_CHAIN`/`apply_tone`. The emotion
   preset is still `warm`, so the two are no longer easy to confuse.
+
+### Fixed
+
+- `docs/audio.md` and ADR-0009 claimed a −1 dBTP ceiling; `alimiter=limit=0.891`
+  is −1 dBFS *sample* peak, which measures −0.47…−0.74 dBTP. Both now say so.
+- `docs/voice-loudness.md` treated the spectral centroid as the brightness
+  metric. It is frame-alignment sensitive (two files with identical octave bands
+  to 0.1 dB differed by 9%) and ranks voices differently from tilt, so the
+  ordering is now marked approximate and tilt is named as the reliable measure.
+
+### Notes
+
+- Downward pitch was reported as short by about 0.5 st. It is not: a pure tone
+  through `rubberband` is exact, and a whole-file LTAS cepstrum puts delivery
+  within ±0.26 st of the request in both directions. The shortfall came from a
+  per-frame median estimator that is biased low. No pitch code was changed, and
+  the test that measures pitch now isolates it from the preset EQ, whose large
+  treble shelf was inflating the zero-crossing count.
 
 ## [2026.11.1] - 2026-11-11
 

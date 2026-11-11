@@ -6,20 +6,41 @@ than acting: rate, pitch, gain and spectral tilt, mastered once per file.
 ## `instructions` → prosody
 
 Free text is matched against a keyword table. `[emotion:x]` overrides it per
-turn. Rate and pitch are clamped to the configured bounds.
+turn; `[emotion:neutral]` clears that override again. Rate and pitch are clamped
+to the configured bounds.
 
-| Preset | rate | pitch | gain | EQ |
-|---|---|---|---|---|
-| warm | ×0.95 | −1 st | +1 dB | low-shelf +1.5 dB @ 250 Hz |
-| bright | ×1.05 | +1 st | +1 dB | high-shelf +1.5 dB @ 6 kHz |
-| sad | ×0.88 | −2 st | −3 dB | lowpass 6 kHz |
-| tired | ×0.90 | −1 st | −2 dB | lowpass 8 kHz |
-| angry | ×1.15 | +1 st | +4 dB | treble +2 dB, compression 3:1 |
-| whisper | ×0.85 | 0 | −8 dB | highpass 300 Hz, lowpass 8 kHz |
-| excited | ×1.12 | +2 st | +2 dB | treble +3 dB |
+| Preset | rate | pitch | gain | EQ | Δ tilt | Δ HF |
+|---|---|---|---|---|---|---|
+| warm | ×0.95 | −1.2 st | +1 dB | low-shelf +1 dB @ 250 Hz, high-shelf −1 dB @ 6 kHz | −0.31 dB/oct | −1.6 dB |
+| bright | ×1.036 | +1.1 st | +1 dB | high-shelf +5 dB @ 6 kHz, low-shelf −1 dB @ 600 Hz | +0.36 dB/oct | +1.3 dB |
+| sad | ×0.88 | −2 st | −3 dB | lowpass 6 kHz | −0.73 dB/oct | −3.1 dB |
+| tired | ×0.90 | −1 st | −2 dB | lowpass 8 kHz | −0.35 dB/oct | −1.5 dB |
+| angry | ×1.15 | +1 st | +4 dB | treble +2 dB, compression 3:1 | +0.32 dB/oct | +1.3 dB |
+| whisper | ×0.85 | 0 | −8 dB | highpass 300 Hz, lowpass 8 kHz | +0.47 dB/oct | +2.4 dB |
+| excited | ×1.12 | +2 st | +2 dB | high-shelf +9 dB @ 6 kHz, low-shelf −1 dB @ 600 Hz | +0.72 dB/oct | +2.9 dB |
+
+Δ tilt and Δ HF are measured against neutral for the same voice and prose, after
+the master, so they are what a listener actually hears rather than the nominal
+filter gain. A shelf's gain is asymptotic: `+5 dB @ 6 kHz` arrives as +2.4 dB in
+the 8 kHz octave band.
+
+Tilt is moved from **both ends** - a treble shelf up and a low-mid shelf down.
+The bass cut is about a third of the effect (the `+5` shelf alone gives
++0.38 dB/oct, the `−1 @ 600` adds +0.27), which lets the treble shelf stay
+2.5 dB smaller for the same brightness. That matters because a large treble
+boost is what makes sibilants spit.
+
+The constants are calibrated against measurement, not derived. A linear shelf's
+gain is voice-independent, so one constant per preset is correct: the same
+`+5 dB` shelf moves 13 male voices by +0.40…+0.67 dB/oct (mean +0.52,
+sd 0.09). Per-voice preset tables were measured and rejected - closing the
+2.6 dB/oct spread between the darkest and brightest voice would take roughly
+32 dB of treble, which is a repair, not a preset. Per-voice correction belongs
+in the master's de-harshing, if it is added at all.
 
 Pitch uses `rubberband` with formant preservation. If ffmpeg lacks it, the chain
 falls back to `asetrate` + `atempo`, which shifts formants and is audible.
+Measured delivery is within ±0.26 st of the request in both directions.
 
 ## Tone chain and mastering
 
@@ -31,7 +52,7 @@ high-shelf −1.5 dB @ 6 kHz
 acompressor ratio 2.5, attack 15 ms, release 200 ms
 tanh saturation at low drive
 single linear gain → −16 LUFS (podcast default; `LOUDNESS_LUFS`)
-alimiter −1 dBTP
+alimiter −1 dBFS sample peak (≈ −0.5 dBTP)
 ```
 
 Loudness is measured *after* the tone chain and corrected with one linear
@@ -72,7 +93,7 @@ Three paths, and they do not gain the same way:
 
 Preset gain is relative (whisper is −8 dB before the master), so it survives the
 master's single absolute gain. The limiter is last, so a hot preset cannot push
-past −1 dBTP.
+past −1 dBFS sample peak, which measures around −0.5 dBTP.
 
 The honest limit: **mastering and incremental streaming cannot both happen.**
 Real-time gain would mean measuring per chunk, which is the per-segment

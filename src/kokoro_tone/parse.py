@@ -17,6 +17,11 @@ from .limits import DEFAULT_LIMITS, Limits
 
 TAG_NAMES = ("voice", "emotion", "rate", "pause", "sense")
 
+# `[emotion:neutral]` clears a sticky emotion instead of selecting a preset. It is
+# the only accepted value with no preset behind it, so it reads as "stop
+# overriding" rather than as a tone.
+EMOTION_RESET = "neutral"
+
 # `[tag:value]` - values may not contain brackets, which keeps the tokenizer
 # from swallowing a neighbouring tag when one is malformed.
 _TAG_RE = re.compile(r"\[([A-Za-z_]+):([^\[\]]*)\]")
@@ -138,10 +143,17 @@ def _desugar_senses(text: str, limits: Limits) -> tuple[str, list[str]]:
     return _TAG_RE.sub(replace, text), markers
 
 
-def _parse_emotion(value: str) -> str:
+def _parse_emotion(value: str) -> str | None:
+    """Normalise an emotion tag. `neutral` clears a sticky emotion.
+
+    Clearing is not a preset: it removes the turn-level override so the request's
+    `instructions` (or nothing) applies again. It has to be expressed, because
+    tags are sticky and a script otherwise cannot return to the default.
+    """
     if not value or not _EMOTION_RE.match(value):
         raise MarkupError(f"invalid emotion {_short(value)}")
-    return value.lower()
+    name = value.lower()
+    return None if name == EMOTION_RESET else name
 
 
 def parse_markup(

@@ -118,7 +118,12 @@ reads as present. Beyond level, two measurable timbre gaps:
 - **Spectral centroid spans 1.5–3.3 kHz** - a 2.1× range. `am_onyx` (1546 Hz) and
   `am_eric` (2083 Hz) are genuinely dark; `bf_emma` (3265), `af_nicole` (3207) and
   `af_bella` (3014) are bright. That is the voice's character, not a defect - do
-  not EQ it away.
+  not EQ it away. Treat the ordering as approximate: the centroid is sensitive to
+  frame alignment, and two files with identical octave bands to 0.1 dB can differ
+  by 9%. Where the exact figure matters, use the spectral tilt (dB/oct across the
+  250 Hz–8 kHz octave bands) instead. Measured on 13 male voices, `bm_george` has
+  the highest centroid (2404 Hz) but only −2.98 dB/oct of tilt - it reads bright
+  mostly because of its pitch, not its spectrum.
 - **Crest factor spans 6–14 dB.** `am_michael` (14.2) and `am_onyx` (13.6) are
   *quiet but spiky*: low RMS, high peaks. Gain alone makes them hot without making
   them sound louder. Those two are the only voices that want a touch of

@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass
 
 from .limits import DEFAULT_LIMITS, Limits
-from .parse import Turn
+from .parse import EMOTION_RESET, Turn
 
 # Defaults, kept as module constants for readability and for the tests that
 # pin the preset table. Runtime bounds come from `limits.Limits`.
@@ -36,8 +36,25 @@ NEUTRAL = Preset(rate=1.0, pitch_st=0.0, gain_db=0.0)
 # ffmpeg filter fragments. `bass`/`treble` are shelf filters; the lowpass and
 # highpass entries are the "darker"/"hushed" tilt.
 PRESETS: dict[str, Preset] = {
-    "warm": Preset(0.95, -1.0, 1.0, ("bass=g=1.5:f=250:w=0.7",)),
-    "bright": Preset(1.05, 1.0, 1.0, ("treble=g=1.5:f=6000:w=0.7",)),
+    # Warmth is body plus a soft top. The bass shelf stays small on purpose: the
+    # tone chain already adds +2 dB at 250 Hz, and a large preset shelf on top of
+    # it made this the boomy preset rather than the warm one.
+    "warm": Preset(
+        0.95,
+        -1.2,
+        1.0,
+        ("bass=g=1.0:f=250:w=0.7", "treble=g=-1.0:f=6000:w=0.7"),
+    ),
+    # Tilt moves from both ends: a treble shelf and a low-mid cut. The cut is
+    # about a third of the effect and lets the shelf stay 2.5 dB smaller, which
+    # is what keeps sibilants in check. Calibrated against the measured
+    # bm_lewis(4)+bm_fable(1) blend: +0.36 dB/oct and +1.3 dB of HF.
+    "bright": Preset(
+        1.036,
+        1.1,
+        1.0,
+        ("treble=g=5.0:f=6000:w=0.7", "bass=g=-1.0:f=600:w=1.0"),
+    ),
     "sad": Preset(0.88, -2.0, -3.0, ("lowpass=f=6000",)),
     "tired": Preset(0.90, -1.0, -2.0, ("lowpass=f=8000",)),
     "angry": Preset(
@@ -47,7 +64,14 @@ PRESETS: dict[str, Preset] = {
         ("treble=g=2:f=6000:w=0.7", "acompressor=ratio=3:attack=10:release=150"),
     ),
     "whisper": Preset(0.85, 0.0, -8.0, ("highpass=f=300", "lowpass=f=8000")),
-    "excited": Preset(1.12, 2.0, 2.0, ("treble=g=3:f=6000:w=0.7",)),
+    # Brighter than `bright` by design. The +2 st pitch costs about 0.2 dB/oct of
+    # measured tilt, so the shelf has to clear that as well as the tone chain.
+    "excited": Preset(
+        1.12,
+        2.0,
+        2.0,
+        ("treble=g=9.0:f=6000:w=0.7", "bass=g=-1.0:f=600:w=1.0"),
+    ),
 }
 
 # Longest keyword wins, so "not angry, just tired" resolves to `tired`.
@@ -145,14 +169,15 @@ def resolve(
     limits: Limits = DEFAULT_LIMITS,
 ) -> Prosody:
     """Turn-level preset beats request-level instructions beats neutral."""
-    if turn.emotion and turn.emotion not in PRESETS:
+    # `parse_markup` already maps `[emotion:neutral]` to None; this keeps a
+    # hand-built Turn(emotion="neutral") meaning the same thing.
+    emotion = None if turn.emotion == EMOTION_RESET else turn.emotion
+    if emotion and emotion not in PRESETS:
         known = ", ".join(sorted(PRESETS))
-        raise UnknownEmotion(f"unknown emotion {turn.emotion!r}; known: {known}")
+        raise UnknownEmotion(f"unknown emotion {emotion!r}; known: {known}")
 
     preset_name = (
-        turn.emotion
-        or match_instructions(turn.instructions)
-        or match_instructions(request_instructions)
+        emotion or match_instructions(turn.instructions) or match_instructions(request_instructions)
     )
     preset = PRESETS.get(preset_name, NEUTRAL) if preset_name else NEUTRAL
 
