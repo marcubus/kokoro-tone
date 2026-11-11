@@ -29,3 +29,14 @@ updates:
     groups:
       docker:
         patterns: ["*"]
+    # The interpreter and uv are deliberately pinned to the versions in
+    # .mise.toml; a Dockerfile bump must be a reviewed change, not a PR.
+    ignore:
+      - dependency-name: "python"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+      - dependency-name: "ghcr.io/astral-sh/uv"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
