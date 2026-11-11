@@ -46,7 +46,7 @@ def rms(pcm: bytes) -> float:
 
 
 def amplitude_at(pcm: bytes, frequency: float) -> float:
-    """DFT bin at an exact frequency — enough to measure a shelf's effect."""
+    """DFT bin at an exact frequency - enough to measure a shelf's effect."""
     data = samples(pcm)
     if not data:
         return 0.0

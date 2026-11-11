@@ -15,6 +15,7 @@ build/
 *.egg-info/
 
 # backups and scratch files
+.scratch/
 *.bak
 *.bak.*
 *.tmp

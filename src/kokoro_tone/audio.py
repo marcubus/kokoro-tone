@@ -186,7 +186,7 @@ def measure_loudness(pcm: bytes) -> tuple[float, float]:
 
 
 def apply_warmth(pcm: bytes) -> bytes:
-    """Shelves, compression and saturation — no gain, no limiter."""
+    """Shelves, compression and saturation - no gain, no limiter."""
     return _run(
         [*_pcm_input(), "-af", _filters(list(WARMTH_CHAIN)), *_pcm_output()],
         pcm,

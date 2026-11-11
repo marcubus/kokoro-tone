@@ -17,7 +17,7 @@ from .env import read_float, read_int
 @dataclass(frozen=True)
 class Limits:
     # Prosody. Rate is a multiplier; pitch is semitones. The defaults are the
-    # range the presets were measured in — wider values start to sound broken.
+    # range the presets were measured in - wider values start to sound broken.
     rate_min: float = 0.75
     rate_max: float = 1.3
     pitch_min: float = -3.0

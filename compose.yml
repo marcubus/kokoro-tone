@@ -3,12 +3,12 @@ services:
     container_name: kokoro
     image: ghcr.io/remsky/kokoro-fastapi-cpu:${KOKORO_VERSION:?KOKORO_VERSION is required}
 
-    # Security + resources — pinned engine, ~1 GB resident
+    # Security + resources - pinned engine, ~1 GB resident
     mem_limit: 2g
     security_opt:
       - no-new-privileges:true
 
-    # Configuration — every value is set here, with its default. Compose reads
+    # Configuration - every value is set here, with its default. Compose reads
     # `.env` for interpolation; comment a line out to fall back to the app's
     # built-in default.
     environment:
@@ -18,7 +18,7 @@ services:
       - API_KEYS=${KOKORO_FASTAPI_API_KEY:?KOKORO_FASTAPI_API_KEY is required}
       - PYTHONUNBUFFERED=1
 
-    # Lifecycle — the image ships no healthcheck; this one gates the gateway
+    # Lifecycle - the image ships no healthcheck; this one gates the gateway
     healthcheck:
       test:
         - CMD
@@ -42,7 +42,7 @@ services:
     build:
       context: .
 
-    # Security + resources — stateless shim, no model, no shell needed
+    # Security + resources - stateless shim, no model, no shell needed
     mem_limit: 512m
     cap_drop: [ALL]
     security_opt:
@@ -50,7 +50,7 @@ services:
     read_only: true
     pids_limit: 128
 
-    # Configuration — every value is set here, with its default. Compose reads
+    # Configuration - every value is set here, with its default. Compose reads
     # `.env` for interpolation; comment a line out to fall back to the app's
     # built-in default.
     environment:
@@ -100,7 +100,7 @@ services:
     volumes:
       - ./lexicon:/etc/kokoro-tone:ro
 
-    # Transient storage — ffmpeg scratch space, nothing persists
+    # Transient storage - ffmpeg scratch space, nothing persists
     tmpfs:
       - /tmp
 

@@ -6,7 +6,7 @@ so `guess=bass=music` stays greppable; both `grep` and Loki's `| logfmt` split
 on the first `=`.
 
 Nothing here may carry request text. A field is a count, a name, a duration or a
-status — never the words the caller asked to be spoken. The service is the
+status - never the words the caller asked to be spoken. The service is the
 gateway for a script that may be private; the log is for the operator.
 """
 

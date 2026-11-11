@@ -1,39 +1,39 @@
 import pytest
 
-from kokoro_tone import main
+from kokoro_tone import settings
 
 
 def test_loudness_defaults_to_the_podcast_target(monkeypatch):
     monkeypatch.delenv("LOUDNESS_LUFS", raising=False)
 
-    assert main.load_settings().loudness_lufs == pytest.approx(main.PODCAST_LUFS)
-    assert main.PODCAST_LUFS == -16.0
+    assert settings.load_settings().loudness_lufs == pytest.approx(settings.PODCAST_LUFS)
+    assert settings.PODCAST_LUFS == -16.0
 
 
 def test_loudness_accepts_acx_and_mono_podcast_targets(monkeypatch):
     for value in ("-20", "-19", "-14"):
         monkeypatch.setenv("LOUDNESS_LUFS", value)
-        assert main.load_settings().loudness_lufs == pytest.approx(float(value))
+        assert settings.load_settings().loudness_lufs == pytest.approx(float(value))
 
 
 def test_loudness_is_clamped_to_the_emotion_safe_range(monkeypatch):
     monkeypatch.setenv("LOUDNESS_LUFS", "-6")
-    assert main.load_settings().loudness_lufs == pytest.approx(main.LOUDNESS_MAX)
+    assert settings.load_settings().loudness_lufs == pytest.approx(settings.LOUDNESS_MAX)
 
     monkeypatch.setenv("LOUDNESS_LUFS", "-45")
-    assert main.load_settings().loudness_lufs == pytest.approx(main.LOUDNESS_MIN)
+    assert settings.load_settings().loudness_lufs == pytest.approx(settings.LOUDNESS_MIN)
 
 
 def test_loudness_falls_back_on_nonsense(monkeypatch):
     monkeypatch.setenv("LOUDNESS_LUFS", "loud")
-    assert main.load_settings().loudness_lufs == pytest.approx(main.PODCAST_LUFS)
+    assert settings.load_settings().loudness_lufs == pytest.approx(settings.PODCAST_LUFS)
 
 
 def test_emotion_range_fits_inside_the_loudness_bounds():
     # The loudest preset (+4 dB) must stay clear of the -1 dBTP ceiling at the
     # hottest allowed target, and the quietest (-8 dB) must stay audible.
-    assert main.LOUDNESS_MAX + 4.0 < -1.0
-    assert main.LOUDNESS_MIN - 8.0 > -60.0
+    assert settings.LOUDNESS_MAX + 4.0 < -1.0
+    assert settings.LOUDNESS_MIN - 8.0 > -60.0
 
 
 def test_limits_defaults_are_the_documented_bounds():

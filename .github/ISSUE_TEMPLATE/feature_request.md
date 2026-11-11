@@ -19,4 +19,4 @@ labels: enhancement
 ## Does the engine already do it?
 
 <!-- Kokoro-FastAPI owns inference, voices, blending and SSML. If the engine
-     already provides this, say so — the gateway prefers not to duplicate it. -->
+     already provides this, say so - the gateway prefers not to duplicate it. -->

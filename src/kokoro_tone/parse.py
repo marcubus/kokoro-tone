@@ -17,7 +17,7 @@ from .limits import DEFAULT_LIMITS, Limits
 
 TAG_NAMES = ("voice", "emotion", "rate", "pause", "sense")
 
-# `[tag:value]` — values may not contain brackets, which keeps the tokenizer
+# `[tag:value]` - values may not contain brackets, which keeps the tokenizer
 # from swallowing a neighbouring tag when one is malformed.
 _TAG_RE = re.compile(r"\[([A-Za-z_]+):([^\[\]]*)\]")
 _OPENER_RE = re.compile(r"\[([A-Za-z_]+):")

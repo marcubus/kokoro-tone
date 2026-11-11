@@ -100,11 +100,21 @@ def _start_server() -> ThreadingHTTPServer:
 
 
 def _reload(monkeypatch, server) -> object:
+    """Reload the modules that cache settings, in dependency order.
+
+    `settings` is read at import by `routes` (the lexicon) and by `main` (the
+    body limit), so both must be rebuilt after it. A module that caches
+    `settings.SETTINGS` at import has to be added here.
+    """
     monkeypatch.setenv("UPSTREAM_BASE_URL", f"http://127.0.0.1:{server.server_address[1]}/v1")
     monkeypatch.setenv("UPSTREAM_API_KEY", "engine-key")
 
     import kokoro_tone.main as main
+    import kokoro_tone.routes as routes
+    import kokoro_tone.settings as settings
 
+    importlib.reload(settings)
+    importlib.reload(routes)
     importlib.reload(main)
     return main
 

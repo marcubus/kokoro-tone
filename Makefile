@@ -1,4 +1,4 @@
-# kokoro-tone — local image build, no published port.
+# kokoro-tone - local image build, no published port.
 #
 #   make up        build + start both containers
 #   make test      uv sync + pytest
@@ -43,7 +43,7 @@ pin-check: ## The engine tag may appear only in engine.version
 	@test -s engine.version || { echo "engine.version is empty"; exit 1; }
 	@! grep -rn "kokoro-fastapi-cpu:v" \
 	  --exclude=engine.version --exclude=Makefile \
-	  --exclude-dir=.git --exclude-dir=.venv . \
+	  --exclude-dir=.git --exclude-dir=.venv --exclude-dir=adr . \
 	  || { echo "engine tag literal outside engine.version"; exit 1; }
 
 test: ## Run the test suite

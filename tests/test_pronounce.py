@@ -9,7 +9,7 @@ import os
 
 import pytest
 
-from kokoro_tone import normalise, pronounce
+from kokoro_tone import lexicon, normalise, pronounce
 from kokoro_tone.limits import DEFAULT_LIMITS
 from kokoro_tone.parse import MarkupError
 
@@ -18,7 +18,7 @@ NO_FLAGS = pronounce.Flags()
 
 
 def rules(value):
-    return pronounce.parse_rules(value, DEFAULT_LIMITS)
+    return lexicon.parse_rules(value, DEFAULT_LIMITS)
 
 
 def rewrite(
@@ -28,7 +28,7 @@ def rewrite(
     voice=None,
     global_rules=(),
     alias=None,
-    lexicon=pronounce.EMPTY_LEXICON,
+    lexicon=lexicon.EMPTY_LEXICON,
     flags=NO_FLAGS,
     settings=SETTINGS,
 ):
@@ -37,11 +37,11 @@ def rewrite(
 
 
 def set_of(**kwargs):
-    return pronounce.RuleSet(**kwargs)
+    return lexicon.RuleSet(**kwargs)
 
 
 def lexicon_of(**kwargs):
-    return pronounce.LexiconData(**kwargs)
+    return lexicon.LexiconData(**kwargs)
 
 
 # ---------------------------------------------------------------- rule shape
@@ -138,7 +138,7 @@ def test_the_rule_cap_is_enforced():
 
 
 def test_a_per_alias_map_keeps_the_global_part_under_star():
-    global_rules, per_alias = pronounce.parse_request_sets(
+    global_rules, per_alias = lexicon.parse_request_sets(
         {"*": {"Lachie": "Locky"}, "narrator": [{"match": "A", "say": "Aigh"}]},
         DEFAULT_LIMITS,
     )
@@ -147,19 +147,19 @@ def test_a_per_alias_map_keeps_the_global_part_under_star():
 
 
 def test_an_all_string_map_is_the_global_shorthand():
-    global_rules, per_alias = pronounce.parse_request_sets({"bass": "base"}, DEFAULT_LIMITS)
+    global_rules, per_alias = lexicon.parse_request_sets({"bass": "base"}, DEFAULT_LIMITS)
     assert [rule.match for rule in global_rules] == ["bass"]
     assert per_alias == {}
 
 
 def test_per_alias_values_must_be_lists():
     with pytest.raises(MarkupError):
-        pronounce.parse_request_sets({"narrator": {"match": "A", "say": "Ay"}}, DEFAULT_LIMITS)
+        lexicon.parse_request_sets({"narrator": {"match": "A", "say": "Ay"}}, DEFAULT_LIMITS)
 
 
 def test_per_alias_keys_use_the_voice_grammar():
     with pytest.raises(MarkupError):
-        pronounce.parse_request_sets({"bad alias": []}, DEFAULT_LIMITS)
+        lexicon.parse_request_sets({"bad alias": []}, DEFAULT_LIMITS)
 
 
 # ---------------------------------------------------------------- precedence
@@ -296,7 +296,7 @@ def test_the_lexicon_file_loads_sets_and_aliases(tmp_path):
             "aliases": {"id": "bm_lewis", "narrator": "bm_lewis"},
         },
     )
-    data = pronounce.load_lexicon(path, DEFAULT_LIMITS)
+    data = lexicon.load_lexicon(path, DEFAULT_LIMITS)
 
     assert data.problems == ()
     assert data.defaults.rules[0].say == "Locky"
@@ -310,7 +310,7 @@ def test_a_malicious_alias_name_is_skipped_not_loaded(tmp_path):
         tmp_path,
         {"aliases": {"narrator": "af_bella", "bad alias": "af_bella", "$(id)": "af_bella"}},
     )
-    data = pronounce.load_lexicon(path, DEFAULT_LIMITS)
+    data = lexicon.load_lexicon(path, DEFAULT_LIMITS)
 
     assert data.aliases == {"narrator": "af_bella"}
     assert len(data.problems) == 2
@@ -318,7 +318,7 @@ def test_a_malicious_alias_name_is_skipped_not_loaded(tmp_path):
 
 def test_a_cyclic_alias_is_dropped(tmp_path):
     path = write_lexicon(tmp_path, {"aliases": {"a": "b", "b": "a"}})
-    data = pronounce.load_lexicon(path, DEFAULT_LIMITS)
+    data = lexicon.load_lexicon(path, DEFAULT_LIMITS)
 
     assert data.aliases == {}
     assert any("cycle" in problem for problem in data.problems)
@@ -328,7 +328,7 @@ def test_an_oversized_lexicon_is_ignored(tmp_path):
     from dataclasses import replace
 
     path = write_lexicon(tmp_path, {"defaults": {"rules": {"a": "b"}}})
-    data = pronounce.load_lexicon(path, replace(DEFAULT_LIMITS, lexicon_bytes=8))
+    data = lexicon.load_lexicon(path, replace(DEFAULT_LIMITS, lexicon_bytes=8))
 
     assert data.defaults.rules == ()
     assert any("exceeds" in problem for problem in data.problems)
@@ -342,7 +342,7 @@ def test_a_malformed_set_is_skipped_and_the_rest_loads(tmp_path):
             "voices": {"bm_lewis": {"letters": {"A": "Aigh"}}},
         },
     )
-    data = pronounce.load_lexicon(path, DEFAULT_LIMITS)
+    data = lexicon.load_lexicon(path, DEFAULT_LIMITS)
 
     assert data.defaults.rules[0].match == "Lachie"
     assert data.defaults.locale is None
@@ -351,18 +351,18 @@ def test_a_malformed_set_is_skipped_and_the_rest_loads(tmp_path):
 
 def test_the_lexicon_reloads_when_the_file_changes(tmp_path):
     path = write_lexicon(tmp_path, {"defaults": {"rules": {"bass": "base"}}})
-    lexicon = pronounce.Lexicon(path, DEFAULT_LIMITS)
+    source = lexicon.Lexicon(path, DEFAULT_LIMITS)
 
-    assert lexicon.current().defaults.rules[0].say == "base"
+    assert source.current().defaults.rules[0].say == "base"
 
     path = write_lexicon(tmp_path, {"defaults": {"rules": {"bass": "BAYSS"}}})
     os.utime(path, ns=(1, 1))
-    assert lexicon.current().defaults.rules[0].say == "BAYSS"
+    assert source.current().defaults.rules[0].say == "BAYSS"
 
 
 def test_a_missing_lexicon_file_is_empty_not_fatal(tmp_path):
-    lexicon = pronounce.Lexicon(str(tmp_path / "absent.json"), DEFAULT_LIMITS)
-    assert lexicon.current() == pronounce.EMPTY_LEXICON
+    source = lexicon.Lexicon(str(tmp_path / "absent.json"), DEFAULT_LIMITS)
+    assert source.current() == lexicon.EMPTY_LEXICON
 
 
 def test_a_bad_rule_is_skipped_and_the_rest_of_the_set_loads(tmp_path):
@@ -378,7 +378,7 @@ def test_a_bad_rule_is_skipped_and_the_rest_of_the_set_loads(tmp_path):
             }
         },
     )
-    data = pronounce.load_lexicon(path, DEFAULT_LIMITS)
+    data = lexicon.load_lexicon(path, DEFAULT_LIMITS)
 
     assert [rule.match for rule in data.defaults.rules] == ["good", "also"]
     assert any("rules" in problem for problem in data.problems)
@@ -480,7 +480,7 @@ def report(text, **kwargs):
         kwargs.get("voice"),
         kwargs.get("global_rules", ()),
         kwargs.get("alias") or {},
-        kwargs.get("lexicon", pronounce.EMPTY_LEXICON),
+        kwargs.get("lexicon", lexicon.EMPTY_LEXICON),
         SETTINGS,
     )
     flags = kwargs.get("flags", pronounce.Flags(lexicon=True))
@@ -615,7 +615,7 @@ def test_an_overlay_rule_is_tried_before_the_default():
     base = lexicon_of(defaults=set_of(rules=rules([{"match": "Lachie", "say": "default"}])))
     overlay = lexicon_of(defaults=set_of(rules=rules([{"match": "Lachie", "say": "custom"}])))
 
-    merged = pronounce.compose(base, overlay)
+    merged = lexicon.compose(base, overlay)
 
     assert [rule.say for rule in merged.defaults.rules] == ["custom", "default"]
 
@@ -628,7 +628,7 @@ def test_an_overlay_scalar_wins():
         defaults=set_of(acronyms={"SQL": "ess cue ell"}, letters={"A": "Aigh"}, locale="en-GB")
     )
 
-    merged = pronounce.compose(base, overlay)
+    merged = lexicon.compose(base, overlay)
 
     assert merged.defaults.acronyms["SQL"] == "ess cue ell"
     assert merged.defaults.letters["A"] == "Aigh"
@@ -639,7 +639,7 @@ def test_an_overlay_voice_set_composes_with_the_default():
     base = lexicon_of(voices={"bm_lewis": set_of(rules=rules([{"match": "a", "say": "ay"}]))})
     overlay = lexicon_of(voices={"bm_lewis": set_of(rules=rules([{"match": "a", "say": "Aigh"}]))})
 
-    merged = pronounce.compose(base, overlay)
+    merged = lexicon.compose(base, overlay)
 
     assert [rule.say for rule in merged.voices["bm_lewis"].rules] == ["Aigh", "ay"]
 
@@ -648,7 +648,7 @@ def test_an_overlay_alias_and_default_voice_win():
     base = lexicon_of(aliases={"narrator": "am_michael"}, default_alias="am_michael")
     overlay = lexicon_of(aliases={"narrator": "bm_lewis"}, default_alias="bm_lewis")
 
-    merged = pronounce.compose(base, overlay)
+    merged = lexicon.compose(base, overlay)
 
     assert merged.aliases["narrator"] == "bm_lewis"
     assert merged.default_alias == "bm_lewis"
@@ -657,7 +657,7 @@ def test_an_overlay_alias_and_default_voice_win():
 def test_a_request_rule_still_beats_the_overlay():
     base = lexicon_of(defaults=set_of(rules=rules([{"match": "bass", "say": "default"}])))
     overlay = lexicon_of(defaults=set_of(rules=rules([{"match": "bass", "say": "custom"}])))
-    merged = pronounce.compose(base, overlay)
+    merged = lexicon.compose(base, overlay)
 
     out = rewrite("bass", global_rules=rules([{"match": "bass", "say": "request"}]), lexicon=merged)
 
@@ -675,7 +675,7 @@ def test_the_composed_lexicon_reloads_when_the_overlay_changes(tmp_path):
         json.dumps({"defaults": {"rules": [{"match": "bass", "say": "custom"}]}}),
         encoding="utf-8",
     )
-    source = pronounce.Lexicon(str(base_path), DEFAULT_LIMITS, str(overlay_path))
+    source = lexicon.Lexicon(str(base_path), DEFAULT_LIMITS, str(overlay_path))
 
     assert source.current().defaults.rules[0].say == "custom"
 
@@ -692,7 +692,7 @@ def test_a_missing_overlay_is_not_a_problem(tmp_path):
         json.dumps({"defaults": {"rules": [{"match": "bass", "say": "base"}]}}),
         encoding="utf-8",
     )
-    source = pronounce.Lexicon(str(base_path), DEFAULT_LIMITS, str(tmp_path / "missing.json"))
+    source = lexicon.Lexicon(str(base_path), DEFAULT_LIMITS, str(tmp_path / "missing.json"))
 
     data = source.current()
 

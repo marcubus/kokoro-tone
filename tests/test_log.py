@@ -85,7 +85,7 @@ def test_a_rejected_request_is_logged_with_its_reason(gateway, capsys):
 
 
 def test_a_lexicon_load_is_logged(tmp_path, capsys):
-    from kokoro_tone import pronounce
+    from kokoro_tone import lexicon
     from kokoro_tone.limits import DEFAULT_LIMITS
 
     path = tmp_path / "lexicon.json"
@@ -94,7 +94,7 @@ def test_a_lexicon_load_is_logged(tmp_path, capsys):
         encoding="utf-8",
     )
 
-    pronounce.Lexicon(str(path), DEFAULT_LIMITS).current()
+    lexicon.Lexicon(str(path), DEFAULT_LIMITS).current()
 
     line = [item for item in capsys.readouterr().err.splitlines() if "event=lexicon" in item][-1]
     assert "rules=1" in line
@@ -103,7 +103,7 @@ def test_a_lexicon_load_is_logged(tmp_path, capsys):
 
 
 def test_an_overlay_is_named_in_the_lexicon_line(tmp_path, capsys):
-    from kokoro_tone import pronounce
+    from kokoro_tone import lexicon
     from kokoro_tone.limits import DEFAULT_LIMITS
 
     base = tmp_path / "lexicon.json"
@@ -117,7 +117,7 @@ def test_an_overlay_is_named_in_the_lexicon_line(tmp_path, capsys):
         encoding="utf-8",
     )
 
-    pronounce.Lexicon(str(base), DEFAULT_LIMITS, str(overlay)).current()
+    lexicon.Lexicon(str(base), DEFAULT_LIMITS, str(overlay)).current()
 
     line = [item for item in capsys.readouterr().err.splitlines() if "event=lexicon" in item][-1]
     assert "rules=2" in line

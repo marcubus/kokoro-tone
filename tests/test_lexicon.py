@@ -7,7 +7,7 @@ so a bad edit fails here before it reaches a request.
 import json
 import pathlib
 
-from kokoro_tone import pronounce
+from kokoro_tone import lexicon
 from kokoro_tone.limits import DEFAULT_LIMITS
 
 LEXICON = pathlib.Path(__file__).resolve().parent.parent / "lexicon"
@@ -15,7 +15,7 @@ FILE = LEXICON / "lexicon.json"
 
 
 def data():
-    return pronounce.load_lexicon(str(FILE), DEFAULT_LIMITS)
+    return lexicon.load_lexicon(str(FILE), DEFAULT_LIMITS)
 
 
 def rules():
