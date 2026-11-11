@@ -101,14 +101,14 @@ These were learned the hard way. Following them avoids re-deriving them.
 
 ## Deployment
 
-The repo is the source; the deployment lives beside it.
+This repo is the source; a separate deployment checkout owns the compose file,
+the environment and the start script. Deploy from there:
 
 ```bash
-cd /optimus/workspace/selfhosted/kokoro-tone && ./start.sh   # stop, pull engine, up --build
-curl -s http://172.31.0.39:8000/health                        # version + voice_levelling
+./start.sh        # stop, pull the engine, up --build
 ```
 
-The engine is at `172.31.0.38:8880`, the gateway at `172.31.0.39:8000`. Always
-check `/health` after a restart: a stale image reports an older `version` and
-omits newer blocks. `/health` reporting `voice_levelling` means the build is
-current for that feature.
+Then check `/health` on the gateway: it reports `version` and the enabled
+features. A stale image reports an older `version` and omits newer blocks, so
+`/health` is the fastest way to tell whether the build you just started is the
+one you meant to.

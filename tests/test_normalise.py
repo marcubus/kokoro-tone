@@ -89,7 +89,7 @@ def test_a_number_at_a_sentence_end_keeps_its_full_stop():
         "v2",
         "Kokoro-82M",
         "2.1.0",
-        "192.168.1.1",
+        "192.0.2.1",
         "2026-11-11",
         "3:30",
         "11/11",

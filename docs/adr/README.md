@@ -11,11 +11,11 @@ expensive to reverse, the options that lost, and what the choice costs.
 
 ## Why the numbers start at 0009
 
-These records were written in the deployment repo (`selfhosted/`) before this
-project was split out, so their numbers are inherited rather than reassigned.
-Keeping the original numbers means every existing cross-reference - in
-`tests/test_audio.py`, in the deployment's `AGENTS.md`, and in the sibling
-records - still resolves. A tidy `0001` would have silently broken all of them.
+These records were written in the deployment repo before this project was split
+out, so their numbers are inherited rather than reassigned. Keeping the original
+numbers means every existing cross-reference - in `tests/test_audio.py` and in
+the sibling records - still resolves. A tidy `0001` would have silently broken
+all of them.
 
 The gap is not a missing history: 0001-0008 are decisions about a home lab
 (website hosting, uptime probes, boot ordering, an OS upgrade) that do not belong
