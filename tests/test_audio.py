@@ -66,7 +66,7 @@ def zero_cross_frequency(pcm: bytes) -> float:
     return crossings * audio.SAMPLE_RATE / (2 * len(data))
 
 
-def synthesize(pcm: bytes):
+def synthesise(pcm: bytes):
     return lambda text, voice: pcm
 
 
@@ -279,7 +279,7 @@ def test_render_sums_turns_and_gaps():
         Turn(text="Three.", voice="bf_emma"),
     ]
     rendered = audio.render(
-        turns, synthesize(tone(0.5)), speed=1.0, target_lufs=-16.0, turn_gap_ms=350
+        turns, synthesise(tone(0.5)), speed=1.0, target_lufs=-16.0, turn_gap_ms=350
     )
 
     # 3 x 0.5 s of speech + 0.7 s explicit pause + 0.35 s default gap
@@ -289,7 +289,7 @@ def test_render_sums_turns_and_gaps():
 def test_render_masters_to_target_loudness():
     rendered = audio.render(
         [Turn(text="One.")],
-        synthesize(tone(1.0, amplitude=0.1)),
+        synthesise(tone(1.0, amplitude=0.1)),
         target_lufs=-16.0,
         turn_gap_ms=0,
     )
@@ -300,9 +300,9 @@ def test_render_masters_to_target_loudness():
 
 
 def test_render_applies_turn_emotion():
-    sad = audio.render([Turn(text="A.", emotion="sad")], synthesize(tone(1.0)), turn_gap_ms=0)
+    sad = audio.render([Turn(text="A.", emotion="sad")], synthesise(tone(1.0)), turn_gap_ms=0)
     excited = audio.render(
-        [Turn(text="B.", emotion="excited")], synthesize(tone(1.0)), turn_gap_ms=0
+        [Turn(text="B.", emotion="excited")], synthesise(tone(1.0)), turn_gap_ms=0
     )
 
     assert audio.duration_seconds(sad) > audio.duration_seconds(excited)
@@ -310,7 +310,7 @@ def test_render_applies_turn_emotion():
 
 def test_render_keeps_a_whispered_turn_quieter_than_a_normal_one():
     turns = [Turn(text="One.", emotion="whisper"), Turn(text="Two.")]
-    rendered = audio.render(turns, synthesize(tone(1.0)), target_lufs=-16.0, turn_gap_ms=0)
+    rendered = audio.render(turns, synthesise(tone(1.0)), target_lufs=-16.0, turn_gap_ms=0)
 
     window = int(audio.SAMPLE_RATE * 0.5) * 2
     whispered = rms(rendered[:window])
@@ -323,7 +323,7 @@ def test_emotion_range_survives_the_hottest_allowed_target():
     # -12 LUFS is the loudest target the service accepts; the -8 dB whisper
     # must still be clearly quieter than a neutral turn.
     turns = [Turn(text="One.", emotion="whisper"), Turn(text="Two.")]
-    rendered = audio.render(turns, synthesize(tone(1.0)), target_lufs=-12.0, turn_gap_ms=0)
+    rendered = audio.render(turns, synthesise(tone(1.0)), target_lufs=-12.0, turn_gap_ms=0)
 
     window = int(audio.SAMPLE_RATE * 0.5) * 2
     whispered = rms(rendered[:window])

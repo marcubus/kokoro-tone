@@ -1,0 +1,9 @@
+{
+  "defaults": {
+    "rules": [
+      {"match": "Lachie", "say": "Locky"}
+    ]
+  },
+  "voices": {},
+  "aliases": {}
+}

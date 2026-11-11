@@ -370,3 +370,389 @@ def test_unknown_model_is_rejected(gateway):
 
     assert response.status_code == 400
     assert response.json()["error"]["type"] == "invalid_request_error"
+
+
+# ---------------------------------------------------------------- pronunciations
+
+
+def test_pronunciations_rewrite_the_passthrough_text(gateway):
+    client, server = gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "The bass player", "pronunciations": {"bass": "base"}},
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == "The base player"
+
+
+def test_normalise_expands_acronyms_and_digits(gateway):
+    client, server = gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "In 2026 AWS cost 15%.", "normalise": True},
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == ("In 2026 Aigh Double You Ess cost fifteen per cent.")
+
+
+def test_normalise_layers_can_be_selected(gateway):
+    client, server = gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "AWS 15%", "normalise": {"numbers": True}},
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == "AWS fifteen per cent"
+
+
+def test_pronunciations_do_not_touch_tag_values(gateway):
+    client, server = gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={
+            "input": "[voice:af_heart] Hello.",
+            "pronunciations": {"af_heart": "nope", "voice": "nope"},
+        },
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["voice"] == "af_heart"
+    assert server.last_request["input"] == "Hello."
+
+
+def test_per_alias_pronunciations_follow_the_voice(gateway):
+    client, server = gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={
+            "input": "[voice:narrator] The bass.\n[voice:guest] The bass.",
+            "voice": {"id": "narrator", "narrator": "bm_lewis", "guest": "am_michael"},
+            "pronunciations": {
+                "narrator": [{"match": "bass", "say": "base"}],
+                "guest": [{"match": "bass", "say": "fish"}],
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    assert [request["input"] for request in server.requests] == [
+        "The base.",
+        "The fish.",
+    ]
+
+
+def test_an_inline_voice_tag_uses_that_voices_set(lexicon_gateway):
+    client, server = lexicon_gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={
+            "input": "[voice:bm_lewis] The bass.\n[voice:am_michael] The bass.",
+            "normalise": True,
+        },
+    )
+
+    assert response.status_code == 200
+    assert [request["input"] for request in server.requests] == [
+        "The base.",
+        "The bass.",
+    ]
+    assert [request["voice"] for request in server.requests] == ["bm_lewis", "am_michael"]
+
+
+def test_server_aliases_and_defaults_apply_without_a_request_map(lexicon_gateway):
+    client, server = lexicon_gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "Lachie said hi", "normalise": True},
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["voice"] == "bm_lewis"
+    assert server.last_request["input"] == "Locky said hi"
+
+
+def test_a_request_voice_overrides_a_server_alias(lexicon_gateway):
+    client, server = lexicon_gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "hi", "voice": "af_bella"},
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["voice"] == "af_bella"
+
+
+def test_brackets_in_a_replacement_are_rejected(gateway):
+    client, server = gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "hello", "pronunciations": {"hello": "[voice:af_heart]"}},
+    )
+
+    assert response.status_code == 400
+    assert server.requests == []
+
+
+def test_a_rewrite_that_exceeds_the_input_cap_is_rejected(gateway):
+    client, _ = gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={
+            "input": "x" * 30,
+            "pronunciations": [{"match": "x", "say": "y" * 199, "whole_word": False}],
+        },
+    )
+
+    assert response.status_code == 400
+    assert "input exceeds" in response.json()["error"]["message"]
+
+
+def test_the_health_probe_asks_the_engine_root(gateway):
+    """Kokoro-FastAPI serves /health at the root, not under the /v1 base."""
+    from kokoro_tone import main
+
+    _, server = gateway
+    port = server.server_address[1]
+
+    assert main._upstream_health_urls() == (
+        f"http://127.0.0.1:{port}/health",
+        f"http://127.0.0.1:{port}/v1/models",
+    )
+
+
+def test_health_falls_back_to_the_versioned_base(gateway):
+    """An OpenAI-shaped upstream has no /health but does answer /models."""
+    client, server = gateway
+    server.hide_root_health = True
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+
+
+def test_health_is_degraded_when_neither_probe_answers(gateway):
+    client, server = gateway
+    server.hide_root_health = True
+    server.models_down = True
+
+    response = client.get("/health")
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "degraded"
+
+
+def test_health_reports_the_normalise_configuration(lexicon_gateway):
+    client, _ = lexicon_gateway
+    payload = client.get("/health").json()
+
+    assert payload["normalise"]["locale"] == "en-AU"
+    assert payload["normalise"]["rules"] == 1
+    assert payload["normalise"]["voice_sets"] == 2
+    assert payload["normalise"]["server_aliases"] == 1
+
+
+# ---------------------------------------------------------------- ambiguity
+
+
+def test_ambiguity_guesses_by_default(ambiguous_gateway):
+    """No error: pick the first candidate, render, and say what was assumed."""
+    client, server = ambiguous_gateway
+    response = client.post("/v1/audio/speech", headers=AUTH, json={"input": "The bass was loud."})
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == "The base was loud."
+    assert response.headers["x-kokoro-tone-guessed"] == "bass=music"
+
+
+def test_a_resolved_word_is_not_reported_as_guessed(ambiguous_gateway):
+    client, server = ambiguous_gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "He plays bass in the band."},
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == "He plays base in the band."
+    assert "x-kokoro-tone-guessed" not in response.headers
+
+
+def test_ambiguity_ignore_leaves_the_engine_default(ambiguous_gateway):
+    client, server = ambiguous_gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "The bass was loud.", "ambiguity": "ignore"},
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == "The bass was loud."
+    assert "x-kokoro-tone-guessed" not in response.headers
+
+
+def test_a_marker_clears_the_ambiguity(ambiguous_gateway):
+    client, server = ambiguous_gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "The [sense:bass=music] was loud."},
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == "The base was loud."
+
+
+def test_a_sense_tag_is_the_marker_syntax(ambiguous_gateway):
+    """The tag grammar is the same one `[voice:]` and `[emotion:]` use."""
+    client, server = ambiguous_gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "A [sense:bass=fish] swam past."},
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == "A bas swam past."
+
+
+def test_a_hint_clears_the_ambiguity(ambiguous_gateway):
+    client, server = ambiguous_gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "He plays bass in the band."},
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == "He plays base in the band."
+
+
+def test_a_request_rule_clears_the_ambiguity(ambiguous_gateway):
+    client, server = ambiguous_gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={
+            "input": "The bass was loud.",
+            "pronunciations": {"bass": "base"},
+        },
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == "The base was loud."
+
+
+def test_an_unknown_sense_is_rejected_not_spoken(ambiguous_gateway):
+    client, server = ambiguous_gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "The [sense:bass=jazz] was loud."},
+    )
+
+    assert response.status_code == 400
+    assert "unknown sense tag" in response.json()["error"]["message"]
+    assert server.requests == []
+
+
+def test_a_malformed_sense_tag_is_rejected(ambiguous_gateway):
+    client, _ = ambiguous_gateway
+    response = client.post(
+        "/v1/audio/speech", headers=AUTH, json={"input": "The [sense:bass] was loud."}
+    )
+
+    assert response.status_code == 400
+    assert "invalid sense tag" in response.json()["error"]["message"]
+
+
+@pytest.mark.parametrize("mode", ["shout", "error"])
+def test_an_unknown_ambiguity_mode_is_rejected(ambiguous_gateway, mode):
+    client, server = ambiguous_gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "The bass was loud.", "ambiguity": mode},
+    )
+
+    assert response.status_code == 400
+    assert "ambiguity must be 'guess' or 'ignore'" in response.json()["error"]["message"]
+    assert server.requests == []
+
+
+def test_a_literal_pipe_in_prose_is_not_a_marker(ambiguous_gateway):
+    """Only a tag desugars to a marker; `a|b` in prose is just text."""
+    client, server = ambiguous_gateway
+    response = client.post("/v1/audio/speech", headers=AUTH, json={"input": "Use a|b for either."})
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == "Use a|b for either."
+
+
+def test_a_sense_tag_works_in_a_turn_array(ambiguous_gateway):
+    client, server = ambiguous_gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": [{"text": "A [sense:bass=fish] swam past."}]},
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == "A bas swam past."
+
+
+def test_an_unknown_sense_in_a_turn_array_is_rejected(ambiguous_gateway):
+    client, server = ambiguous_gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": [{"text": "The [sense:bass=jazz] was loud."}]},
+    )
+
+    assert response.status_code == 400
+    assert "unknown sense tag" in response.json()["error"]["message"]
+    assert server.requests == []
+
+
+# ---------------------------------------------------------------- overlay
+
+
+def test_the_overlay_wins_over_the_default(overlay_gateway):
+    client, server = overlay_gateway
+    response = client.post("/v1/audio/speech", headers=AUTH, json={"input": "Ask Lachie."})
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == "Ask Custom."
+
+
+def test_the_default_still_applies_where_the_overlay_is_silent(overlay_gateway):
+    client, server = overlay_gateway
+    response = client.post("/v1/audio/speech", headers=AUTH, json={"input": "The bass was loud."})
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == "The base was loud."
+
+
+def test_a_request_rule_wins_over_the_overlay(overlay_gateway):
+    client, server = overlay_gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "Ask Lachie.", "pronunciations": {"Lachie": "Request"}},
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == "Ask Request."

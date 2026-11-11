@@ -1,0 +1,6067 @@
+{
+  "defaults": {
+    "rules": [
+      {
+        "match": "Lachie",
+        "say": "Locky"
+      },
+      {
+        "match": "Lachlan",
+        "say": "Locklan"
+      },
+      {
+        "match": "Kubernetes",
+        "say": "kubernetees"
+      },
+      {
+        "match": "Grafana",
+        "say": "gra-fah-na"
+      },
+      {
+        "match": "Prometheus",
+        "say": "pro-mee-thee-us"
+      },
+      {
+        "match": "Terraform",
+        "say": "tare-ah-form"
+      },
+      {
+        "match": "Ansible",
+        "say": "an-sih-bull"
+      },
+      {
+        "match": "Docker",
+        "say": "dock-er"
+      },
+      {
+        "match": "Datadog",
+        "say": "day-ta-dog"
+      },
+      {
+        "match": "Elastic",
+        "say": "ee-lass-tick"
+      },
+      {
+        "match": "Debian",
+        "say": "debbee-an"
+      },
+      {
+        "match": "JMeter",
+        "say": "jay meeter"
+      },
+      {
+        "match": "OpenTelemetry",
+        "say": "open telly mettree"
+      },
+      {
+        "match": "Jaeger",
+        "say": "yay-ger"
+      },
+      {
+        "match": "nslookup",
+        "say": "en ess lookup"
+      },
+      {
+        "match": "regex",
+        "say": "rejex"
+      },
+      {
+        "match": "async",
+        "say": "ay-sync"
+      },
+      {
+        "match": "SQLite",
+        "say": "sequel lite"
+      },
+      {
+        "match": "NoSQL",
+        "say": "no sequel"
+      },
+      {
+        "match": "CentOS",
+        "say": "sent oh ess"
+      },
+      {
+        "match": "Django",
+        "say": "jang-go"
+      },
+      {
+        "match": "gRPC",
+        "say": "gee-ar-pee-see"
+      },
+      {
+        "match": "OAuth",
+        "say": "oh-auth"
+      },
+      {
+        "match": "IaC",
+        "say": "eye-ack"
+      },
+      {
+        "match": "nginx",
+        "say": "engine-ex"
+      },
+      {
+        "match": "use|verb",
+        "say": "yooze"
+      },
+      {
+        "match": "use|noun",
+        "say": "yooss"
+      },
+      {
+        "match": "does|verb",
+        "say": "duz"
+      },
+      {
+        "match": "does|noun",
+        "say": "dohz"
+      },
+      {
+        "match": "house|verb",
+        "say": "howz"
+      },
+      {
+        "match": "house|noun",
+        "say": "howss"
+      },
+      {
+        "match": "live|verb",
+        "say": "liv"
+      },
+      {
+        "match": "live|adj",
+        "say": "lyve"
+      },
+      {
+        "match": "read|present-verb",
+        "say": "reed"
+      },
+      {
+        "match": "read|past-verb",
+        "say": "red"
+      },
+      {
+        "match": "close|verb",
+        "say": "klohz"
+      },
+      {
+        "match": "close|adj",
+        "say": "klohss"
+      },
+      {
+        "match": "project|verb",
+        "say": "pruh-jekt"
+      },
+      {
+        "match": "project|noun",
+        "say": "proj-ekt"
+      },
+      {
+        "match": "record|verb",
+        "say": "rih-kawd"
+      },
+      {
+        "match": "record|noun",
+        "say": "rek-awd"
+      },
+      {
+        "match": "lead|verb",
+        "say": "leed"
+      },
+      {
+        "match": "lead|noun",
+        "say": "led"
+      },
+      {
+        "match": "perfect|verb",
+        "say": "puh-fekt"
+      },
+      {
+        "match": "perfect|adj",
+        "say": "pur-fikt"
+      },
+      {
+        "match": "present|verb",
+        "say": "prih-zent"
+      },
+      {
+        "match": "present|noun",
+        "say": "prez-unt"
+      },
+      {
+        "match": "increase|verb",
+        "say": "in-kreess"
+      },
+      {
+        "match": "increase|noun",
+        "say": "in-kreess"
+      },
+      {
+        "match": "content|adj",
+        "say": "kun-tent"
+      },
+      {
+        "match": "content|noun",
+        "say": "kon-tent"
+      },
+      {
+        "match": "minute|noun",
+        "say": "min-it"
+      },
+      {
+        "match": "minute|adj",
+        "say": "my-newt"
+      },
+      {
+        "match": "subject|verb",
+        "say": "sub-jekt"
+      },
+      {
+        "match": "subject|noun",
+        "say": "sub-jikt"
+      },
+      {
+        "match": "contract|verb",
+        "say": "kun-trakt"
+      },
+      {
+        "match": "contract|noun",
+        "say": "kon-trakt"
+      },
+      {
+        "match": "impact|verb",
+        "say": "im-pakt"
+      },
+      {
+        "match": "impact|noun",
+        "say": "im-pakt"
+      },
+      {
+        "match": "address|verb",
+        "say": "uh-dress"
+      },
+      {
+        "match": "address|noun",
+        "say": "ad-dress"
+      },
+      {
+        "match": "wind|verb",
+        "say": "wined"
+      },
+      {
+        "match": "wind|noun",
+        "say": "wind"
+      },
+      {
+        "match": "separate|verb",
+        "say": "sep-uh-rayt"
+      },
+      {
+        "match": "separate|adj",
+        "say": "sep-uh-rut"
+      },
+      {
+        "match": "produce|verb",
+        "say": "pruh-dewss"
+      },
+      {
+        "match": "produce|noun",
+        "say": "prod-yooss"
+      },
+      {
+        "match": "progress|verb",
+        "say": "pruh-gress"
+      },
+      {
+        "match": "progress|noun",
+        "say": "proh-gress"
+      },
+      {
+        "match": "transfer|verb",
+        "say": "transs-fur"
+      },
+      {
+        "match": "transfer|noun",
+        "say": "transs-fur"
+      },
+      {
+        "match": "survey|verb",
+        "say": "suh-vay"
+      },
+      {
+        "match": "survey|noun",
+        "say": "sur-vay"
+      },
+      {
+        "match": "transport|verb",
+        "say": "transs-port"
+      },
+      {
+        "match": "transport|noun",
+        "say": "transs-port"
+      },
+      {
+        "match": "appropriate|verb",
+        "say": "uh-pro-pree-ayt"
+      },
+      {
+        "match": "appropriate|adj",
+        "say": "uh-pro-pree-ut"
+      },
+      {
+        "match": "abuse|verb",
+        "say": "ub-yooz"
+      },
+      {
+        "match": "abuse|noun",
+        "say": "ub-yooss"
+      },
+      {
+        "match": "conflict|verb",
+        "say": "kun-flikt"
+      },
+      {
+        "match": "conflict|noun",
+        "say": "kon-flikt"
+      },
+      {
+        "match": "upset|verb",
+        "say": "up-set"
+      },
+      {
+        "match": "upset|adj",
+        "say": "up-set"
+      },
+      {
+        "match": "row|verb",
+        "say": "roh"
+      },
+      {
+        "match": "row|noun",
+        "say": "rau"
+      },
+      {
+        "match": "combat|noun",
+        "say": "kom-bat"
+      },
+      {
+        "match": "combat|verb",
+        "say": "kum-bat"
+      },
+      {
+        "match": "excuse|verb",
+        "say": "ik-skewz"
+      },
+      {
+        "match": "excuse|noun",
+        "say": "ik-skewss"
+      },
+      {
+        "match": "object|verb",
+        "say": "ub-jekt"
+      },
+      {
+        "match": "object|noun",
+        "say": "ob-jekt"
+      },
+      {
+        "match": "contest|verb",
+        "say": "kun-test"
+      },
+      {
+        "match": "contest|noun",
+        "say": "kon-test"
+      },
+      {
+        "match": "conduct|verb",
+        "say": "kun-dukt"
+      },
+      {
+        "match": "conduct|noun",
+        "say": "kon-dukt"
+      },
+      {
+        "match": "suspect|verb",
+        "say": "suh-spekt"
+      },
+      {
+        "match": "suspect|noun",
+        "say": "sus-pekt"
+      },
+      {
+        "match": "graduate|verb",
+        "say": "graj-oo-ate"
+      },
+      {
+        "match": "graduate|noun",
+        "say": "graj-oo-ut"
+      },
+      {
+        "match": "protest|verb",
+        "say": "pruh-test"
+      },
+      {
+        "match": "protest|noun",
+        "say": "proh-test"
+      },
+      {
+        "match": "desert|noun",
+        "say": "dez-ut"
+      },
+      {
+        "match": "desert|verb",
+        "say": "di-zurt"
+      },
+      {
+        "match": "associate|verb",
+        "say": "uh-so-see-ayt"
+      },
+      {
+        "match": "associate|noun",
+        "say": "uh-so-see-ut"
+      },
+      {
+        "match": "entrance|noun",
+        "say": "en-trunss"
+      },
+      {
+        "match": "entrance|verb",
+        "say": "in-trahnss"
+      },
+      {
+        "match": "refuse|verb",
+        "say": "rih-fewz"
+      },
+      {
+        "match": "refuse|noun",
+        "say": "ref-yooss"
+      },
+      {
+        "match": "discount|verb",
+        "say": "dis-kownt"
+      },
+      {
+        "match": "discount|noun",
+        "say": "diss-kownt"
+      },
+      {
+        "match": "tear|verb",
+        "say": "tair"
+      },
+      {
+        "match": "tear|noun",
+        "say": "tih-uh"
+      },
+      {
+        "match": "bow|ribbon",
+        "say": "boh"
+      },
+      {
+        "match": "bow|ship",
+        "say": "bough"
+      },
+      {
+        "match": "estimate|verb",
+        "say": "ess-tih-mayt"
+      },
+      {
+        "match": "estimate|noun",
+        "say": "ess-tih-mut"
+      },
+      {
+        "match": "polish|verb",
+        "say": "pol-ish"
+      },
+      {
+        "match": "polish|adj",
+        "say": "poh-lish"
+      },
+      {
+        "match": "bass|music",
+        "say": "base"
+      },
+      {
+        "match": "bass|fish",
+        "say": "bas"
+      },
+      {
+        "match": "frequent|adj",
+        "say": "free-kwunt"
+      },
+      {
+        "match": "frequent|verb",
+        "say": "frik-went"
+      },
+      {
+        "match": "moderate|verb",
+        "say": "mod-uh-rayt"
+      },
+      {
+        "match": "moderate|adj",
+        "say": "mod-uh-rut"
+      },
+      {
+        "match": "export|verb",
+        "say": "ik-spawt"
+      },
+      {
+        "match": "export|noun",
+        "say": "eks-pawt"
+      },
+      {
+        "match": "wound|noun",
+        "say": "woond"
+      },
+      {
+        "match": "wound|past-verb",
+        "say": "wownd"
+      },
+      {
+        "match": "permit|verb",
+        "say": "puh-mit"
+      },
+      {
+        "match": "permit|noun",
+        "say": "pur-mit"
+      },
+      {
+        "match": "advocate|verb",
+        "say": "ad-vuh-kayt"
+      },
+      {
+        "match": "advocate|noun",
+        "say": "ad-vuh-kut"
+      },
+      {
+        "match": "compound|verb",
+        "say": "kum-pownd"
+      },
+      {
+        "match": "compound|noun",
+        "say": "kom-pownd"
+      },
+      {
+        "match": "accent|noun",
+        "say": "ak-sent"
+      },
+      {
+        "match": "accent|verb",
+        "say": "uck-sent"
+      },
+      {
+        "match": "combine|verb",
+        "say": "kum-byn"
+      },
+      {
+        "match": "combine|noun",
+        "say": "kom-byn"
+      },
+      {
+        "match": "alternate|verb",
+        "say": "awl-tuh-nayt"
+      },
+      {
+        "match": "alternate|adj",
+        "say": "awl-tur-nut"
+      },
+      {
+        "match": "convert|verb",
+        "say": "kun-vurt"
+      },
+      {
+        "match": "convert|noun",
+        "say": "kon-vurt"
+      },
+      {
+        "match": "import|verb",
+        "say": "im-pawt"
+      },
+      {
+        "match": "import|noun",
+        "say": "im-pawt"
+      },
+      {
+        "match": "console|verb",
+        "say": "kun-sohl"
+      },
+      {
+        "match": "console|noun",
+        "say": "kon-sohl"
+      },
+      {
+        "match": "rebel|verb",
+        "say": "rih-bel"
+      },
+      {
+        "match": "rebel|noun",
+        "say": "rebbl"
+      },
+      {
+        "match": "compact|verb",
+        "say": "kum-pakt"
+      },
+      {
+        "match": "compact|adj",
+        "say": "kom-pakt"
+      },
+      {
+        "match": "elaborate|verb",
+        "say": "ill-ab-uh-rayt"
+      },
+      {
+        "match": "elaborate|adj",
+        "say": "ill-ab-uh-rut"
+      },
+      {
+        "match": "intimate|verb",
+        "say": "in-tim-ate"
+      },
+      {
+        "match": "intimate|adj",
+        "say": "in-tim-ut"
+      },
+      {
+        "match": "reject|verb",
+        "say": "rih-jekt"
+      },
+      {
+        "match": "reject|noun",
+        "say": "ree-jekt"
+      },
+      {
+        "match": "extract|verb",
+        "say": "ik-strakt"
+      },
+      {
+        "match": "extract|noun",
+        "say": "eks-trakt"
+      },
+      {
+        "match": "escort|verb",
+        "say": "iss-kawt"
+      },
+      {
+        "match": "escort|noun",
+        "say": "ess-kawt"
+      },
+      {
+        "match": "insult|verb",
+        "say": "in-sult"
+      },
+      {
+        "match": "insult|noun",
+        "say": "in-sult"
+      },
+      {
+        "match": "aggregate|verb",
+        "say": "ag-rih-gayt"
+      },
+      {
+        "match": "aggregate|noun-adj",
+        "say": "ag-rih-gut"
+      },
+      {
+        "match": "refund|verb",
+        "say": "rih-fund"
+      },
+      {
+        "match": "refund|noun",
+        "say": "ree-fund"
+      },
+      {
+        "match": "discharge|verb",
+        "say": "dis-charj"
+      },
+      {
+        "match": "discharge|noun",
+        "say": "diss-charj"
+      },
+      {
+        "match": "relay|verb",
+        "say": "rih-lay"
+      },
+      {
+        "match": "relay|noun",
+        "say": "ree-lay"
+      },
+      {
+        "match": "exploit|verb",
+        "say": "ik-sployt"
+      },
+      {
+        "match": "exploit|noun",
+        "say": "eks-ployt"
+      },
+      {
+        "match": "coordinate|verb",
+        "say": "koh-aw-di-nayt"
+      },
+      {
+        "match": "coordinate|noun",
+        "say": "koh-aw-di-nut"
+      },
+      {
+        "match": "deliberate|verb",
+        "say": "di-lib-uh-rayt"
+      },
+      {
+        "match": "deliberate|adj",
+        "say": "di-lib-uh-rut"
+      },
+      {
+        "match": "invalid|adj",
+        "say": "invalidd"
+      },
+      {
+        "match": "invalid|noun",
+        "say": "in-vuh-lid"
+      },
+      {
+        "match": "attribute|verb",
+        "say": "uh-trib-yoot"
+      },
+      {
+        "match": "attribute|noun",
+        "say": "at-rih-buh-yoot"
+      },
+      {
+        "match": "digest|verb",
+        "say": "dy-jest"
+      },
+      {
+        "match": "digest|noun",
+        "say": "dy-jest"
+      },
+      {
+        "match": "delegate|verb",
+        "say": "del-ig-gayt"
+      },
+      {
+        "match": "delegate|noun",
+        "say": "del-ig-gut"
+      },
+      {
+        "match": "addict|noun",
+        "say": "ad-ikt"
+      },
+      {
+        "match": "addict|verb",
+        "say": "uh-dikt"
+      },
+      {
+        "match": "dove|noun",
+        "say": "duv"
+      },
+      {
+        "match": "dove|past-verb",
+        "say": "dohv"
+      },
+      {
+        "match": "sewer|one-who-sews",
+        "say": "soh-uh"
+      },
+      {
+        "match": "sewer|the-drain",
+        "say": "soo-uh"
+      },
+      {
+        "match": "duplicate|verb",
+        "say": "dew-plik-kayt"
+      },
+      {
+        "match": "duplicate|noun",
+        "say": "dew-plik-kut"
+      },
+      {
+        "match": "convict|verb",
+        "say": "kun-vikt"
+      },
+      {
+        "match": "convict|noun",
+        "say": "kon-vikt"
+      },
+      {
+        "match": "articulate|verb",
+        "say": "ar-tik-yuh-layt"
+      },
+      {
+        "match": "articulate|adj",
+        "say": "ar-tik-yuh-lut"
+      },
+      {
+        "match": "buffet|noun",
+        "say": "buh-fay"
+      },
+      {
+        "match": "buffet|verb",
+        "say": "buf-it"
+      },
+      {
+        "match": "converse|verb",
+        "say": "kun-vurss"
+      },
+      {
+        "match": "converse|noun",
+        "say": "kon-vurss"
+      },
+      {
+        "match": "subordinate|verb",
+        "say": "suh-bawd-in-ate"
+      },
+      {
+        "match": "subordinate|noun",
+        "say": "suh-bawd-in-ut"
+      },
+      {
+        "match": "sow|verb",
+        "say": "soh"
+      },
+      {
+        "match": "sow|noun",
+        "say": "sau"
+      },
+      {
+        "match": "torment|verb",
+        "say": "taw-ment"
+      },
+      {
+        "match": "torment|noun",
+        "say": "taw-ment"
+      },
+      {
+        "match": "degenerate|verb",
+        "say": "di-jen-uh-rayt"
+      },
+      {
+        "match": "degenerate|adj",
+        "say": "di-jen-uh-rut"
+      },
+      {
+        "match": "incense|verb",
+        "say": "in-senss"
+      },
+      {
+        "match": "incense|noun",
+        "say": "in-senss"
+      },
+      {
+        "match": "recount|verb",
+        "say": "rih-kownt"
+      },
+      {
+        "match": "recount|noun",
+        "say": "ree-kownt"
+      },
+      {
+        "match": "desolate|verb",
+        "say": "des-uh-layt"
+      },
+      {
+        "match": "desolate|adj",
+        "say": "des-uh-lut"
+      },
+      {
+        "match": "incline|verb",
+        "say": "in-kline"
+      },
+      {
+        "match": "incline|noun",
+        "say": "in-kline"
+      },
+      {
+        "match": "animate|verb",
+        "say": "annih-mayt"
+      },
+      {
+        "match": "animate|adj",
+        "say": "annih-mut"
+      },
+      {
+        "match": "compress|verb",
+        "say": "kum-press"
+      },
+      {
+        "match": "compress|noun",
+        "say": "kom-press"
+      },
+      {
+        "match": "consummate|verb",
+        "say": "kon-suh-mayt"
+      },
+      {
+        "match": "consummate|adj",
+        "say": "kun-sum-ut"
+      },
+      {
+        "match": "moped|past-verb",
+        "say": "mohpt"
+      },
+      {
+        "match": "moped|noun",
+        "say": "moh-ped"
+      },
+      {
+        "match": "use",
+        "say": "yooze",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "use",
+        "say": "yooss",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "use",
+        "say": "yooss",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "does",
+        "say": "duz",
+        "when": {
+          "before": [
+            "it",
+            "he",
+            "she",
+            "they",
+            "we",
+            "this",
+            "that",
+            "what",
+            "how",
+            "why",
+            "where",
+            "who",
+            "anyone",
+            "everyone",
+            "nothing",
+            "something"
+          ]
+        }
+      },
+      {
+        "match": "does",
+        "say": "dohz",
+        "when": {
+          "before": [
+            "two",
+            "three",
+            "four",
+            "five",
+            "six",
+            "seven",
+            "eight",
+            "nine",
+            "ten",
+            "few",
+            "many",
+            "several",
+            "group",
+            "herd",
+            "pair",
+            "dozen"
+          ]
+        }
+      },
+      {
+        "match": "house",
+        "say": "howz",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "house",
+        "say": "howss",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "house",
+        "say": "howss",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "live",
+        "say": "liv",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "live",
+        "say": "lyve",
+        "when": {
+          "after": [
+            "music",
+            "show",
+            "shows",
+            "broadcast",
+            "broadcasts",
+            "stream",
+            "streams",
+            "performance",
+            "performances",
+            "audience",
+            "audiences",
+            "coverage",
+            "event",
+            "events",
+            "album",
+            "albums"
+          ]
+        }
+      },
+      {
+        "match": "read",
+        "say": "reed",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "don't",
+            "didn't",
+            "always",
+            "usually",
+            "never",
+            "regularly"
+          ]
+        }
+      },
+      {
+        "match": "read",
+        "say": "reed",
+        "when": {
+          "after": [
+            "to",
+            "aloud",
+            "carefully",
+            "every",
+            "each",
+            "daily",
+            "books",
+            "book",
+            "novels",
+            "novel",
+            "poetry",
+            "poems",
+            "stories",
+            "story",
+            "instructions",
+            "labels"
+          ]
+        }
+      },
+      {
+        "match": "read",
+        "say": "red",
+        "when": {
+          "before": [
+            "have",
+            "has",
+            "had",
+            "having",
+            "was",
+            "were",
+            "been",
+            "already",
+            "just"
+          ]
+        }
+      },
+      {
+        "match": "read",
+        "say": "red",
+        "when": {
+          "after": [
+            "yesterday",
+            "last",
+            "ago",
+            "earlier",
+            "previously",
+            "before",
+            "once",
+            "twice",
+            "then",
+            "already"
+          ]
+        }
+      },
+      {
+        "match": "close",
+        "say": "klohz",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "close",
+        "say": "klohss",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "project",
+        "say": "pruh-jekt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "project",
+        "say": "proj-ekt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "project",
+        "say": "proj-ekt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "record",
+        "say": "rih-kawd",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "record",
+        "say": "rek-awd",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "record",
+        "say": "rek-awd",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "lead",
+        "say": "leed",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "lead",
+        "say": "led",
+        "when": {
+          "after": [
+            "pipe",
+            "pipes",
+            "paint",
+            "poisoning",
+            "weight",
+            "weights",
+            "free",
+            "time",
+            "times",
+            "singer",
+            "guitarist",
+            "guitar",
+            "role",
+            "roles",
+            "story",
+            "stories"
+          ]
+        }
+      },
+      {
+        "match": "perfect",
+        "say": "puh-fekt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "perfect",
+        "say": "pur-fikt",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "present",
+        "say": "prih-zent",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "present",
+        "say": "prez-unt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "present",
+        "say": "prez-unt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "content",
+        "say": "kun-tent",
+        "when": {
+          "before": [
+            "am",
+            "is",
+            "are",
+            "was",
+            "were",
+            "feel",
+            "feels",
+            "felt",
+            "seem",
+            "seems",
+            "seemed",
+            "quite",
+            "very",
+            "perfectly",
+            "remain",
+            "remained"
+          ]
+        }
+      },
+      {
+        "match": "content",
+        "say": "kon-tent",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "content",
+        "say": "kon-tent",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "minute",
+        "say": "my-newt",
+        "when": {
+          "after": [
+            "detail",
+            "details",
+            "difference",
+            "differences",
+            "amount",
+            "amounts",
+            "change",
+            "changes",
+            "adjustment",
+            "adjustments",
+            "quantity",
+            "quantities",
+            "part",
+            "parts",
+            "level",
+            "levels"
+          ]
+        }
+      },
+      {
+        "match": "minute",
+        "say": "min-it",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any",
+            "no",
+            "every"
+          ]
+        }
+      },
+      {
+        "match": "minute",
+        "say": "min-it",
+        "when": {
+          "after": [
+            "of",
+            "later",
+            "ago",
+            "by",
+            "after",
+            "before",
+            "past",
+            "hand",
+            "hands"
+          ]
+        }
+      },
+      {
+        "match": "subject",
+        "say": "sub-jekt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "subject",
+        "say": "sub-jikt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "subject",
+        "say": "sub-jikt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "contract",
+        "say": "kun-trakt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "contract",
+        "say": "kon-trakt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "contract",
+        "say": "kon-trakt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "address",
+        "say": "uh-dress",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "address",
+        "say": "ad-dress",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "address",
+        "say": "ad-dress",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "wind",
+        "say": "wined",
+        "when": {
+          "after": [
+            "clock",
+            "clocks",
+            "watch",
+            "watches",
+            "up",
+            "down",
+            "back",
+            "through",
+            "around",
+            "path",
+            "road",
+            "way",
+            "rope",
+            "handle",
+            "tight",
+            "tightly"
+          ]
+        }
+      },
+      {
+        "match": "wind",
+        "say": "wind",
+        "when": {
+          "after": [
+            "blew",
+            "blows",
+            "blow",
+            "blowing",
+            "cold",
+            "warm",
+            "strong",
+            "gust",
+            "gusts",
+            "speed",
+            "direction",
+            "turbine",
+            "turbines",
+            "farm",
+            "farms",
+            "chill"
+          ]
+        }
+      },
+      {
+        "match": "separate",
+        "say": "sep-uh-rayt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "separate",
+        "say": "sep-uh-rut",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "produce",
+        "say": "pruh-dewss",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "produce",
+        "say": "prod-yooss",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "produce",
+        "say": "prod-yooss",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "progress",
+        "say": "pruh-gress",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "progress",
+        "say": "proh-gress",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "progress",
+        "say": "proh-gress",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "survey",
+        "say": "suh-vay",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "survey",
+        "say": "sur-vay",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "survey",
+        "say": "sur-vay",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "appropriate",
+        "say": "uh-pro-pree-ayt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "appropriate",
+        "say": "uh-pro-pree-ut",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "abuse",
+        "say": "ub-yooz",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "abuse",
+        "say": "ub-yooss",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "abuse",
+        "say": "ub-yooss",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "conflict",
+        "say": "kun-flikt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "conflict",
+        "say": "kon-flikt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "conflict",
+        "say": "kon-flikt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "row",
+        "say": "roh",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "row",
+        "say": "roh",
+        "when": {
+          "after": [
+            "the",
+            "a",
+            "an",
+            "it",
+            "boat",
+            "boats",
+            "across",
+            "upstream",
+            "downstream",
+            "together",
+            "hard",
+            "gently"
+          ]
+        }
+      },
+      {
+        "match": "row",
+        "say": "rau",
+        "when": {
+          "after": [
+            "of",
+            "argument",
+            "arguments",
+            "fight",
+            "fights",
+            "seat",
+            "seats",
+            "house",
+            "houses",
+            "front",
+            "back",
+            "noise",
+            "noisy",
+            "over"
+          ]
+        }
+      },
+      {
+        "match": "combat",
+        "say": "kom-bat",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "combat",
+        "say": "kom-bat",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "combat",
+        "say": "kum-bat",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "excuse",
+        "say": "ik-skewz",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "excuse",
+        "say": "ik-skewss",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "excuse",
+        "say": "ik-skewss",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "object",
+        "say": "ub-jekt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "object",
+        "say": "ob-jekt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "object",
+        "say": "ob-jekt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "contest",
+        "say": "kun-test",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "contest",
+        "say": "kon-test",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "contest",
+        "say": "kon-test",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "conduct",
+        "say": "kun-dukt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "conduct",
+        "say": "kon-dukt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "conduct",
+        "say": "kon-dukt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "suspect",
+        "say": "suh-spekt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "suspect",
+        "say": "sus-pekt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "suspect",
+        "say": "sus-pekt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "graduate",
+        "say": "graj-oo-ate",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "graduate",
+        "say": "graj-oo-ut",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "graduate",
+        "say": "graj-oo-ut",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "protest",
+        "say": "pruh-test",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "protest",
+        "say": "proh-test",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "protest",
+        "say": "proh-test",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "desert",
+        "say": "dez-ut",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "desert",
+        "say": "dez-ut",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "desert",
+        "say": "di-zurt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "associate",
+        "say": "uh-so-see-ayt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "associate",
+        "say": "uh-so-see-ut",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "associate",
+        "say": "uh-so-see-ut",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "entrance",
+        "say": "en-trunss",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "entrance",
+        "say": "en-trunss",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "entrance",
+        "say": "in-trahnss",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "refuse",
+        "say": "rih-fewz",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "refuse",
+        "say": "ref-yooss",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "refuse",
+        "say": "ref-yooss",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "tear",
+        "say": "tair",
+        "when": {
+          "before": [
+            "never",
+            "don't",
+            "not",
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we"
+          ]
+        }
+      },
+      {
+        "match": "tear",
+        "say": "tih-uh",
+        "when": {
+          "after": [
+            "rolled",
+            "rolls",
+            "drop",
+            "drops",
+            "fell",
+            "falls",
+            "stained",
+            "streaming",
+            "welling",
+            "gas",
+            "duct",
+            "ducts",
+            "stained"
+          ]
+        }
+      },
+      {
+        "match": "bow",
+        "say": "boh",
+        "when": {
+          "before": [
+            "took",
+            "take",
+            "takes",
+            "taking",
+            "deep"
+          ]
+        }
+      },
+      {
+        "match": "bow",
+        "say": "boh",
+        "when": {
+          "after": [
+            "tie",
+            "tied",
+            "ribbon",
+            "ribbons",
+            "violin",
+            "string",
+            "strings",
+            "arrow",
+            "arrows",
+            "shot",
+            "hunter",
+            "hunters",
+            "weapon",
+            "wrapped",
+            "to"
+          ]
+        }
+      },
+      {
+        "match": "bow",
+        "say": "bough",
+        "when": {
+          "after": [
+            "of",
+            "ship",
+            "ships",
+            "boat",
+            "boats",
+            "bending",
+            "bend",
+            "bent",
+            "forward",
+            "low",
+            "politely",
+            "stage",
+            "curtain",
+            "audience",
+            "head"
+          ]
+        }
+      },
+      {
+        "match": "estimate",
+        "say": "ess-tih-mayt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "estimate",
+        "say": "ess-tih-mut",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "estimate",
+        "say": "ess-tih-mut",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "polish",
+        "say": "pol-ish",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "polish",
+        "say": "poh-lish",
+        "when": {
+          "after": [
+            "sausage",
+            "sausages",
+            "people",
+            "government",
+            "border",
+            "borders",
+            "city",
+            "cities",
+            "army",
+            "language",
+            "flag",
+            "food",
+            "descent",
+            "origin",
+            "immigrant",
+            "immigrants"
+          ]
+        }
+      },
+      {
+        "match": "bass",
+        "say": "base",
+        "when": {
+          "after": [
+            "band",
+            "bands",
+            "music",
+            "musical",
+            "plays",
+            "played",
+            "playing",
+            "player",
+            "players",
+            "guitar",
+            "guitars",
+            "riff",
+            "riffs",
+            "solo",
+            "solos",
+            "line"
+          ]
+        }
+      },
+      {
+        "match": "bass",
+        "say": "bas",
+        "when": {
+          "after": [
+            "fish",
+            "swam",
+            "swim",
+            "swimming",
+            "lake",
+            "river",
+            "pond",
+            "sea",
+            "ocean",
+            "caught",
+            "catch",
+            "catching",
+            "fishing",
+            "angler",
+            "anglers",
+            "species"
+          ]
+        }
+      },
+      {
+        "match": "frequent",
+        "say": "free-kwunt",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "frequent",
+        "say": "frik-went",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "moderate",
+        "say": "mod-uh-rayt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "moderate",
+        "say": "mod-uh-rut",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "export",
+        "say": "ik-spawt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "export",
+        "say": "eks-pawt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "export",
+        "say": "eks-pawt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "wound",
+        "say": "wownd",
+        "when": {
+          "before": [
+            "he",
+            "she",
+            "it",
+            "they",
+            "we",
+            "i",
+            "you",
+            "has",
+            "had",
+            "have"
+          ]
+        }
+      },
+      {
+        "match": "wound",
+        "say": "wownd",
+        "when": {
+          "after": [
+            "up",
+            "around",
+            "through",
+            "tight",
+            "tightly",
+            "the",
+            "his",
+            "her",
+            "its",
+            "their"
+          ]
+        }
+      },
+      {
+        "match": "wound",
+        "say": "woond",
+        "when": {
+          "after": [
+            "healed",
+            "heals",
+            "healing",
+            "was",
+            "is",
+            "badly",
+            "deep",
+            "deeply",
+            "fatal",
+            "gunshot",
+            "knife",
+            "bleeding",
+            "dressed",
+            "bandage",
+            "bandaged",
+            "infection"
+          ]
+        }
+      },
+      {
+        "match": "permit",
+        "say": "puh-mit",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "permit",
+        "say": "pur-mit",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "permit",
+        "say": "pur-mit",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "advocate",
+        "say": "ad-vuh-kayt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "advocate",
+        "say": "ad-vuh-kut",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "advocate",
+        "say": "ad-vuh-kut",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "compound",
+        "say": "kum-pownd",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "compound",
+        "say": "kom-pownd",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "compound",
+        "say": "kom-pownd",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "accent",
+        "say": "ak-sent",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "accent",
+        "say": "ak-sent",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "accent",
+        "say": "uck-sent",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "combine",
+        "say": "kum-byn",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "combine",
+        "say": "kom-byn",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "combine",
+        "say": "kom-byn",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "alternate",
+        "say": "awl-tuh-nayt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "alternate",
+        "say": "awl-tur-nut",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "convert",
+        "say": "kun-vurt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "convert",
+        "say": "kon-vurt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "convert",
+        "say": "kon-vurt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "console",
+        "say": "kun-sohl",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "console",
+        "say": "kon-sohl",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "console",
+        "say": "kon-sohl",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "rebel",
+        "say": "rih-bel",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "rebel",
+        "say": "rebbl",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "rebel",
+        "say": "rebbl",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "compact",
+        "say": "kum-pakt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "compact",
+        "say": "kom-pakt",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "elaborate",
+        "say": "ill-ab-uh-rayt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "elaborate",
+        "say": "ill-ab-uh-rut",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "intimate",
+        "say": "in-tim-ate",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "intimate",
+        "say": "in-tim-ut",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "reject",
+        "say": "rih-jekt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "reject",
+        "say": "ree-jekt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "reject",
+        "say": "ree-jekt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "extract",
+        "say": "ik-strakt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "extract",
+        "say": "eks-trakt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "extract",
+        "say": "eks-trakt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "escort",
+        "say": "iss-kawt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "escort",
+        "say": "ess-kawt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "escort",
+        "say": "ess-kawt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "aggregate",
+        "say": "ag-rih-gayt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "aggregate",
+        "say": "ag-rih-gut",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "aggregate",
+        "say": "ag-rih-gut",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "refund",
+        "say": "rih-fund",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "refund",
+        "say": "ree-fund",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "refund",
+        "say": "ree-fund",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "relay",
+        "say": "rih-lay",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "relay",
+        "say": "ree-lay",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "relay",
+        "say": "ree-lay",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "exploit",
+        "say": "ik-sployt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "exploit",
+        "say": "eks-ployt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "exploit",
+        "say": "eks-ployt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "coordinate",
+        "say": "koh-aw-di-nayt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "coordinate",
+        "say": "koh-aw-di-nut",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "coordinate",
+        "say": "koh-aw-di-nut",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "deliberate",
+        "say": "di-lib-uh-rayt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "deliberate",
+        "say": "di-lib-uh-rut",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "invalid",
+        "say": "invalidd",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "invalid",
+        "say": "in-vuh-lid",
+        "when": {
+          "after": [
+            "patient",
+            "patients",
+            "bed",
+            "beds",
+            "chair",
+            "chairs",
+            "carer",
+            "carers",
+            "veteran",
+            "veterans",
+            "ward",
+            "wards",
+            "pension",
+            "pensions"
+          ]
+        }
+      },
+      {
+        "match": "attribute",
+        "say": "uh-trib-yoot",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "attribute",
+        "say": "at-rih-buh-yoot",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "attribute",
+        "say": "at-rih-buh-yoot",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "delegate",
+        "say": "del-ig-gayt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "delegate",
+        "say": "del-ig-gut",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "delegate",
+        "say": "del-ig-gut",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "addict",
+        "say": "ad-ikt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "addict",
+        "say": "ad-ikt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "addict",
+        "say": "uh-dikt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "dove",
+        "say": "duv",
+        "when": {
+          "after": [
+            "of",
+            "peace",
+            "grey",
+            "gray",
+            "white",
+            "bird",
+            "birds",
+            "cote",
+            "cooed",
+            "flew"
+          ]
+        }
+      },
+      {
+        "match": "dove",
+        "say": "dohv",
+        "when": {
+          "before": [
+            "he",
+            "she",
+            "it",
+            "they",
+            "we",
+            "i",
+            "you",
+            "has",
+            "had",
+            "have"
+          ]
+        }
+      },
+      {
+        "match": "dove",
+        "say": "dohv",
+        "when": {
+          "after": [
+            "into",
+            "in",
+            "off",
+            "down",
+            "from",
+            "through",
+            "under"
+          ]
+        }
+      },
+      {
+        "match": "sewer",
+        "say": "soh-uh",
+        "when": {
+          "after": [
+            "of",
+            "who",
+            "sewing",
+            "cloth",
+            "clothes",
+            "fabric",
+            "garment",
+            "garments",
+            "needle",
+            "thread",
+            "machine",
+            "machines",
+            "skilled"
+          ]
+        }
+      },
+      {
+        "match": "sewer",
+        "say": "soo-uh",
+        "when": {
+          "after": [
+            "line",
+            "lines",
+            "pipe",
+            "pipes",
+            "system",
+            "systems",
+            "drain",
+            "drains",
+            "grate",
+            "grates",
+            "cover",
+            "covers",
+            "overflow",
+            "blocked",
+            "blockage",
+            "water"
+          ]
+        }
+      },
+      {
+        "match": "duplicate",
+        "say": "dew-plik-kayt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "duplicate",
+        "say": "dew-plik-kut",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "duplicate",
+        "say": "dew-plik-kut",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "convict",
+        "say": "kun-vikt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "convict",
+        "say": "kon-vikt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "convict",
+        "say": "kon-vikt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "articulate",
+        "say": "ar-tik-yuh-layt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "articulate",
+        "say": "ar-tik-yuh-lut",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "buffet",
+        "say": "buh-fay",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "buffet",
+        "say": "buh-fay",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "buffet",
+        "say": "buf-it",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "converse",
+        "say": "kun-vurss",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "converse",
+        "say": "kon-vurss",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "converse",
+        "say": "kon-vurss",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "subordinate",
+        "say": "suh-bawd-in-ate",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "subordinate",
+        "say": "suh-bawd-in-ut",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "subordinate",
+        "say": "suh-bawd-in-ut",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "sow",
+        "say": "soh",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "sow",
+        "say": "soh",
+        "when": {
+          "after": [
+            "seeds",
+            "seed",
+            "crop",
+            "crops",
+            "field",
+            "fields",
+            "doubt",
+            "doubts",
+            "confusion",
+            "discord",
+            "wild",
+            "oats",
+            "barley",
+            "wheat"
+          ]
+        }
+      },
+      {
+        "match": "sow",
+        "say": "sau",
+        "when": {
+          "after": [
+            "pig",
+            "pigs",
+            "boar",
+            "boars",
+            "piglet",
+            "piglets",
+            "litter",
+            "farrowing"
+          ]
+        }
+      },
+      {
+        "match": "degenerate",
+        "say": "di-jen-uh-rayt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "degenerate",
+        "say": "di-jen-uh-rut",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "recount",
+        "say": "rih-kownt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "recount",
+        "say": "ree-kownt",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "recount",
+        "say": "ree-kownt",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "desolate",
+        "say": "des-uh-layt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "desolate",
+        "say": "des-uh-lut",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "animate",
+        "say": "annih-mayt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "animate",
+        "say": "annih-mut",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "compress",
+        "say": "kum-press",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "compress",
+        "say": "kom-press",
+        "when": {
+          "before": [
+            "the",
+            "a",
+            "an",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its",
+            "some",
+            "any"
+          ]
+        }
+      },
+      {
+        "match": "compress",
+        "say": "kom-press",
+        "when": {
+          "after": [
+            "of",
+            "was",
+            "were",
+            "is",
+            "are",
+            "has",
+            "had"
+          ]
+        }
+      },
+      {
+        "match": "consummate",
+        "say": "kon-suh-mayt",
+        "when": {
+          "before": [
+            "to",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "let",
+            "please",
+            "i",
+            "we",
+            "they",
+            "you",
+            "he"
+          ]
+        }
+      },
+      {
+        "match": "consummate",
+        "say": "kun-sum-ut",
+        "when": {
+          "before": [
+            "is",
+            "are",
+            "was",
+            "were",
+            "very",
+            "so",
+            "too",
+            "quite",
+            "extremely",
+            "incredibly",
+            "seems",
+            "seem",
+            "seemed",
+            "looks",
+            "look",
+            "looked"
+          ]
+        }
+      },
+      {
+        "match": "moped",
+        "say": "mohpt",
+        "when": {
+          "before": [
+            "he",
+            "she",
+            "it",
+            "they",
+            "we",
+            "i",
+            "you",
+            "has",
+            "had",
+            "have"
+          ]
+        }
+      },
+      {
+        "match": "moped",
+        "say": "mohpt",
+        "when": {
+          "after": [
+            "around",
+            "about",
+            "over",
+            "for",
+            "at",
+            "in",
+            "while"
+          ]
+        }
+      },
+      {
+        "match": "moped",
+        "say": "moh-ped",
+        "when": {
+          "after": [
+            "rider",
+            "riders",
+            "engine",
+            "engines",
+            "helmet",
+            "helmets",
+            "scooter",
+            "scooters",
+            "parked",
+            "rode",
+            "ride",
+            "rides"
+          ]
+        }
+      }
+    ],
+    "acronyms": {
+      "AWS": "Aigh Double You Ess",
+      "AI": "Aigh Eye",
+      "TTS": "Tee Tee Ess",
+      "API": "Aigh Pee Eye",
+      "HTML": "Aitch Tee Emm Ell",
+      "SSH": "Ess Ess Aitch",
+      "HTTP": "Aitch Tee Tee Pee",
+      "HTTPS": "Aitch Tee Tee Pee Ess",
+      "CLI": "See Ell Eye",
+      "PDF": "Pee Dee Eff",
+      "IDE": "Eye Dee Ee",
+      "REST": "Ar Ee Ess Tee",
+      "SDK": "Ess Dee Kay",
+      "SSL": "Ess Ess Ell",
+      "TCP": "Tee See Pee",
+      "UDP": "You Dee Pee",
+      "DNS": "Dee En Ess",
+      "SQL": "sequel",
+      "YAML": "yammel",
+      "JSON": "jayson",
+      "GNU": "guh-new",
+      "ASCII": "ass-key",
+      "CI": "see-eye",
+      "CD": "see-dee",
+      "SME": "Ess Em Ee",
+      "KB": "Kay Bee",
+      "UML": "you-mull",
+      "CQRS": "kers",
+      "CORS": "korrs",
+      "RBAC": "are-back",
+      "SAML": "sam-ull",
+      "AJAX": "ay-jax"
+    },
+    "letters": {
+      "A": "Aigh",
+      "B": "Bee",
+      "C": "See",
+      "D": "Dee",
+      "E": "Ee",
+      "F": "Eff",
+      "G": "Gee",
+      "H": "Aitch",
+      "I": "Eye",
+      "J": "Jay",
+      "K": "Kay",
+      "L": "Ell",
+      "M": "Em",
+      "N": "En",
+      "O": "Oh",
+      "P": "Pee",
+      "Q": "Cue",
+      "R": "Ar",
+      "S": "Ess",
+      "T": "Tee",
+      "U": "You",
+      "V": "Vee",
+      "W": "Double You",
+      "X": "Ex",
+      "Y": "Why",
+      "Z": "Zed"
+    },
+    "protect": [
+      "END"
+    ],
+    "locale": "en-AU"
+  },
+  "voices": {},
+  "aliases": {}
+}

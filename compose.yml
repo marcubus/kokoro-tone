@@ -71,6 +71,11 @@ services:
       - DEFAULT_VOICE=${DEFAULT_VOICE:-af_heart}
       # Mastering target in LUFS, clamped to -30..-12.
       - LOUDNESS_LUFS=${LOUDNESS_LUFS:--16}
+      # Lexicon and normalisation. Only the deployment choices; the rest is built in.
+      - PRONUNCIATION_LEXICON=${PRONUNCIATION_LEXICON:-/etc/kokoro-tone/lexicon.json}
+      - PRONUNCIATION_OVERRIDES=${PRONUNCIATION_OVERRIDES:-/etc/kokoro-tone/custom.json}
+      - LOCALE=${LOCALE:-en-AU}
+      - NORMALISE_DEFAULT=${NORMALISE_DEFAULT:-false}
       # Request bounds. Defaults mirror src/kokoro_tone/limits.py.
       - MIN_RATE=${MIN_RATE:-0.75}
       - MAX_RATE=${MAX_RATE:-1.3}
@@ -89,6 +94,11 @@ services:
       - SEGMENT_CHARS=${SEGMENT_CHARS:-1000}
       - TURN_GAP_MS=${TURN_GAP_MS:-350}
       - PYTHONDONTWRITEBYTECODE=1
+
+    # The lexicon, read-only. A missing lexicon.json means "built-in layers
+    # only", which is not an error.
+    volumes:
+      - ./lexicon:/etc/kokoro-tone:ro
 
     # Transient storage — ffmpeg scratch space, nothing persists
     tmpfs:

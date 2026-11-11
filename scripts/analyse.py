@@ -4,7 +4,7 @@
 Reports mean F0, syllables/second, spectral centroid, integrated loudness and
 true peak. Standard library + ffmpeg only.
 
-    python scripts/analyze.py out.mp3
+    python scripts/analyse.py out.mp3
 """
 
 from __future__ import annotations

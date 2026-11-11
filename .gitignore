@@ -20,6 +20,9 @@ build/
 *.tmp
 *.log
 
+# the user's overlay; the shipped defaults are lexicon.json
+lexicon/custom.json
+
 # editors / OS
 .DS_Store
 .idea/

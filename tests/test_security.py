@@ -154,3 +154,63 @@ def test_every_preset_filter_matches_the_guard():
 
     for preset in prosody.PRESETS.values():
         audio._filters(list(preset.filters))
+
+
+@pytest.mark.parametrize(
+    "pronunciations",
+    [
+        {"hello": "[voice:af_heart]"},
+        {"hello": "x" * 201},
+        {"hello": "a\x00b"},
+        [{"match": "hello", "say": "hi", "extra": "y"}],
+        [{"match": "hello", "say": "hi", "when": {"within": 99}}],
+        {"bad alias": []},
+        {"*": {"hello": "hi"}, "bad alias": []},
+    ],
+)
+def test_injection_shaped_pronunciations_are_rejected(gateway, pronunciations):
+    client, server = gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "hello", "pronunciations": pronunciations},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["type"] == "invalid_request_error"
+    assert server.requests == []
+
+
+def test_a_replacement_is_spoken_as_text_not_evaluated(gateway):
+    client, server = gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "hello", "pronunciations": {"hello": "__import__('os')"}},
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == "__import__('os')"
+
+
+def test_too_many_pronunciation_rules_is_rejected(gateway):
+    client, _ = gateway
+    value = {f"word{index}": "x" for index in range(257)}
+    response = client.post(
+        "/v1/audio/speech", headers=AUTH, json={"input": "hello", "pronunciations": value}
+    )
+
+    assert response.status_code == 400
+    assert "pronunciations" in response.json()["error"]["message"]
+
+
+def test_unknown_normalise_keys_are_rejected(gateway):
+    client, _ = gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "hello", "normalise": {"numbers": True, "extra": True}},
+    )
+
+    assert response.status_code == 400
+    assert "normalise" in response.json()["error"]["message"]

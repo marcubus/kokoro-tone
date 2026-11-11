@@ -227,7 +227,7 @@ def encode(pcm: bytes, response_format: str) -> tuple[bytes, str]:
 
 def render(
     turns: list[Turn],
-    synthesize,
+    synthesise,
     *,
     speed: float = 1.0,
     instructions: str | None = None,
@@ -235,7 +235,7 @@ def render(
     turn_gap_ms: int | None = None,
     limits: Limits = DEFAULT_LIMITS,
 ) -> bytes:
-    """Render turns to mastered PCM. `synthesize(text, voice) -> PCM`."""
+    """Render turns to mastered PCM. `synthesise(text, voice) -> PCM`."""
     if not turns:
         raise AudioError("nothing to render")
 
@@ -245,7 +245,7 @@ def render(
 
     for index, turn in enumerate(turns):
         settings = prosody_mod.resolve(turn, speed, instructions, limits)
-        pcm = synthesize(turn.text, turn.voice)
+        pcm = synthesise(turn.text, turn.voice)
         if not pcm:
             raise AudioError("upstream returned empty audio")
         parts.append(apply_prosody(pcm, settings))

@@ -14,7 +14,8 @@ export KOKORO_VERSION := $(shell cat engine.version)
 
 .DEFAULT_GOAL := help
 .PHONY: help install lint fmt fmt-check check security-check pin-check test \
-        version engine config build up down restart ps logs narrate analyze clean
+        version engine config build up down restart ps logs \
+        narrate analyse clean
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -80,9 +81,9 @@ narrate: ## Render a transcript through the running stack: make narrate FILE=scr
 	$(COMPOSE) exec -T kokoro-tone python scripts/narrate.py - --out - \
 		--url http://127.0.0.1:8000 < "$(FILE)" > "$(OUT)"
 
-analyze: ## Measure an audio file: make analyze FILE=out.mp3
-	@test -n "$(FILE)" || { echo "FILE is required (make analyze FILE=out.mp3)"; exit 2; }
-	uv run python scripts/analyze.py "$(FILE)"
+analyse: ## Measure an audio file: make analyse FILE=out.mp3
+	@test -n "$(FILE)" || { echo "FILE is required (make analyse FILE=out.mp3)"; exit 2; }
+	uv run python scripts/analyse.py "$(FILE)"
 
 clean: ## Remove the venv and caches
 	rm -rf .venv .pytest_cache .ruff_cache

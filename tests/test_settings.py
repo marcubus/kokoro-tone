@@ -84,3 +84,27 @@ def test_limits_fall_back_on_nonsense(monkeypatch):
     limits = load_limits()
     assert limits.turns == 100
     assert limits.pause_ms == 30_000
+
+
+def test_the_pronunciation_limits_have_documented_defaults():
+    from kokoro_tone.limits import load_limits
+
+    limits = load_limits()
+    assert limits.pronunciations == 256
+    assert limits.pronunciation_chars == 200
+    assert limits.context_words == 16
+    assert limits.before_words == 2
+    assert limits.lexicon_rules == 2_048
+    assert limits.lexicon_bytes == 262_144
+    assert limits.number_words == 64
+    assert limits.voice_sets == 32
+
+
+def test_the_env_readers_fall_back_rather_than_raising(monkeypatch):
+    from kokoro_tone import env
+
+    monkeypatch.setenv("MAX_TURNS", "lots")
+    monkeypatch.setenv("NORMALISE_DEFAULT", "sometimes")
+
+    assert env.read_int("MAX_TURNS", 100) == 100
+    assert env.read_bool("NORMALISE_DEFAULT", False) is False

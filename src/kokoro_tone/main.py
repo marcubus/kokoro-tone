@@ -19,8 +19,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
-from . import __version__, audio, parse, prosody
+from . import __version__, audio, normalise, parse, pronounce, prosody
 from .limits import Limits, load_limits
+from .log import event
 
 # The only model this service serves. `kokoro`, `tts-1` and `tts-1-hd` are
 # accepted as wire-compatible aliases; `gpt-4o-mini-tts` is rejected because it
@@ -49,6 +50,9 @@ class Settings:
     default_voice: str
     loudness_lufs: float
     limits: Limits
+    normalise: normalise.NormaliseSettings
+    lexicon_path: str
+    lexicon_overlay_path: str
 
 
 def _token_list(*values: str) -> tuple[str, ...]:
@@ -94,10 +98,18 @@ def load_settings() -> Settings:
         default_voice=os.environ.get("DEFAULT_VOICE", "af_heart"),
         loudness_lufs=loudness(),
         limits=load_limits(),
+        normalise=normalise.load_normalise_settings(),
+        lexicon_path=os.environ.get("PRONUNCIATION_LEXICON", "/etc/kokoro-tone/lexicon.json"),
+        # Optional user overlay, composed in memory over the shipped defaults.
+        # Missing is normal: the defaults alone are a complete lexicon.
+        lexicon_overlay_path=os.environ.get(
+            "PRONUNCIATION_OVERRIDES", "/etc/kokoro-tone/custom.json"
+        ),
     )
 
 
 SETTINGS = load_settings()
+LEXICON = pronounce.Lexicon(SETTINGS.lexicon_path, SETTINGS.limits, SETTINGS.lexicon_overlay_path)
 
 
 class UpstreamError(Exception):
@@ -121,6 +133,16 @@ class SpeechRequest(BaseModel):
     stream_format: str | None = None
     # Kokoro/OpenRouter's field, kept as an alias for raw audio streaming.
     stream: bool = False
+    # Ordered word -> spoken-form rules. A map is the shorthand; a list adds
+    # context, case and whole-word control. An object containing `*` is a
+    # per-alias map, with `*` as the global part.
+    pronunciations: object | None = None
+    # The built-in layers: true/false, or {"lexicon", "acronyms", "numbers"}.
+    normalise: object | None = None
+    # What to do with a heteronym no bare rule settled. "guess" (default) picks
+    # the first candidate and reports it in X-Kokoro-Tone-Guessed; "ignore"
+    # leaves the engine's own default and says nothing.
+    ambiguity: str | None = None
 
 
 def _upstream_headers() -> dict[str, str]:
@@ -131,6 +153,20 @@ def _upstream_headers() -> dict[str, str]:
 
 def _upstream_url(path: str) -> str:
     return f"{SETTINGS.upstream_base_url}/{path.lstrip('/')}"
+
+
+def _upstream_health_urls() -> tuple[str, ...]:
+    """Where to ask whether the engine is up, best first.
+
+    Kokoro-FastAPI answers `GET /health` at the root and has no `/v1/health`, so
+    probing `{base}/health` reported a healthy engine as degraded. The root is
+    tried first; `{base}/models` is the fallback for an OpenAI-shaped upstream
+    (the OpenRouter seam), which has no health route but does answer the
+    versioned base when the bearer is right.
+    """
+    base = SETTINGS.upstream_base_url.rstrip("/")
+    root = base[: -len("/v1")] if base.endswith("/v1") else base
+    return (f"{root}/health", f"{base}/models")
 
 
 def _raise_for_upstream(response: httpx.Response) -> None:
@@ -155,7 +191,7 @@ def _detail(response: httpx.Response) -> str:
     return str(body)[:400]
 
 
-def _synthesize(text: str, voice: str | None) -> bytes:
+def _synthesise(text: str, voice: str | None) -> bytes:
     payload = {
         "model": SETTINGS.upstream_model,
         "input": text,
@@ -206,6 +242,28 @@ _ERROR_TYPES = {
     422: "invalid_request_error",
     429: "rate_limit_error",
 }
+
+
+def _guessed(found: list[pronounce.Ambiguity], mode: str) -> str | None:
+    """The compact `word=sense` list, deduplicated in first-seen order."""
+    if mode != "guess" or not found:
+        return None
+    assumed = list(dict.fromkeys(item.chosen for item in found))
+    return ",".join(assumed)[:512]
+
+
+def _mark_guessed(response: Response, found: list[pronounce.Ambiguity], mode: str) -> Response:
+    """A guess never fails the render: it says what it assumed, in a header."""
+    guessed = _guessed(found, mode)
+    if guessed:
+        response.headers["X-Kokoro-Tone-Guessed"] = guessed
+    return response
+
+
+def _layers(flags: pronounce.Flags) -> str:
+    """The normalisation layers a request actually ran, for the log line."""
+    on = [name for name in ("lexicon", "acronyms", "numbers") if getattr(flags, name)]
+    return "+".join(on) or "none"
 
 
 def _error_body(
@@ -305,11 +363,14 @@ app.add_middleware(BodyLimitMiddleware, max_bytes=SETTINGS.limits.body_bytes)
 
 @app.exception_handler(HTTPException)
 async def http_error_handler(request: Request, exc: HTTPException) -> JSONResponse:
-    return JSONResponse(
-        _error_body(str(exc.detail), exc.status_code),
-        status_code=exc.status_code,
-        headers=exc.headers,
+    body = _error_body(str(exc.detail), exc.status_code)
+    event(
+        "error",
+        path=request.url.path,
+        status=exc.status_code,
+        detail=str(exc.detail)[:160],
     )
+    return JSONResponse(body, status_code=exc.status_code, headers=exc.headers)
 
 
 @app.exception_handler(RequestValidationError)
@@ -322,6 +383,7 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
         location = [str(part) for part in first.get("loc", ()) if part != "body"]
         param = ".".join(location) or None
         message = str(first.get("msg", message))
+    event("error", path=request.url.path, status=400, param=param, detail=message[:160])
     return JSONResponse(
         _error_body(message, 400, param=param, code="invalid_value"),
         status_code=400,
@@ -330,6 +392,7 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
 
 @app.exception_handler(Exception)
 async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    event("error", path=request.url.path, status=500, detail=type(exc).__name__)
     return JSONResponse(_error_body("internal server error", 500), status_code=500)
 
 
@@ -355,14 +418,17 @@ def require_auth(request: Request) -> None:
 def health() -> JSONResponse:
     ok = False
     detail = "upstream unreachable"
-    try:
-        response = http_client().get(
-            _upstream_url("health"), headers=_upstream_headers(), timeout=5.0
-        )
-        ok = response.status_code == 200
-        detail = "ok" if ok else f"upstream returned {response.status_code}"
-    except httpx.HTTPError as exc:
-        detail = f"upstream unreachable: {exc.__class__.__name__}"
+    lexicon = LEXICON.current()
+    for url in _upstream_health_urls():
+        try:
+            response = http_client().get(url, headers=_upstream_headers(), timeout=5.0)
+        except httpx.HTTPError as exc:
+            detail = f"upstream unreachable: {exc.__class__.__name__}"
+            continue
+        if response.status_code == 200:
+            ok, detail = True, "ok"
+            break
+        detail = f"upstream returned {response.status_code} from {url}"
     payload = {
         "status": "ok" if ok else "degraded",
         "detail": detail,
@@ -370,6 +436,16 @@ def health() -> JSONResponse:
         "model": MODELS[0],
         "upstream": SETTINGS.upstream_base_url,
         "rubberband": audio.has_rubberband(),
+        "normalise": {
+            "default": SETTINGS.normalise.default_on,
+            "lexicon": SETTINGS.normalise.lexicon,
+            "acronyms": SETTINGS.normalise.acronyms,
+            "numbers": SETTINGS.normalise.numbers,
+            "locale": SETTINGS.normalise.locale,
+            "rules": len(lexicon.defaults.rules),
+            "voice_sets": len(lexicon.voices),
+            "server_aliases": len(lexicon.aliases),
+        },
     }
     return JSONResponse(payload, status_code=200 if ok else 503)
 
@@ -420,28 +496,104 @@ def speech(body: SpeechRequest, _: None = Depends(require_auth)) -> Response:
     stream_format = (body.stream_format or "audio").lower()
     if stream_format not in ("audio", "sse"):
         raise HTTPException(400, "stream_format must be 'audio' or 'sse'")
+    ambiguity = (body.ambiguity or "guess").strip().lower()
+    if ambiguity not in ("guess", "ignore"):
+        raise HTTPException(400, "ambiguity must be 'guess' or 'ignore'")
 
     instructions = _instructions(body.instructions, limits)
-    aliases, voice = _voice_spec(body.voice, limits)
+    lexicon = LEXICON.current()
+    aliases, voice = _voice_spec(body.voice, limits, lexicon)
     default_voice = voice or SETTINGS.default_voice
-    payload = _sanitized_input(body.input)
+    payload = _sanitised_input(body.input)
+
+    try:
+        flags = pronounce.parse_flags(body.normalise, SETTINGS.normalise)
+        request_global, request_alias = pronounce.parse_request_sets(body.pronunciations, limits)
+    except parse.MarkupError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    token = _voice_token(body.voice)
+    found: list[pronounce.Ambiguity] = []
+    collect = found if ambiguity != "ignore" else None
+    guessing = ambiguity == "guess"
+    plain = isinstance(payload, str) and not parse.has_markup(payload)
+    if plain:
+        payload = _rewrite(
+            payload,
+            token,
+            default_voice,
+            request_global,
+            request_alias,
+            lexicon,
+            flags,
+            collect,
+            guessing,
+        )
+        if len(payload) > limits.input_chars:
+            raise HTTPException(400, f"input exceeds {limits.input_chars} characters")
 
     try:
         turns = parse.parse_input(payload, default_voice, limits)
     except parse.MarkupError as exc:
         raise HTTPException(400, str(exc)) from exc
 
+    tokens = [turn.voice for turn in turns]
     _apply_aliases(turns, aliases)
 
+    if not plain:
+        for turn, turn_token in zip(turns, tokens, strict=False):
+            turn.text = _rewrite(
+                turn.text,
+                turn_token,
+                turn.voice,
+                request_global,
+                request_alias,
+                lexicon,
+                flags,
+                collect,
+                guessing,
+                turn.markers,
+            )
+        total = sum(len(turn.text) for turn in turns)
+        if total > limits.input_chars:
+            raise HTTPException(400, f"input exceeds {limits.input_chars} characters")
+
+    # Every field below is a count, a name or a duration. The text itself never
+    # reaches the log; it is the caller's script, not the operator's business.
+    started = time.perf_counter()
+    upstream_ms = 0.0
+    spoken = {"chars": sum(len(turn.text) for turn in turns), "turns": len(turns)}
+
+    def synthesise(text: str, voice: str | None) -> bytes:
+        nonlocal upstream_ms
+        at = time.perf_counter()
+        try:
+            return _synthesise(text, voice)
+        finally:
+            upstream_ms += (time.perf_counter() - at) * 1000.0
+
     if _is_passthrough(payload, instructions):
-        return _passthrough(body, default_voice, payload, sse=stream_format == "sse")
+        response = _passthrough(body, default_voice, payload, sse=stream_format == "sse")
+        event(
+            "speech",
+            status=200,
+            passthrough="yes",
+            stream=stream_format,
+            **spoken,
+            voice=default_voice,
+            fmt=body.response_format,
+            normalise=_layers(flags),
+            guess=_guessed(found, ambiguity),
+            ms=round((time.perf_counter() - started) * 1000.0),
+        )
+        return _mark_guessed(response, found, ambiguity)
 
     turns = parse.split_long(turns, limits.segment_chars)
 
     try:
         pcm = audio.render(
             turns,
-            _synthesize,
+            synthesise,
             speed=body.speed or 1.0,
             instructions=instructions,
             target_lufs=SETTINGS.loudness_lufs,
@@ -457,12 +609,28 @@ def speech(body: SpeechRequest, _: None = Depends(require_auth)) -> Response:
     except UpstreamError as exc:
         raise HTTPException(exc.status, exc.detail) from exc
 
+    total_ms = (time.perf_counter() - started) * 1000.0
+    event(
+        "speech",
+        status=200,
+        passthrough="no",
+        stream=stream_format,
+        **spoken,
+        voice=default_voice,
+        fmt=body.response_format,
+        normalise=_layers(flags),
+        guess=_guessed(found, ambiguity),
+        upstream_ms=round(upstream_ms),
+        render_ms=round(total_ms - upstream_ms),
+        bytes=len(data),
+    )
+
     if stream_format == "sse":
         # Mastered output cannot be emitted before the file is complete, so the
         # events arrive after rendering rather than during it.
-        return _sse_response(_chunks(data), _usage(payload))
+        return _mark_guessed(_sse_response(_chunks(data), _usage(payload)), found, ambiguity)
 
-    return Response(content=data, media_type=media_type)
+    return _mark_guessed(Response(content=data, media_type=media_type), found, ambiguity)
 
 
 def _check_model(model: str | None) -> None:
@@ -480,50 +648,103 @@ def _check_model(model: str | None) -> None:
 def _instructions(value: str | None, limits: Limits) -> str | None:
     if not value:
         return None
-    text = parse.sanitize_text(value)
+    text = parse.sanitise_text(value)
     if len(text) > limits.instructions_chars:
         raise HTTPException(400, f"instructions exceeds {limits.instructions_chars} characters")
     return text
 
 
-def _sanitized_input(payload: object) -> object:
+def _sanitised_input(payload: object) -> object:
     if isinstance(payload, str):
-        return parse.sanitize_text(payload)
+        return parse.sanitise_text(payload)
     if isinstance(payload, list):
         cleaned: list[object] = []
         for item in payload:
             if isinstance(item, dict) and isinstance(item.get("text"), str):
-                cleaned.append({**item, "text": parse.sanitize_text(item["text"])})
+                cleaned.append({**item, "text": parse.sanitise_text(item["text"])})
             else:
                 cleaned.append(item)
         return cleaned
     return payload
 
 
-def _voice_spec(voice: object, limits: Limits) -> tuple[dict[str, str], str | None]:
+def _voice_token(voice: object) -> str | None:
+    """The alias or voice name as the caller wrote it, before resolution.
+
+    For a map without an `id`, the first alias is the one that supplies the
+    default voice, so it is also the token that selects that voice's set.
+    """
+    if isinstance(voice, str):
+        return voice.strip() or None
+    if isinstance(voice, dict):
+        value = voice.get("id")
+        if isinstance(value, str):
+            return value.strip() or None
+        if isinstance(value, dict) and isinstance(value.get("id"), str):
+            return value["id"].strip() or None
+        for key in voice:
+            if isinstance(key, str) and key.strip() and key.strip() != "id":
+                return key.strip()
+    return None
+
+
+def _rewrite(
+    text: str,
+    token: str | None,
+    voice: str | None,
+    request_global: tuple[pronounce.Rule, ...],
+    request_alias: dict[str, tuple[pronounce.Rule, ...]],
+    lexicon: pronounce.LexiconData,
+    flags: pronounce.Flags,
+    ambiguities: list[pronounce.Ambiguity] | None = None,
+    guess: bool = False,
+    markers: list[str] | tuple[str, ...] = (),
+) -> str:
+    effective = pronounce.effective_set(
+        token, voice, request_global, request_alias, lexicon, SETTINGS.normalise
+    )
+    rewriter = pronounce.build_rewriter(effective, flags, SETTINGS.normalise, SETTINGS.limits)
+    rewritten = rewriter.apply(text, ambiguities=ambiguities, guess=guess)
+    # A sense tag desugars to a marker a rule must resolve. Anything left means
+    # the word or sense is not in the lexicon, so say so instead of reading it.
+    unknown = parse.unresolved_markers(rewritten, markers)
+    if unknown:
+        listed = ", ".join(dict.fromkeys(f"[sense:{item.replace('|', '=')}]" for item in unknown))
+        raise HTTPException(400, f"unknown sense tag: {listed}")
+    return rewritten
+
+
+def _voice_spec(
+    voice: object, limits: Limits, lexicon: pronounce.LexiconData
+) -> tuple[dict[str, str], str | None]:
     """Split `voice` into (alias map, default voice).
 
     A string is a voice name (existing behaviour). A map defines aliases for
-    this request only; an `id` entry supplies the default voice.
+    this request only; an `id` entry supplies the default voice. Server aliases
+    from the pronunciation file sit underneath the request map, so a client can
+    override any of them and a client that sends no map inherits them.
     """
+    server = dict(lexicon.aliases)
     if voice is None:
-        return {}, None
+        default = lexicon.default_alias
+        return server, _resolve_alias(default, server) if default else None
 
     if isinstance(voice, str):
         value = voice.strip()
         if not value:
-            return {}, None
+            return server, None
         try:
             parse.validate_voice(value, limits.voice_chars)
         except parse.MarkupError as exc:
             raise HTTPException(400, str(exc)) from exc
-        return {}, value
+        return server, _resolve_alias(value, server)
 
     if not isinstance(voice, dict):
         raise HTTPException(400, "voice must be a string or an object of alias: voice")
 
-    aliases: dict[str, str] = {}
+    aliases: dict[str, str] = dict(server)
     default: str | None = None
+    added = 0
 
     for name, target in voice.items():
         if not isinstance(name, str):
@@ -542,13 +763,15 @@ def _voice_spec(voice: object, limits: Limits) -> tuple[dict[str, str], str | No
         except parse.MarkupError as exc:
             raise HTTPException(400, f"invalid voice map: {exc}") from exc
         aliases[name.casefold()] = target
+        added += 1
 
-    if len(aliases) > limits.aliases:
+    if added > limits.aliases:
         raise HTTPException(400, f"voice map exceeds {limits.aliases} aliases")
     if not aliases and not default:
         raise HTTPException(400, "voice map must define at least one alias")
 
-    return aliases, default or next(iter(aliases.values()))
+    fallback = default or lexicon.default_alias or next(iter(aliases.values()))
+    return aliases, _resolve_alias(fallback, aliases)
 
 
 def _voice_id(value: object, limits: Limits) -> str:

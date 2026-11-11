@@ -10,5 +10,7 @@ __pycache__
 !.env.example
 tests
 docs
+# deployment data, supplied by the mount
+lexicon
 *.md
 !README.md

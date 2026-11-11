@@ -11,11 +11,11 @@ characters are stripped before the text reaches the engine.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .limits import DEFAULT_LIMITS, Limits
 
-TAG_NAMES = ("voice", "emotion", "rate", "pause")
+TAG_NAMES = ("voice", "emotion", "rate", "pause", "sense")
 
 # `[tag:value]` — values may not contain brackets, which keeps the tokenizer
 # from swallowing a neighbouring tag when one is malformed.
@@ -24,7 +24,9 @@ _OPENER_RE = re.compile(r"\[([A-Za-z_]+):")
 _PAUSE_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*(ms|s)?$", re.IGNORECASE)
 _VOICE_RE = re.compile(r"^[A-Za-z0-9_.+()\-]+$")
 _EMOTION_RE = re.compile(r"^[A-Za-z][A-Za-z_-]*$")
-
+# `[sense:word=sense]` names which reading of a heteronym to use. The word is a
+# normal English token; the sense is the hyphenated key the lexicon publishes.
+_SENSE_RE = re.compile(r"^([A-Za-z][A-Za-z'\-]*)=([a-z0-9]+(?:-[a-z0-9]+)*)$")
 # NUL and the C0 controls except tab and newline. DEL and C1 are dropped too.
 _CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
 
@@ -42,9 +44,12 @@ class Turn:
     instructions: str | None = None
     gap_ms: int = 0  # silence *after* this turn
     lead_ms: int = 0  # silence *before* this turn (only set on the first)
+    # Markers a `[sense:]` tag desugared to. Kept so an unresolved one can be
+    # reported without treating a literal `|` in prose as a marker.
+    markers: list[str] = field(default_factory=list)
 
 
-def sanitize_text(value: str) -> str:
+def sanitise_text(value: str) -> str:
     """Drop control characters, keeping tabs and newlines."""
     return _CONTROL_RE.sub("", value)
 
@@ -103,6 +108,36 @@ def validate_voice(value: str, max_chars: int = 200) -> str:
     return value
 
 
+def _parse_sense(value: str, limits: Limits = DEFAULT_LIMITS) -> str:
+    """`word=sense` -> the internal marker a pronunciation rule matches."""
+    match = _SENSE_RE.match(value)
+    if not match:
+        raise MarkupError(f"invalid sense tag {_short(value)}; use [sense:word=sense]")
+    word, sense = match.groups()
+    if len(word) > limits.pronunciation_chars or len(sense) > limits.pronunciation_chars:
+        raise MarkupError(f"sense tag exceeds {limits.pronunciation_chars} characters")
+    return f"{word}|{sense}"
+
+
+def unresolved_markers(text: str, markers: list[str] | tuple[str, ...] = ()) -> list[str]:
+    """Sense markers from tags that survived rewriting, so no rule resolved them."""
+    return [marker for marker in dict.fromkeys(markers) if marker in text]
+
+
+def _desugar_senses(text: str, limits: Limits) -> tuple[str, list[str]]:
+    """Replace `[sense:word=sense]` tags with the markers a rule matches."""
+    markers: list[str] = []
+
+    def replace(match: re.Match[str]) -> str:
+        if match.group(1).lower() != "sense":
+            return match.group(0)
+        marker = _parse_sense(match.group(2), limits)
+        markers.append(marker)
+        return marker
+
+    return _TAG_RE.sub(replace, text), markers
+
+
 def _parse_emotion(value: str) -> str:
     if not value or not _EMOTION_RE.match(value):
         raise MarkupError(f"invalid emotion {_short(value)}")
@@ -120,11 +155,12 @@ def parse_markup(
     Unknown `[tag:value]` pairs are left in the text untouched, so a script
     that happens to contain brackets is not silently mangled.
     """
-    text = sanitize_text(text)
+    text = sanitise_text(text)
     _check_balanced(text)
 
     turns: list[Turn] = []
     buffer: list[str] = []
+    pending_markers: list[str] = []
     pos = 0
     leading_pause = 0
     total_pause = 0
@@ -139,11 +175,22 @@ def parse_markup(
         buffer.clear()
         cleaned = raw.strip()
         if cleaned:
-            turns.append(Turn(text=cleaned, **state))  # type: ignore[arg-type]
+            turns.append(
+                Turn(text=cleaned, markers=pending_markers.copy(), **state)  # type: ignore[arg-type]
+            )
+        pending_markers.clear()
 
     for match in _TAG_RE.finditer(text):
         name = match.group(1).lower()
         if name not in TAG_NAMES:
+            continue
+        if name == "sense":
+            # A sense tag substitutes in place, so it must not break the turn.
+            buffer.append(text[pos : match.start()])
+            marker = _parse_sense(match.group(2), limits)
+            buffer.append(marker)
+            pending_markers.append(marker)
+            pos = match.end()
             continue
         buffer.append(text[pos : match.start()])
         pos = match.end()
@@ -190,7 +237,7 @@ def parse_input(
 ) -> list[Turn]:
     """Normalise either accepted `input` shape into turns."""
     if isinstance(payload, str):
-        text = sanitize_text(payload)
+        text = sanitise_text(payload)
         if len(text) > limits.input_chars:
             raise MarkupError(f"input exceeds {limits.input_chars} characters")
         return parse_markup(text, default_voice, limits)
@@ -202,7 +249,8 @@ def parse_input(
         for item in payload:
             if not isinstance(item, dict) or not isinstance(item.get("text"), str):
                 raise MarkupError("each input turn needs a 'text' string")
-            text = sanitize_text(item["text"]).strip()
+            text, markers = _desugar_senses(sanitise_text(item["text"]), limits)
+            text = text.strip()
             if not text:
                 continue
             emotion = item.get("emotion")
@@ -212,7 +260,7 @@ def parse_input(
             if instructions is not None and not isinstance(instructions, str):
                 raise MarkupError("turn 'instructions' must be a string")
             if instructions:
-                instructions = sanitize_text(instructions)
+                instructions = sanitise_text(instructions)
                 if len(instructions) > limits.instructions_chars:
                     raise MarkupError(
                         f"turn 'instructions' exceeds {limits.instructions_chars} characters"
@@ -229,6 +277,7 @@ def parse_input(
                     emotion=_parse_emotion(emotion) if emotion else None,
                     rate=_optional_float(item.get("rate"), limits),
                     instructions=instructions,
+                    markers=markers,
                 )
             )
         if not turns:
@@ -261,6 +310,7 @@ def split_long(turns: list[Turn], limit: int) -> list[Turn]:
                     instructions=turn.instructions,
                     gap_ms=turn.gap_ms if index == len(chunks) - 1 else 0,
                     lead_ms=turn.lead_ms if index == 0 else 0,
+                    markers=turn.markers,
                 )
             )
     return out

@@ -8,35 +8,10 @@ minutes of inserted silence, an arbitrarily large body).
 
 from __future__ import annotations
 
-import os
 import sys
 from dataclasses import dataclass, replace
 
-
-def _int(name: str, default: int) -> int:
-    raw = os.environ.get(name, "").strip()
-    if not raw:
-        return default
-    try:
-        value = int(float(raw))
-    except ValueError:
-        print(f"{name}={raw!r} is not a number; using {default}", file=sys.stderr)
-        return default
-    if value <= 0:
-        print(f"{name}={value} must be positive; using {default}", file=sys.stderr)
-        return default
-    return value
-
-
-def _float(name: str, default: float) -> float:
-    raw = os.environ.get(name, "").strip()
-    if not raw:
-        return default
-    try:
-        return float(raw)
-    except ValueError:
-        print(f"{name}={raw!r} is not a number; using {default}", file=sys.stderr)
-        return default
+from .env import read_float, read_int
 
 
 @dataclass(frozen=True)
@@ -69,6 +44,23 @@ class Limits:
     speed_min: float = 0.25
     speed_max: float = 4.0
 
+    # Pronunciation mapping and normalisation. `pronunciations` caps one
+    # request; `lexicon_rules` caps the deployment file, so a bad file cannot
+    # turn every request into a scan of thousands of rules.
+    pronunciations: int = 256
+    pronunciation_chars: int = 200
+    context_words: int = 16
+    # How far a `before` cue looks back when a rule sets no explicit window.
+    # An `after` cue looks to the end of the sentence instead, because a word
+    # after the match is a lexical signal ("bass in the band") while a word
+    # before it is usually syntax ("they record"), which is only reliable
+    # adjacent.
+    before_words: int = 2
+    lexicon_rules: int = 2_048
+    lexicon_bytes: int = 262_144
+    number_words: int = 64
+    voice_sets: int = 32
+
 
 DEFAULT_LIMITS = Limits()
 
@@ -76,22 +68,22 @@ DEFAULT_LIMITS = Limits()
 def load_limits() -> Limits:
     limits = replace(
         DEFAULT_LIMITS,
-        rate_min=_float("MIN_RATE", DEFAULT_LIMITS.rate_min),
-        rate_max=_float("MAX_RATE", DEFAULT_LIMITS.rate_max),
-        pitch_min=_float("MIN_PITCH", DEFAULT_LIMITS.pitch_min),
-        pitch_max=_float("MAX_PITCH", DEFAULT_LIMITS.pitch_max),
-        pause_ms=_int("MAX_PAUSE_MS", DEFAULT_LIMITS.pause_ms),
-        total_pause_ms=_int("MAX_TOTAL_PAUSE_MS", DEFAULT_LIMITS.total_pause_ms),
-        turns=_int("MAX_TURNS", DEFAULT_LIMITS.turns),
-        aliases=_int("MAX_ALIASES", DEFAULT_LIMITS.aliases),
-        instructions_chars=_int("MAX_INSTRUCTIONS_CHARS", DEFAULT_LIMITS.instructions_chars),
-        input_chars=_int("MAX_INPUT_CHARS", DEFAULT_LIMITS.input_chars),
-        voice_chars=_int("MAX_VOICE_CHARS", DEFAULT_LIMITS.voice_chars),
-        body_bytes=_int("MAX_BODY_BYTES", DEFAULT_LIMITS.body_bytes),
-        segment_chars=_int("SEGMENT_CHARS", DEFAULT_LIMITS.segment_chars),
-        turn_gap_ms=_int("TURN_GAP_MS", DEFAULT_LIMITS.turn_gap_ms),
-        speed_min=_float("MIN_SPEED", DEFAULT_LIMITS.speed_min),
-        speed_max=_float("MAX_SPEED", DEFAULT_LIMITS.speed_max),
+        rate_min=read_float("MIN_RATE", DEFAULT_LIMITS.rate_min),
+        rate_max=read_float("MAX_RATE", DEFAULT_LIMITS.rate_max),
+        pitch_min=read_float("MIN_PITCH", DEFAULT_LIMITS.pitch_min),
+        pitch_max=read_float("MAX_PITCH", DEFAULT_LIMITS.pitch_max),
+        pause_ms=read_int("MAX_PAUSE_MS", DEFAULT_LIMITS.pause_ms),
+        total_pause_ms=read_int("MAX_TOTAL_PAUSE_MS", DEFAULT_LIMITS.total_pause_ms),
+        turns=read_int("MAX_TURNS", DEFAULT_LIMITS.turns),
+        aliases=read_int("MAX_ALIASES", DEFAULT_LIMITS.aliases),
+        instructions_chars=read_int("MAX_INSTRUCTIONS_CHARS", DEFAULT_LIMITS.instructions_chars),
+        input_chars=read_int("MAX_INPUT_CHARS", DEFAULT_LIMITS.input_chars),
+        voice_chars=read_int("MAX_VOICE_CHARS", DEFAULT_LIMITS.voice_chars),
+        body_bytes=read_int("MAX_BODY_BYTES", DEFAULT_LIMITS.body_bytes),
+        segment_chars=read_int("SEGMENT_CHARS", DEFAULT_LIMITS.segment_chars),
+        turn_gap_ms=read_int("TURN_GAP_MS", DEFAULT_LIMITS.turn_gap_ms),
+        speed_min=read_float("MIN_SPEED", DEFAULT_LIMITS.speed_min),
+        speed_max=read_float("MAX_SPEED", DEFAULT_LIMITS.speed_max),
     )
     return _repair(limits)
 
