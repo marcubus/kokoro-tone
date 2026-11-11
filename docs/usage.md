@@ -193,6 +193,10 @@ A blend is a weighted sum of the per-voice style tensors, normalised by the
 total weight. It moves timbre, not prosody. Weights must be positive; `+`/`-`
 cannot be adjacent or lead/trail. Spaces are stripped.
 
+Every voice is levelled to a common pre-master loudness before mastering; a blend
+interpolates its members' gains by weight. The table and method are in
+[`voice-loudness.md`](voice-loudness.md).
+
 `GET /v1/audio/voices` returns the authoritative list, cached five minutes.
 OpenAI names resolve in the engine, not here: `alloy`→`am_adam`, `ash`→
 `af_nicole`, `ballad`→`bm_fable`, `coral`→`bf_emma`, `echo`→`af_bella`,

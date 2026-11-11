@@ -197,23 +197,23 @@ def test_each_emotion_eq_moves_the_documented_band(emotion):
         assert high < 0.9
 
 
-# --- warmth master ----------------------------------------------------------
+# --- tone chain -------------------------------------------------------------
 
 
-def test_warmth_boosts_lows_and_cuts_highs():
+def test_tone_boosts_lows_and_cuts_highs():
     # Low level on purpose: keeps the compressor and saturator idle so the
     # shelves are measured on their own.
     source = two_tone(0.5, [(120.0, 0.02), (10000.0, 0.02)])
-    warmed = audio.apply_warmth(source)
+    shaped = audio.apply_tone(source)
 
-    assert amplitude_at(warmed, 120.0) > amplitude_at(source, 120.0) * 1.12
-    assert amplitude_at(warmed, 10000.0) < amplitude_at(source, 10000.0) * 0.92
+    assert amplitude_at(shaped, 120.0) > amplitude_at(source, 120.0) * 1.12
+    assert amplitude_at(shaped, 10000.0) < amplitude_at(source, 10000.0) * 0.92
 
 
-def test_warmth_compresses_dynamic_range():
+def test_tone_compresses_dynamic_range():
     # Two levels, both above the 0.125 threshold: 4:1 in, ~2.5:1 out.
     source = tone(1.0, amplitude=0.8) + tone(1.0, amplitude=0.2)
-    warmed = audio.apply_warmth(source)
+    shaped = audio.apply_tone(source)
 
     def window(pcm: bytes, start_s: float, length_s: float) -> bytes:
         start = int(audio.SAMPLE_RATE * start_s) * 2
@@ -221,7 +221,7 @@ def test_warmth_compresses_dynamic_range():
         return pcm[start:end]
 
     before = rms(window(source, 0.3, 0.4)) / rms(window(source, 1.3, 0.4))
-    after = rms(window(warmed, 0.3, 0.4)) / rms(window(warmed, 1.3, 0.4))
+    after = rms(window(shaped, 0.3, 0.4)) / rms(window(shaped, 1.3, 0.4))
 
     assert before > 3.5
     assert after < before * 0.8

@@ -21,7 +21,7 @@ turn. Rate and pitch are clamped to the configured bounds.
 Pitch uses `rubberband` with formant preservation. If ffmpeg lacks it, the chain
 falls back to `asetrate` + `atempo`, which shifts formants and is audible.
 
-## Mastering
+## Tone chain and mastering
 
 Applied once, to the whole file:
 
@@ -34,7 +34,7 @@ single linear gain → −16 LUFS (podcast default; `LOUDNESS_LUFS`)
 alimiter −1 dBTP
 ```
 
-Loudness is measured *after* the warmth chain and corrected with one linear
+Loudness is measured *after* the tone chain and corrected with one linear
 gain. It is never normalised per segment: that would boost a whispered line
 back to normal and erase the performance.
 
@@ -44,16 +44,31 @@ across the English voices alone, so a multi-speaker script keeps its quiet and
 loud speakers. That is a separate, static correction - measured per voice in
 [`voice-loudness.md`](voice-loudness.md).
 
+## Voice levelling
+
+Before the master, every turn gets a **static casting gain** for its voice: a
+constant dB offset to a common −24 LUFS pre-master level, shipped for all 72
+measured voices in [`../src/kokoro_tone/levelling.py`](../src/kokoro_tone/levelling.py).
+The gain is passed to the engine as `volume_multiplier`, so it applies in the
+float domain and reaches the passthrough path too. Blends interpolate their
+members' gains by weight; an unmeasured voice stays at unity.
+
+It is not per-segment `loudnorm`: the gain is fixed per voice, so a whisper turn
+stays quieter than the same voice speaking normally. `VOICE_LEVELLING=false`
+disables it for comparison. Levelling is applied **before** the per-turn emotion
+preset, so a preset's relative gain survives; see
+[ADR-0013](adr/0013-level-voice-before-emotion.md).
+
 ## Passthrough, rendering and gain
 
 Three paths, and they do not gain the same way:
 
 | Request | Gain |
 |---|---|
-| **Passthrough + `stream: true`** (plain string, no tags, no `instructions`) | none - the engine's bytes are piped through unmastered |
-| **Passthrough + `stream_format: "sse"`** | none - the engine's chunks are wrapped as deltas |
-| **Rendered + `stream_format: "sse"`** (tags or `instructions`) | full chain, buffered; the first delta arrives after mastering |
-| **Rendered + `stream: true`** | `stream` is ignored; the body is a complete file |
+| **Passthrough + `stream: true`** (plain string, no tags, no `instructions`) | casting gain only - the engine's bytes are piped through unmastered |
+| **Passthrough + `stream_format: "sse"`** | casting gain only - the engine's chunks are wrapped as deltas |
+| **Rendered + `stream_format: "sse"`** (tags or `instructions`) | casting gain, full chain, buffered; the first delta arrives after mastering |
+| **Rendered + `stream: true`** | casting gain, full chain; `stream` is ignored and the body is a complete file |
 
 Preset gain is relative (whisper is −8 dB before the master), so it survives the
 master's single absolute gain. The limiter is last, so a hot preset cannot push

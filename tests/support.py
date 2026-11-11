@@ -135,6 +135,22 @@ def gateway(monkeypatch):
 
 
 @pytest.fixture()
+def unlevelled_gateway(monkeypatch):
+    server = _start_server()
+    monkeypatch.setenv("KOKORO_TONE_API_KEY", "secret")
+    monkeypatch.delenv("KOKORO_TONE_API_KEYS", raising=False)
+    monkeypatch.setenv("VOICE_LEVELLING", "false")
+    main = _reload(monkeypatch, server)
+
+    from fastapi.testclient import TestClient
+
+    with TestClient(main.app) as client:
+        yield client, server
+
+    server.shutdown()
+
+
+@pytest.fixture()
 def multi_token_gateway(monkeypatch):
     server = _start_server()
     monkeypatch.delenv("KOKORO_TONE_API_KEY", raising=False)

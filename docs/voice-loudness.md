@@ -5,13 +5,14 @@ voice, and the static per-voice gain that fixes it.
 
 **Short answer:** Kokoro does no loudness normalisation. Raw output across the 28
 English voices spans **9.2 dB** (−30.7 LUFS for `af_nova` to −21.5 LUFS for
-`am_adam`); across all 67 voices it spans **16.0 dB**. The gateway's −16 LUFS
-master is a single linear gain over the whole file (ADR-0009), so it can only hit
-the average - it cannot equalise two speakers 9 dB apart. The fix is a **static
-per-voice casting gain**, not per-segment `loudnorm`.
+`am_adam`); across all 72 engine voices it spans **16.0 dB**. The gateway's
+−16 LUFS master is a single linear gain over the whole file (ADR-0009), so it can
+only hit the average - it cannot equalise two speakers 9 dB apart. The fix is a
+**static per-voice casting gain**, applied to all 72 measured voices (with blends
+interpolated), not per-segment `loudnorm`.
 
 Related: [`adr/0009-openai-compatible-kokoro-gateway.md`](adr/0009-openai-compatible-kokoro-gateway.md)
-(the warmth master and why per-segment loudness is banned), [`audio.md`](audio.md)
+(the tone chain and why per-segment loudness is banned), [`audio.md`](audio.md)
 (mastering and the passthrough/rendered gain paths).
 
 ---
@@ -23,9 +24,9 @@ Measured with ITU-R BS.1770 integrated loudness (`ffmpeg loudnorm`) over a commo
 
 | Group | n | quietest | loudest | spread |
 |---|---|---|---|---|
-| **English v1.0 (af/am/bf/bm)** | 28 | −30.7 (`af_nova`) | −21.5 (`am_adam`) | **9.2 dB** |
-| en-US | 21 | −30.7 | −21.5 | 9.2 dB |
-| en-GB | 7 | −27.6 | −23.9 | 3.7 dB |
+| **English v1.0 (af/am/bf/bm)** | 33 | −30.7 (`af_nova`) | −21.4 (`bf_isabella`) | **9.3 dB** |
+| en-US | 24 | −30.7 | −21.5 | 9.2 dB |
+| en-GB | 9 | −27.6 | −21.4 | 6.2 dB |
 | es | 3 | −26.8 | −25.8 | 0.9 dB |
 | ja | 5 | −23.9 | −23.0 | 0.9 dB |
 | pt-BR | 3 | −26.9 | −26.0 | 0.9 dB |
@@ -33,11 +34,11 @@ Measured with ITU-R BS.1770 integrated loudness (`ffmpeg loudnorm`) over a commo
 | it | 2 | −23.7 | −18.4 | 5.3 dB |
 | zh | 8 | −27.3 | −20.6 | 6.7 dB |
 | legacy `*_v0` aliases | 13 | −34.4 | −22.7 | 11.7 dB |
-| **all voices** | 67 | −34.4 | −18.4 | **16.0 dB** |
+| **all voices** | 72 | −34.4 | −18.4 | **16.0 dB** |
 
-The English median is **−25.2 LUFS**. A common deployment default, `bm_lewis`,
-sits at −26.8 - 1.6 dB below median, so a default-voice render is already on the
-quiet side before any mastering.
+The English median of the 28-voice sample is **−25.2 LUFS**. A common deployment
+default, `bm_lewis`, sits at −26.8 - 1.6 dB below median, so a default-voice
+render is already on the quiet side before any mastering.
 
 ## 2. Why it happens
 
@@ -56,7 +57,7 @@ Three separate mechanisms, and it matters which one a given file hit:
    9 dB below another stays 9 dB below.
 3. **Passthrough is unmastered entirely.** A request with no tags and no
    `instructions` is forwarded whole to preserve streaming. That path never
-   reaches the warmth chain, so it gets neither the master nor the limiter. This
+   reaches the tone chain, so it gets neither the master nor the limiter. This
    is the "wasn't normalised at all" case.
 
 Mechanism 2 is the one that produces "quiet speakers and loud speakers" in a
@@ -67,7 +68,9 @@ single-voice file.
 
 `gain` is the dB needed to bring each voice to a common **−24 LUFS pre-master**
 target. The median is −25.2, so this barely touches the middle of the set and
-moves only the outliers - the service's overall character does not shift.
+moves only the outliers - the service's overall character does not shift. The
+five extra English voices measured on this deployment are in
+[Appendix A](#appendix-a-all-72-voices-measured).
 
 | voice | I (LUFS) | TP (dBTP) | LRA (LU) | gain | centroid (Hz) | crest (dB) |
 |---|---|---|---|---|---|---|
@@ -104,8 +107,8 @@ moves only the outliers - the service's overall character does not shift.
 <0.5 dB. Inaudible, and exactly what the limiter is for. On the passthrough path
 there is no limiter, but −0.6 dBTP still does not clip.
 
-The full 67-voice table, including the non-English voices and the `*_v0` aliases,
-is in [Appendix A](#appendix-a-all-67-voices-measured).
+The full 72-voice table, including the non-English voices and the `*_v0` aliases,
+is in [Appendix A](#appendix-a-all-72-voices-measured).
 
 ## 4. Clarity
 
@@ -124,20 +127,18 @@ reads as present. Beyond level, two measurable timbre gaps:
 
 ## 5. The fix
 
-A **static per-voice casting gain**, applied per turn before the warmth chain,
-targeting a common pre-master level:
+A **static per-voice casting gain**, applied per turn before the tone chain,
+targeting a common −24 LUFS pre-master level. The shipped table is
+[`../src/kokoro_tone/levelling.py`](../src/kokoro_tone/levelling.py)
+(`VOICE_GAIN_DB`, all 72 measured voices); the gateway passes it to the engine as
+`volume_multiplier = 10 ** (dB / 20)`.
 
 ```python
-VOICE_GAIN_DB = {
-    "af_nova": 6.7, "af_jadzia": 5.4, "am_onyx": 3.9, "af_sky": 3.9,
-    "bm_fable": 3.6, "am_michael": 3.5, "af_alloy": 2.8, "bm_lewis": 2.8,
-    "am_echo": 2.6, "am_santa": 1.9, "af_heart": 1.6, "am_eric": 1.4,
-    "af_jessica": 1.3, "af_river": 1.2, "bm_george": 1.2, "am_liam": 1.1,
-    "bf_lily": 1.0, "af_nicole": 1.0, "bm_daniel": 0.7, "af_bella": 0.5,
-    "bf_alice": 0.2, "af_sarah": 0.1, "bf_emma": -0.1, "am_puck": -1.1,
-    "am_fenrir": -1.6, "af_kore": -1.9, "af_aoede": -2.3, "am_adam": -2.5,
-}
-volume_multiplier = 10 ** (VOICE_GAIN_DB[voice] / 20)
+from kokoro_tone import levelling
+
+levelling.gain_db("af_nova")                # +6.7
+levelling.multiplier("af_nova")             # 2.1627
+levelling.gain_db("af_bella(2)+af_sky(1)")  # +1.6333
 ```
 
 Why this shape, and why it does not violate ADR-0009:
@@ -152,10 +153,20 @@ Why this shape, and why it does not violate ADR-0009:
    (0–10), applied in the float domain before the int16 conversion, so the gateway
    can pass it per turn without touching PCM or reimplementing the chain.
 4. **Blends interpolate.** For `af_bella(2)+af_sky(1)`, weight the member gains:
-   (2 × 0.5 + 1 × 3.9) / 3 ≈ **+1.6 dB**.
+   (2 × 0.5 + 1 × 3.9) / 3 ≈ **+1.6 dB**. Subtractive blends use the same
+   absolute-weight normalisation. OpenAI voice names resolve to the measured
+   Kokoro voice (`alloy` → `am_adam`); an unmeasured voice stays at unity rather
+   than guessing.
 
 Target choice matters: **−24 LUFS pre-master** keeps most voices within ±2 dB and
-moves only the outliers. For a −23 LUFS target, subtract 1 from every number.
+moves only the outliers. The master re-normalises the file to `LOUDNESS_LUFS`, so
+this pre-master target does not need to move with it.
+
+Set `VOICE_LEVELLING=false` to hear the raw casting bias; `GET /health` reports
+whether levelling is on and how many voices the table covers. The ordering
+against emotion is recorded in
+[ADR-0013](adr/0013-level-voice-before-emotion.md): levelling first, emotion
+second.
 
 ## 6. What not to do
 
@@ -192,6 +203,10 @@ The problem is well known; a usable table was not published.
   `response_format: mp3`), all from **identical text** (a ~530-character
   paragraph, ≈40 s), so integrated loudness is directly comparable. The
   generation script is committed in that repo (`main.py`).
+- **Five extra voices:** `af_amelia_inno`, `af_goodall_inno`, `am_price_inno`,
+  `bf_isabella` and `bm_atten_inno` are in the shipped engine but not in that
+  sample set. They were measured on this deployment with the same method, anchored
+  to `af_heart`; the anchor matched the sample set within 0.3 dB.
 - **Loudness:** `ffmpeg -af loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json` →
   `input_i`, `input_tp`, `input_lra`.
 - **Clarity:** `ffmpeg -af astats` → peak/RMS (crest factor);
@@ -199,8 +214,8 @@ The problem is well known; a usable table was not published.
 - **Caveat:** the samples come from a community repo on the same engine, not from
   this project's own instance. Relative differences between voices are a property
   of the style vectors and should not drift, but absolute levels may move a point
-  or two with the engine tag. Verify with a calibration run (§9) before
-  hard-coding the table.
+  or two with the engine tag. Verify with a calibration run (§9) before changing
+  the shipped table in [`../src/kokoro_tone/levelling.py`](../src/kokoro_tone/levelling.py).
 
 ## 9. Reproducing
 
@@ -224,21 +239,23 @@ Two notes when running it:
 
 - Ask for **`wav`**, not `mp3` - MP3 encoding is lossy and the engine's chunking
   makes bitrate vary; WAV removes one variable.
-- Send **untagged, uninstructed text**. Anything that trips the warmth chain gets
+- Send **untagged, uninstructed text**. Anything that trips the tone chain gets
   mastered to −16 LUFS and the per-voice difference is partly hidden by the master
   gain. The numbers above are pre-master by design, because that is the level the
   casting gain has to correct.
 
-## Appendix A: all 67 voices measured
+## Appendix A: all 72 voices measured
 
 `gain` is to a −24 LUFS pre-master target. Centroid and crest were measured for
-the English v1.0 set only.
+the original 28-voice sample only.
 
 | voice | I (LUFS) | TP (dBTP) | LRA (LU) | gain | centroid (Hz) | crest (dB) |
 |---|---|---|---|---|---|---|
 | `af_alloy` | −26.8 | −5.5 | 4.5 | +2.8 | 2104 | 11.2 |
+| `af_amelia_inno` | −23.2 | −5.8 | 2.6 | −0.5 | - | - |
 | `af_aoede` | −21.7 | −2.5 | 4.8 | −2.3 | 2333 | 8.5 |
 | `af_bella` | −24.5 | −4.5 | 4.9 | +0.5 | 3014 | 9.6 |
+| `af_goodall_inno` | −24.7 | −5.8 | 3.4 | +1.0 | - | - |
 | `af_heart` | −25.6 | −6.5 | 3.1 | +1.6 | 2732 | 8.8 |
 | `af_jadzia` | −29.4 | −10.3 | 4.9 | +5.4 | 2349 | 8.3 |
 | `af_jessica` | −25.3 | −5.6 | 2.0 | +1.3 | 2592 | 9.6 |
@@ -261,6 +278,7 @@ the English v1.0 set only.
 | `am_liam` | −25.1 | −5.4 | 1.6 | +1.1 | 2513 | 9.7 |
 | `am_michael` | −27.5 | −4.4 | 3.9 | +3.5 ⚠ | 2539 | 14.2 |
 | `am_onyx` | −27.9 | −4.5 | 5.9 | +3.9 ⚠ | 1546 | 13.6 |
+| `am_price_inno` | −24.4 | −5.2 | 3.5 | +0.6 | - | - |
 | `am_puck` | −22.9 | −3.5 | 5.0 | −1.1 | 2329 | 8.8 |
 | `am_santa` | −25.9 | −5.7 | 2.6 | +1.9 | 2340 | 10.1 |
 | `am_v0adam` | −22.7 | −2.7 | 2.4 | −1.3 | - | - |
@@ -268,9 +286,11 @@ the English v1.0 set only.
 | `am_v0michael` | −30.3 | −6.9 | 3.6 | +6.3 ⚠ | - | - |
 | `bf_alice` | −24.2 | −5.2 | 1.5 | +0.2 | 2661 | 8.8 |
 | `bf_emma` | −23.9 | −4.7 | 3.0 | −0.1 | 3265 | 9.5 |
+| `bf_isabella` | −21.4 | −3.9 | 2.8 | −2.3 | - | - |
 | `bf_lily` | −25.0 | −6.5 | 2.9 | +1.0 | 2658 | 7.9 |
 | `bf_v0emma` | −25.3 | −5.2 | 2.7 | +1.3 | - | - |
 | `bf_v0isabella` | −23.9 | −5.5 | 3.6 | −0.1 | - | - |
+| `bm_atten_inno` | −24.0 | −7.2 | 2.5 | +0.3 | - | - |
 | `bm_daniel` | −24.7 | −6.9 | 1.6 | +0.7 | 2405 | 7.3 |
 | `bm_fable` | −27.6 | −8.7 | 3.8 | +3.6 | 2262 | 9.1 |
 | `bm_george` | −25.2 | −8.8 | 1.9 | +1.2 | 2577 | 6.1 |

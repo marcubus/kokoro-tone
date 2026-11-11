@@ -17,7 +17,17 @@ import time
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from . import __version__, audio, lexicon, parse, pronounce, prosody, request, settings
+from . import (
+    __version__,
+    audio,
+    levelling,
+    lexicon,
+    parse,
+    pronounce,
+    prosody,
+    request,
+    settings,
+)
 from .log import event
 from .request import MODELS, SpeechRequest
 from .upstream import (
@@ -61,6 +71,14 @@ def _layers(flags: pronounce.Flags) -> str:
     return "+".join(on) or "none"
 
 
+def _volume_multiplier(voice: str | None) -> float | None:
+    """The static casting gain for a voice, or None when it is unity/disabled."""
+    if not settings.SETTINGS.voice_levelling:
+        return None
+    value = levelling.multiplier(voice or settings.SETTINGS.default_voice)
+    return value if abs(value - 1.0) > 1e-4 else None
+
+
 def require_auth(request: Request) -> None:
     if not settings.SETTINGS.gateway_keys:
         return
@@ -90,6 +108,10 @@ def health() -> JSONResponse:
         "model": MODELS[0],
         "upstream": settings.SETTINGS.upstream_base_url,
         "rubberband": audio.has_rubberband(),
+        "voice_levelling": {
+            "enabled": settings.SETTINGS.voice_levelling,
+            "voices": len(levelling.VOICE_GAIN_DB),
+        },
         "normalise": {
             "default": settings.SETTINGS.normalise.default_on,
             "lexicon": settings.SETTINGS.normalise.lexicon,
@@ -221,12 +243,22 @@ def speech(body: SpeechRequest, _: None = Depends(require_auth)) -> Response:
         nonlocal upstream_ms
         at = time.perf_counter()
         try:
-            return synthesise(text, voice)
+            return synthesise(
+                text,
+                voice,
+                volume_multiplier=_volume_multiplier(voice or default_voice),
+            )
         finally:
             upstream_ms += (time.perf_counter() - at) * 1000.0
 
     if request.is_passthrough(payload, instructions):
-        response = _passthrough(body, default_voice, payload, sse=stream_format == "sse")
+        response = _passthrough(
+            body,
+            default_voice,
+            payload,
+            volume_multiplier=_volume_multiplier(default_voice),
+            sse=stream_format == "sse",
+        )
         event(
             "speech",
             status=200,
@@ -286,7 +318,14 @@ def speech(body: SpeechRequest, _: None = Depends(require_auth)) -> Response:
     return _mark_guessed(Response(content=data, media_type=media_type), found, ambiguity)
 
 
-def _passthrough(body: SpeechRequest, voice: str, text: str, sse: bool = False) -> Response:
+def _passthrough(
+    body: SpeechRequest,
+    voice: str,
+    text: str,
+    *,
+    volume_multiplier: float | None = None,
+    sse: bool = False,
+) -> Response:
     # SSE needs the engine to emit incrementally; otherwise honour `stream`.
     try:
         upstream = open_stream(
@@ -295,6 +334,7 @@ def _passthrough(body: SpeechRequest, voice: str, text: str, sse: bool = False) 
             body.response_format,
             body.speed,
             True if sse else bool(body.stream),
+            volume_multiplier,
         )
     except UpstreamError as exc:
         raise HTTPException(exc.status, exc.detail) from exc

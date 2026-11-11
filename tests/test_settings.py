@@ -36,6 +36,17 @@ def test_emotion_range_fits_inside_the_loudness_bounds():
     assert settings.LOUDNESS_MIN - 8.0 > -60.0
 
 
+def test_voice_levelling_is_on_by_default_and_can_be_disabled(monkeypatch):
+    monkeypatch.delenv("VOICE_LEVELLING", raising=False)
+    assert settings.load_settings().voice_levelling is True
+
+    monkeypatch.setenv("VOICE_LEVELLING", "false")
+    assert settings.load_settings().voice_levelling is False
+
+    monkeypatch.setenv("VOICE_LEVELLING", "sometimes")
+    assert settings.load_settings().voice_levelling is True
+
+
 def test_limits_defaults_are_the_documented_bounds():
     from kokoro_tone.limits import load_limits
 

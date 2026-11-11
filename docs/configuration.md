@@ -77,6 +77,7 @@ script, so leave it there.
 | `UPSTREAM_MODEL` | `kokoro` | engine mapping key; `hexgrad/kokoro-82m` for OpenRouter |
 | `DEFAULT_VOICE` | `af_heart` | voice when the request omits one |
 | `LOUDNESS_LUFS` | `-16` | podcast target; clamped to −30…−12 |
+| `VOICE_LEVELLING` | `true` | static per-voice casting gain; `false` leaves the engine's raw level |
 | `PRONUNCIATION_LEXICON` | `/etc/kokoro-tone/lexicon.json` | the shipped rules, per-voice sets and aliases |
 | `PRONUNCIATION_OVERRIDES` | `/etc/kokoro-tone/custom.json` | optional user overlay, composed in memory over the defaults |
 | `LOCALE` | `en-AU` | `en-AU`, `en-GB` or `en-US` |

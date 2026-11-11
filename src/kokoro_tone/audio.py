@@ -1,4 +1,4 @@
-"""ffmpeg audio chain: per-turn prosody, silence, warmth master, encode.
+"""ffmpeg audio chain: per-turn prosody, silence, tone chain, encode.
 
 Kokoro is asked for raw PCM, so the gateway decodes nothing and encodes once.
 That is what keeps "double encoding" out of the signal path.
@@ -22,8 +22,8 @@ SAMPLE_RATE = 24000
 BYTES_PER_SAMPLE = 2
 CHANNELS = 1
 
-# Whole-file warmth master. Applied once, after concatenation.
-WARMTH_CHAIN = (
+# Whole-file tone chain. Applied once, after concatenation.
+TONE_CHAIN = (
     "bass=g=2.0:f=250:w=0.7",
     "treble=g=-1.5:f=6000:w=0.7",
     "acompressor=ratio=2.5:attack=15:release=200:threshold=0.125:makeup=1",
@@ -185,24 +185,24 @@ def measure_loudness(pcm: bytes) -> tuple[float, float]:
         raise AudioError(f"unreadable loudnorm output: {exc}") from exc
 
 
-def apply_warmth(pcm: bytes) -> bytes:
+def apply_tone(pcm: bytes) -> bytes:
     """Shelves, compression and saturation - no gain, no limiter."""
     return _run(
-        [*_pcm_input(), "-af", _filters(list(WARMTH_CHAIN)), *_pcm_output()],
+        [*_pcm_input(), "-af", _filters(list(TONE_CHAIN)), *_pcm_output()],
         pcm,
     )
 
 
 def master(pcm: bytes, target_lufs: float = -16.0) -> bytes:
-    """Warmth chain, then one linear gain to target, then a -1 dBTP ceiling.
+    """Tone chain, then one linear gain to target, then a -1 dBTP ceiling.
 
     Loudness is measured after the chain (the compressor and shelves move it)
     and corrected once, across the whole file. Per-segment normalisation would
     boost a whispered line back to normal and erase it.
     """
-    warmed = apply_warmth(pcm)
+    shaped = apply_tone(pcm)
 
-    measured, _peak = measure_loudness(warmed)
+    measured, _peak = measure_loudness(shaped)
     gain_db = 0.0
     if measured != float("-inf"):
         gain_db = max(-30.0, min(30.0, target_lufs - measured))
@@ -213,7 +213,7 @@ def master(pcm: bytes, target_lufs: float = -16.0) -> bytes:
     filters.append(LIMITER)
     filters.append(f"aresample={SAMPLE_RATE}")
 
-    return _run([*_pcm_input(), "-af", _filters(filters), *_pcm_output()], warmed)
+    return _run([*_pcm_input(), "-af", _filters(filters), *_pcm_output()], shaped)
 
 
 def encode(pcm: bytes, response_format: str) -> tuple[bytes, str]:

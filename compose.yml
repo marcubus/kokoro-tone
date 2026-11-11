@@ -71,6 +71,8 @@ services:
       - DEFAULT_VOICE=${DEFAULT_VOICE:-af_heart}
       # Mastering target in LUFS, clamped to -30..-12.
       - LOUDNESS_LUFS=${LOUDNESS_LUFS:--16}
+      # Static per-voice casting gain; false leaves the engine's raw level.
+      - VOICE_LEVELLING=${VOICE_LEVELLING:-true}
       # Lexicon and normalisation. Only the deployment choices; the rest is built in.
       - PRONUNCIATION_LEXICON=${PRONUNCIATION_LEXICON:-/etc/kokoro-tone/lexicon.json}
       - PRONUNCIATION_OVERRIDES=${PRONUNCIATION_OVERRIDES:-/etc/kokoro-tone/custom.json}

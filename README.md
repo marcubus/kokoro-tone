@@ -46,7 +46,7 @@ client ──POST /v1/audio/speech──▶ kokoro-tone (FastAPI + ffmpeg, no mo
                                   kokoro (Kokoro-FastAPI, Kokoro-82M)
                                     │  raw PCM back
                                     ▼
-                                  kokoro-tone: prosody → warmth → loudness → encode
+                                  kokoro-tone: prosody → tone chain → loudness → encode
 ```
 
 The gateway is a client of the engine, not a fork. It asks for raw PCM, applies
@@ -87,6 +87,7 @@ independently.
 | Per-preset tone | not part of the endpoint | rate, pitch, gain and EQ per preset, each measured | `tests/test_audio.py` |
 | Mastering | dry model output | low-shelf, high-shelf, compression, tanh saturation, one linear gain to −16 LUFS, −1 dBTP limiter | `tests/test_audio.py` |
 | Loudness across turns | not applicable | one gain for the whole file; a whispered turn is never normalised back up | `tests/test_audio.py` |
+| Voice loudness | dry model output, 9.2 dB spread across English voices | static per-voice casting gain for all 72 measured voices, blends interpolated, on both the mastered and passthrough paths | `tests/test_levelling.py` |
 | Multi-turn `input` | the OpenAI endpoint takes a string only | an array of `{text, voice, instructions}` turns, rendered with gaps into one file | `tests/test_api.py` |
 | `[emotion:…]` | not a recognised tag | preset selector, sticky per turn | `tests/test_parse.py` |
 | OpenAI SSE | `stream: true` returns chunked audio, not the OpenAI event contract | `stream_format: "sse"` → `speech.audio.delta` frames + `speech.audio.done` | `tests/test_api.py` |

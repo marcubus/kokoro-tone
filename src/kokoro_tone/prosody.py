@@ -2,6 +2,9 @@
 
 Kokoro's source is fixed, so "emotion" here is rate, pitch, gain and spectral
 tilt. Nothing in this module claims to add acting.
+
+These settings are applied after the static per-voice casting gain, so the preset
+gain is relative to an already-levelled voice (ADR-0013).
 """
 
 from __future__ import annotations

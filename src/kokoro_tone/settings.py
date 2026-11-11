@@ -16,7 +16,7 @@ import os
 import sys
 from dataclasses import dataclass
 
-from . import normalise
+from . import env, normalise
 from .limits import Limits, load_limits
 
 # -16 LUFS is the usual podcast deliverable. The lower bound leaves room for
@@ -36,6 +36,7 @@ class Settings:
     gateway_keys: tuple[str, ...]
     default_voice: str
     loudness_lufs: float
+    voice_levelling: bool
     limits: Limits
     normalise: normalise.NormaliseSettings
     lexicon_path: str
@@ -84,6 +85,7 @@ def load_settings() -> Settings:
         ),
         default_voice=os.environ.get("DEFAULT_VOICE", "af_heart"),
         loudness_lufs=_loudness(),
+        voice_levelling=env.read_bool("VOICE_LEVELLING", True),
         limits=load_limits(),
         normalise=normalise.load_normalise_settings(),
         lexicon_path=os.environ.get("PRONUNCIATION_LEXICON", "/etc/kokoro-tone/lexicon.json"),

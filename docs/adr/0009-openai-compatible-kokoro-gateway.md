@@ -185,7 +185,8 @@ line back to normal and erase the performance. This is the trap `audiobooker`
 documents and the reason its `master-check` measures rather than corrects. The
 consequence is that the master cannot equalise *voices* that sit at different
 levels - that is a separate, static correction, measured in
-[`../voice-loudness.md`](../voice-loudness.md).
+[`../voice-loudness.md`](../voice-loudness.md) and applied per voice by
+[`../../src/kokoro_tone/levelling.py`](../../src/kokoro_tone/levelling.py).
 
 **Text never leaves the machine.** The whole stack is local. The hosted fallback
 is opt-in and documented, not default.

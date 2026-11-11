@@ -5,6 +5,27 @@ All notable changes to `kokoro-tone` are recorded here.
 Versions use CalVer in the form `YYYY.MM.MICRO`. `MICRO` starts at `0` each
 month and increments per release; tags are prefixed with `v`.
 
+## [Unreleased]
+
+### Added
+
+- Static per-voice loudness levelling. Every turn is given the casting gain
+  measured in [`docs/voice-loudness.md`](docs/voice-loudness.md) for its voice
+  (all 72 measured voices), passed to the engine as `volume_multiplier` so it
+  applies on both the mastered and passthrough paths. Blends interpolate their
+  members' gains by weight, OpenAI voice names resolve to their measured Kokoro
+  voice, and an unmeasured voice stays at unity. `VOICE_LEVELLING=false` turns it
+  off; `GET /health` reports the table size.
+- [ADR-0013](docs/adr/0013-level-voice-before-emotion.md) records the pipeline
+  order: static voice levelling runs before the per-turn emotion preset, so a
+  whisper stays quiet and an angry line stays hot.
+
+### Changed
+
+- Renamed the whole-file warmth master to the **tone chain**:
+  `WARMTH_CHAIN`/`apply_warmth` are now `TONE_CHAIN`/`apply_tone`. The emotion
+  preset is still `warm`, so the two are no longer easy to confuse.
+
 ## [2026.11.1] - 2026-11-11
 
 ### Added

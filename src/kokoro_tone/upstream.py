@@ -99,6 +99,7 @@ def _speech_payload(
     response_format: str,
     speed: float | None,
     stream: bool,
+    volume_multiplier: float | None = None,
 ) -> dict[str, object]:
     """The engine's request body, built in exactly one place."""
     payload: dict[str, object] = {
@@ -110,6 +111,8 @@ def _speech_payload(
     }
     if speed is not None:
         payload["speed"] = speed
+    if volume_multiplier is not None:
+        payload["volume_multiplier"] = volume_multiplier
     return payload
 
 
@@ -119,6 +122,7 @@ def open_stream(
     response_format: str,
     speed: float | None,
     stream: bool,
+    volume_multiplier: float | None = None,
 ) -> httpx.Response:
     """Send a streaming speech request and return the open response.
 
@@ -127,7 +131,7 @@ def open_stream(
     request = http_client().build_request(
         "POST",
         _upstream_url("audio/speech"),
-        json=_speech_payload(text, voice, response_format, speed, stream),
+        json=_speech_payload(text, voice, response_format, speed, stream, volume_multiplier),
         headers=_upstream_headers(),
     )
     try:
@@ -142,11 +146,11 @@ def open_stream(
     return response
 
 
-def synthesise(text: str, voice: str | None) -> bytes:
+def synthesise(text: str, voice: str | None, volume_multiplier: float | None = None) -> bytes:
     try:
         response = http_client().post(
             _upstream_url("audio/speech"),
-            json=_speech_payload(text, voice, "pcm", None, False),
+            json=_speech_payload(text, voice, "pcm", None, False, volume_multiplier),
             headers=_upstream_headers(),
         )
     except httpx.HTTPError as exc:

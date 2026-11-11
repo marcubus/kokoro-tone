@@ -7,6 +7,7 @@ expensive to reverse, the options that lost, and what the choice costs.
 |---|---|---|
 | [0009](0009-openai-compatible-kokoro-gateway.md) | Serve Kokoro behind an OpenAI-compatible warmth gateway | accepted (implemented) |
 | [0012](0012-pronunciation-lexicon-and-ambiguity-policy.md) | Pronunciation belongs to the gateway, and a guess is better than a failed render | accepted |
+| [0013](0013-level-voice-before-emotion.md) | Level the voice before applying emotion | accepted (implemented) |
 
 ## Why the numbers start at 0009
 

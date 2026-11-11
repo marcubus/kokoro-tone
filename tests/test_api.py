@@ -3,6 +3,7 @@ import json
 
 import pytest
 
+from kokoro_tone import levelling
 from support import AUTH, MP3, PCM
 
 
@@ -75,6 +76,9 @@ def test_passthrough_sse_wraps_upstream_audio(gateway):
     )
     assert audio_bytes == MP3
     assert server.last_request["stream"] is True
+    assert server.last_request["volume_multiplier"] == pytest.approx(
+        levelling.multiplier("af_heart")
+    )
     assert events[-1][1]["usage"]["input_tokens"] >= 1
 
 
@@ -186,6 +190,79 @@ def test_voice_string_still_reaches_the_engine(gateway):
 
     assert response.status_code == 200
     assert server.last_request["voice"] == "af_sky"
+
+
+def test_passthrough_levels_the_voice(gateway):
+    client, server = gateway
+    response = client.post(
+        "/v1/audio/speech", headers=AUTH, json={"input": "hello", "voice": "af_nova"}
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["volume_multiplier"] == pytest.approx(
+        levelling.multiplier("af_nova")
+    )
+
+
+def test_the_default_voice_is_levelled(gateway):
+    client, server = gateway
+    response = client.post("/v1/audio/speech", headers=AUTH, json={"input": "hello"})
+
+    assert response.status_code == 200
+    assert server.last_request["voice"] == "af_heart"
+    assert server.last_request["volume_multiplier"] == pytest.approx(
+        levelling.multiplier("af_heart")
+    )
+
+
+def test_rendered_turns_are_levelled_per_voice(gateway):
+    client, server = gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={
+            "input": "[voice:af_nova] One. [voice:am_adam] Two.",
+            "response_format": "wav",
+        },
+    )
+
+    assert response.status_code == 200
+    assert [request["voice"] for request in server.requests] == ["af_nova", "am_adam"]
+    assert [request["volume_multiplier"] for request in server.requests] == pytest.approx(
+        [levelling.multiplier("af_nova"), levelling.multiplier("am_adam")]
+    )
+
+
+def test_a_blend_is_levelled_by_its_weighted_members(gateway):
+    client, server = gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "hello", "voice": "af_bella(2)+af_sky(1)"},
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["volume_multiplier"] == pytest.approx(
+        levelling.multiplier("af_bella(2)+af_sky(1)")
+    )
+
+
+def test_voice_levelling_can_be_disabled(unlevelled_gateway):
+    client, server = unlevelled_gateway
+    response = client.post(
+        "/v1/audio/speech", headers=AUTH, json={"input": "hello", "voice": "af_nova"}
+    )
+
+    assert response.status_code == 200
+    assert "volume_multiplier" not in server.last_request
+
+
+def test_health_reports_voice_levelling(gateway):
+    client, _ = gateway
+    payload = client.get("/health").json()
+
+    assert payload["voice_levelling"]["enabled"] is True
+    assert payload["voice_levelling"]["voices"] == len(levelling.VOICE_GAIN_DB)
 
 
 def test_voice_map_resolves_alias_tags(gateway):
