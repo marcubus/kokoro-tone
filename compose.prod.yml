@@ -1,0 +1,12 @@
+# Run the released gateway image instead of building it.
+#
+#   docker compose -f compose.yml -f compose.prod.yml pull kokoro-tone
+#   docker compose -f compose.yml -f compose.prod.yml up -d
+#
+# `KOKORO_TONE_VERSION` selects the tag (default `latest`); pin an exact
+# release such as 2026.11.2 for reproducible deployments. `KOKORO_TONE_IMAGE`
+# overrides the registry/repository. Requires Compose v2.24+ for `!reset`.
+services:
+  kokoro-tone:
+    image: ${KOKORO_TONE_IMAGE:-ghcr.io/marcubus/kokoro-tone}:${KOKORO_TONE_VERSION:-latest}
+    build: !reset null

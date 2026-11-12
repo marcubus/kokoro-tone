@@ -13,3 +13,5 @@
 - [ ] `make version`
 - [ ] `make build`
 - [ ] Tag created after merge and pushed
+- [ ] `release` workflow published, scanned and signed the image
+- [ ] `make up-image KOKORO_TONE_VERSION=YYYY.MM.MICRO` starts it

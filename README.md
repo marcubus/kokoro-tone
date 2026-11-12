@@ -56,16 +56,39 @@ patched.
 
 ## Quick start
 
+Two ways to run the gateway: pull the released image, or build it locally.
+
+### Released image
+
 ```bash
 cp .env.example .env          # set KOKORO_FASTAPI_API_KEY and KOKORO_TONE_API_KEY
+make up-image                 # pull ghcr.io/marcubus/kokoro-tone and start both services
+```
+
+`KOKORO_TONE_VERSION` selects the image tag (default `latest`); pin an exact
+release such as `2026.11.2` for reproducible deployments. Images are published
+for `linux/amd64` and `linux/arm64`, signed with cosign (keyless) and scanned
+with Trivy on release.
+
+### Local build
+
+```bash
+cp .env.example .env
 make up                       # docker compose up -d --build
 ```
 
 `make up` reads `engine.version` and passes it to compose as `KOKORO_VERSION`.
-The gateway image is built locally; the engine image is pulled. The two services
-share a private compose network, so other containers in the same stack reach the
-gateway at `http://kokoro-tone:8000`; nothing is published to the host by
-default.
+The engine image is always pulled. The two services share a private compose
+network, so other containers in the same stack reach the gateway at
+`http://kokoro-tone:8000`; nothing is published to the host by default.
+
+### Verifying a release image
+
+```bash
+cosign verify ghcr.io/marcubus/kokoro-tone:2026.11.2 \
+  --certificate-identity-regexp '^https://github.com/marcubus/kokoro-tone/.github/workflows/release.yml@refs/tags/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
 
 To reach it from the host or another stack, add a port mapping (for example
 `127.0.0.1:8000:8000`) or attach it to your proxy's network. Read

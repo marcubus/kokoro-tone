@@ -49,7 +49,10 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -57,13 +60,33 @@ jobs:
         env:
           KOKORO_VERSION: v0.0.0-ci
           KOKORO_FASTAPI_API_KEY: ci-placeholder
-        run: docker compose config >/dev/null
+        run: |
+          docker compose config >/dev/null
+          docker compose -f compose.yml -f compose.prod.yml config >/dev/null
 
       - name: Build the gateway image
         run: docker build -t kokoro-tone:ci .
 
       - name: Smoke test the image
         run: docker run --rm kokoro-tone:ci python -c "import kokoro_tone, kokoro_tone.context, kokoro_tone.main, kokoro_tone.pipeline; print(kokoro_tone.__version__, 'imports ok')"
+
+      - name: Scan the image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: kokoro-tone:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: sarif
+          output: trivy-results.sarif
+
+      - name: Upload scan results
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
 
   tag-check:
     if: startsWith(github.ref, 'refs/tags/v')

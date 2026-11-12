@@ -63,6 +63,11 @@ RUN uv sync --frozen --no-dev --no-editable
 
 FROM python:3.12-slim-bookworm@sha256:935c3c5b12357a7e10caa9c1e6ca5692344d97cf229832ef584be2cec9fc03df
 
+LABEL org.opencontainers.image.title="kokoro-tone" \
+      org.opencontainers.image.description="OpenAI-compatible TTS gateway for Kokoro-FastAPI, with prosody presets and a tone chain." \
+      org.opencontainers.image.source="https://github.com/marcubus/kokoro-tone" \
+      org.opencontainers.image.licenses="MIT"
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH"
@@ -79,6 +84,7 @@ WORKDIR /app
 COPY --from=ffmpeg /usr/local/bin/ffmpeg /usr/local/bin/ffmpeg
 COPY --from=build /app/.venv /app/.venv
 COPY scripts ./scripts
+COPY LICENSE docker/THIRD_PARTY_NOTICES.md /usr/share/doc/kokoro-tone/
 
 # Non-root, no shell, no home: the container is read-only apart from /tmp.
 RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin tone

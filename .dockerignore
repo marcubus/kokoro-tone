@@ -10,7 +10,9 @@ __pycache__
 !.env.example
 tests
 docs
+.scratch
 # deployment data, supplied by the mount
 lexicon
 *.md
 !README.md
+!docker/THIRD_PARTY_NOTICES.md

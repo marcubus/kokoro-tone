@@ -14,7 +14,7 @@ export KOKORO_VERSION := $(shell cat engine.version)
 
 .DEFAULT_GOAL := help
 .PHONY: help install lint fmt fmt-check type-check check verify security-check pin-check test \
-        version engine config build up down restart ps logs \
+        version engine config build up up-image pull down restart ps logs \
         narrate analyse clean
 
 help: ## Show this help
@@ -68,6 +68,12 @@ build: ## Build the gateway image
 
 up: ## Build, then start the engine and gateway
 	$(COMPOSE) up -d --build
+
+up-image: ## Start the stack from the released gateway image (no local build)
+	$(COMPOSE) -f compose.yml -f compose.prod.yml up -d
+
+pull: ## Pull the released gateway image (KOKORO_TONE_VERSION, default latest)
+	$(COMPOSE) -f compose.yml -f compose.prod.yml pull kokoro-tone
 
 down: ## Stop and remove both containers
 	$(COMPOSE) down

@@ -82,3 +82,29 @@ increments per release; tags are prefixed with `v`. The version lives in
 `src/kokoro_tone/__init__.py`, and CI's `tag-check` fails if a tag disagrees
 with it.
 
+## Releasing
+
+1. Bump `__version__` in `src/kokoro_tone/__init__.py` and add the
+   `CHANGELOG.md` entry.
+2. Run `make verify` and `make build`.
+3. Merge, then tag the merge commit: `git tag vYYYY.MM.MICRO` and
+   `git push origin vYYYY.MM.MICRO`.
+
+The `release` workflow re-checks that the tag matches `__version__`, builds
+`linux/amd64` and `linux/arm64` images, pushes them to
+`ghcr.io/<owner>/kokoro-tone` with the full version, the `YYYY.MM` line and
+`latest`, scans them with Trivy (failing on unfixed HIGH or CRITICAL findings),
+and signs the image index with cosign (keyless). The GitHub release is only
+created after the image job succeeds.
+
+The `YYYY.MM` tag is a floating "newest release this month" pointer, like
+`python:3.12`; the full `YYYY.MM.MICRO` tag is the immutable pin. Verify a
+release with:
+
+```bash
+cosign verify ghcr.io/<owner>/kokoro-tone:YYYY.MM.MICRO \
+  --certificate-identity-regexp '^https://github.com/<owner>/kokoro-tone/.github/workflows/release.yml@refs/tags/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+

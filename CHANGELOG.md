@@ -7,6 +7,17 @@ month and increments per release; tags are prefixed with `v`.
 
 ## [Unreleased]
 
+### Added
+
+- Publish signed, scanned `linux/amd64` and `linux/arm64` images to
+  `ghcr.io/marcubus/kokoro-tone` on a `v*` tag: full version, `YYYY.MM` line and
+  `latest` tags, a Trivy scan, and a keyless cosign signature. The GitHub
+  release is only created after the image job succeeds.
+- Add `compose.prod.yml`, `make up-image` and `make pull` to run the released
+  image without a local build.
+- Ship `docker/THIRD_PARTY_NOTICES.md` in the image, covering the GPL-licensed
+  FFmpeg and Rubber Band binaries.
+
 ### Changed
 
 - Moved the upstream HTTP client from `httpx` to `httpx2`, the maintained
