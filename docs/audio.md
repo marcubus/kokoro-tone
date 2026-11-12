@@ -24,8 +24,10 @@ the master, so they are what a listener actually hears rather than the nominal
 filter gain. A shelf's gain is asymptotic: `+5 dB @ 6 kHz` arrives as +2.4 dB in
 the 8 kHz octave band.
 
-Only `bright` is calibrated; the rest are provisional and the `gain` column is
-nominal, not delivered. See the [to-do](../README.md#to-do).
+Every preset except `neutral` is **experimental**. `bright` was calibrated
+against measurement but still does not sound right, so none of the presets is
+validated, and the `gain` column is nominal, not delivered. See the
+[to-do](../README.md#to-do).
 
 Tilt is moved from **both ends** - a treble shelf up and a low-mid shelf down.
 The bass cut is about a third of the effect (the `+5` shelf alone gives
@@ -33,9 +35,8 @@ The bass cut is about a third of the effect (the `+5` shelf alone gives
 2.5 dB smaller for the same brightness. That matters because a large treble
 boost is what makes sibilants spit.
 
-The `bright` constants are calibrated against measurement, not derived. A
-linear shelf's gain is voice-independent, so one constant per preset is correct:
-the same
+A preset's EQ is a single constant, not a per-voice curve. A linear shelf's gain
+is voice-independent, so one constant per preset is correct: the same
 `+5 dB` shelf moves 13 male voices by +0.40…+0.67 dB/oct (mean +0.52,
 sd 0.09). Per-voice preset tables were measured and rejected - closing the
 2.6 dB/oct spread between the darkest and brightest voice would take roughly

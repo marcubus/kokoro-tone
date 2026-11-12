@@ -116,6 +116,9 @@ baseline tone and still punctuates it:
 Line 1 is `warm` from `instructions`, line 2 is `excited`, line 3 is `warm`
 again - `neutral` cleared the override and exposed the request default.
 
+Every preset except `neutral` is experimental and uncalibrated; see
+[Prosody and mastering](audio.md).
+
 Within a single turn there is no blending: `[emotion:excited]` alongside
 `instructions: "warm"` gives `excited`, not a mixture. The tag replaces the
 request-level choice; it does not combine with it.

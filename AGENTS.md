@@ -104,8 +104,9 @@ These were learned the hard way. Following them avoids re-deriving them.
 
 ## Calibration status
 
-Preset calibration is an open to-do in `README.md` § To-do. Only `bright` is
-calibrated; do not present the others as validated.
+Preset calibration is an open to-do in `README.md` § To-do. Every preset except
+`neutral` is experimental; `bright` was calibrated but is still not right. Do not
+present any preset as validated.
 
 ## Deployment
 

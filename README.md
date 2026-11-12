@@ -107,7 +107,7 @@ independently.
 |---|---|---|---|
 | `instructions` | accepted but not applied; the response has no prosody change | keyword-matched to one preset (warm, bright, sad, tired, angry, whisper, excited); the file-wide default that `[emotion:]` overrides per turn | `tests/test_prosody.py` |
 | Pitch | applies `rate`, but not pitch or volume | formant-preserving shift via `rubberband`, clamped | `tests/test_audio.py` |
-| Per-preset tone | not part of the endpoint | rate, pitch, gain and EQ per preset; only `bright` is calibrated so far | `tests/test_audio.py` |
+| Per-preset tone | not part of the endpoint | rate, pitch, gain and EQ per preset; every preset except `neutral` is experimental | `tests/test_audio.py` |
 | Mastering | dry model output | low-shelf, high-shelf, compression, tanh saturation, one linear gain to −16 LUFS, limiter at −1 dBFS sample peak | `tests/test_audio.py` |
 | Loudness across turns | not applicable | one gain for the whole file; a whispered turn is never normalised back up | `tests/test_audio.py` |
 | Voice loudness | dry model output, 9.2 dB spread across English voices | static per-voice casting gain for all 72 measured voices, blends interpolated, on both the mastered and passthrough paths | `tests/test_levelling.py` |
@@ -128,12 +128,14 @@ larger model, not to claim its range.
 
 ## To-do
 
-Preset calibration is the open piece. Only `bright` has been calibrated against
-a measured post-master tilt; the rest are provisional.
+Preset calibration is the open piece. Every preset except `neutral` is
+experimental. `bright` was calibrated against a measured post-master tilt but
+still does not sound right, so none of the presets should be treated as
+validated.
 
-- [ ] Calibrate `warm`, `sad`, `tired`, `angry`, `whisper` and `excited` the way
-      `bright` was: measure post-master tilt and HF against neutral for the same
-      voice and prose, then set the constants from the result.
+- [ ] Calibrate `warm`, `bright`, `sad`, `tired`, `angry`, `whisper` and
+      `excited`: measure post-master tilt and HF against neutral for the same
+      voice and prose, then set the constants from the result and check by ear.
 - [ ] Fix preset gain delivery. Gain is applied before the preset EQ and the
       tone chain, so the nominal column is not what a listener hears. Measured
       on `af_heart`, same sentence, after the master: warm +0.3 dB, bright
