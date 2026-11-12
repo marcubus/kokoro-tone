@@ -70,15 +70,26 @@ jobs:
       - name: Smoke test the image
         run: docker run --rm kokoro-tone:ci python -c "import kokoro_tone, kokoro_tone.context, kokoro_tone.main, kokoro_tone.pipeline; print(kokoro_tone.__version__, 'imports ok')"
 
+      # SARIF is built with every severity so code scanning sees the full
+      # picture. The action drops the severity filter in this mode, so the
+      # HIGH/CRITICAL gate is a separate step below.
       - name: Scan the image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: kokoro-tone:ci
+          ignore-unfixed: true
+          exit-code: "0"
+          format: sarif
+          output: trivy-results.sarif
+
+      - name: Fail on high or critical vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: kokoro-tone:ci
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
-          format: sarif
-          output: trivy-results.sarif
+          format: table
 
       - name: Upload scan results
         if: always()

@@ -25,6 +25,10 @@ month and increments per release; tags are prefixed with `v`.
 
 ### Changed
 
+- Drop `pip` from the runtime image, since nothing installs Python packages
+  after the build stage, and split the CI Trivy scan into a full-severity SARIF
+  upload plus a separate `HIGH,CRITICAL` gate. The SARIF mode ignores the
+  severity filter, so medium-severity findings were failing the build.
 - Added a README to-do for preset calibration and the known `sad`/`whisper`
   work.
 - Re-rendered the emotion samples from the live container with a one-second

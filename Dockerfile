@@ -79,6 +79,16 @@ RUN apt-get update \
         librubberband2 libmp3lame0 libopus0 libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
 
+# The runtime never installs Python packages: uv builds the venv in the build
+# stage. Drop the base image's pip so its vulnerabilities do not ship, and do
+# not fail the image scan.
+RUN rm -rf \
+        /usr/local/lib/python3.12/site-packages/pip \
+        /usr/local/lib/python3.12/site-packages/pip-*.dist-info \
+        /usr/local/bin/pip \
+        /usr/local/bin/pip3 \
+        /usr/local/bin/pip3.12
+
 WORKDIR /app
 
 COPY --from=ffmpeg /usr/local/bin/ffmpeg /usr/local/bin/ffmpeg
