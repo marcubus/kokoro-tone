@@ -12,6 +12,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from . import filters
 from .limits import DEFAULT_LIMITS, Limits
 from .parse import EMOTION_RESET, Turn
 
@@ -191,10 +192,14 @@ def resolve(
     speed = request_speed if request_speed and request_speed > 0 else 1.0
     rate = preset.rate * (turn.rate or 1.0) * speed
 
+    chain = preset.filters
+    if turn.filter is not None:
+        chain = (*chain, filters.render(turn.filter))
+
     return Prosody(
         rate=_clamp(rate, limits.rate_min, limits.rate_max),
         pitch_st=_clamp(preset.pitch_st, limits.pitch_min, limits.pitch_max),
         gain_db=preset.gain_db,
-        filters=preset.filters,
+        filters=chain,
         preset=preset_name,
     )

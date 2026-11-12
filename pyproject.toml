@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kokoro-tone"
-description = "OpenAI-compatible TTS gateway for Kokoro-FastAPI, with prosody presets and a tone chain."
+description = "Script-first TTS gateway for Kokoro-FastAPI: pronunciation, heteronyms, normalisation, and an experimental prosody layer."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }

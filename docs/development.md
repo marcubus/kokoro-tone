@@ -17,6 +17,10 @@ The package is flat; each module owns one seam.
 | `telemetry.py` | the OpenTelemetry meter, instruments, views and OTLP exporter |
 | `upstream.py` | the `Upstream` client: health probe, voices, PCM synthesis and passthrough streaming |
 | `request.py` | request validation, voice aliases and markup rewriting |
+| `script.py` | the script-layer facade: `ScriptInput` → `Compiled`, no HTTP or audio |
+| `script_cli.py` | the standalone compiler CLI (`python -m kokoro_tone.script_cli`) |
+| `filters.py` | declarative ffmpeg blocks, their schema and the `[filter:]` builder |
+| `plugins.py` | JSON and entry-point discovery for declarative filter manifests |
 | `context.py` | `Context` and the FastAPI dependency that supplies it |
 | `pipeline.py` | `prepare` and `render`: the order of operations, without FastAPI |
 | `routes.py` | the HTTP routes, passthrough streaming and SSE envelope |
@@ -51,6 +55,7 @@ make test         # pytest
 | `make config` | validate compose interpolation (requires `.env`) |
 | `make build` / `make up` / `make down` / `make logs` | container lifecycle |
 | `make narrate FILE=script.txt OUT=out.mp3` | render a transcript |
+| `make script FILE=script.txt` | compile a script to spoken text, no server |
 | `make analyse FILE=out.mp3` | measure F0, syllables/s, centroid, LUFS, TP |
 
 `ffmpeg` must be on `PATH` for the audio tests.

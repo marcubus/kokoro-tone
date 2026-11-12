@@ -5,6 +5,23 @@ the deployment lexicon, heteronym senses, and the opt-in digit and acronym
 layers. Both `pronunciations` and `normalise` are optional; a request without
 them behaves exactly as before.
 
+This is the stable part of the gateway. It is deterministic, engine-independent
+and usable on its own:
+
+```bash
+printf 'The bass player read HTML at 15%%.\n' \
+  | python -m kokoro_tone.script_cli --lexicon lexicon/lexicon.json --normalise --json
+```
+
+The HTTP endpoint and the CLI share `script.compile_script`; neither adds a
+second interpretation of the text.
+
+![Pronunciation resolution: a specificity ladder picks the rule set, one scan applies it, and an uncued heteronym becomes a reported guess](diagrams/pronunciation-resolution.png)
+
+*Diagram: [source](diagrams/pronunciation-resolution.excalidraw). The ladder
+decides which rule wins; the scan decides what the listener hears. A bare
+heteronym is guessed and reported rather than silently passed through.*
+
 ## Word mapping and normalisation
 
 A script is easier to keep readable when the engine-specific spellings live in
@@ -80,7 +97,10 @@ a reliable signal, a bare word is voiced from its context rules:
 | Word | Cue | Chosen |
 |---|---|---|
 | `record` | `the` before | noun, `rek-awd` |
+| `record` | `finance` before | noun, `rek-awd` |
 | `record` | `to` before | verb, `rih-kawd` |
+| `separate` | a number or determiner before | adjective, `sep-uh-rut` |
+| `live` | a determiner before | adjective, `lyve` |
 | `bass` | `band`, `music` after | music, `base` |
 | `bass` | `fish`, `swam` after | fish, `bas` |
 | `minute` | `detail` after | adjective, `my-newt` |

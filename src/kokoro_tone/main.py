@@ -13,7 +13,7 @@ from opentelemetry.sdk.metrics.export import MetricReader
 
 from . import __version__, upstream
 from .context import Context
-from .errors import RequestError, error_body
+from .errors import AmbiguityError, RequestError, error_body
 from .lexicon import Lexicon
 from .log import configure, event, exception
 from .middleware import BodyLimitMiddleware, TelemetryMiddleware
@@ -81,7 +81,12 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
 async def request_error_handler(request: Request, exc: RequestError) -> JSONResponse:
     _record_error(request, "invalid_request")
     event("error", path=request.url.path, status=400, detail=str(exc)[:160])
-    return JSONResponse(error_body(str(exc), 400), status_code=400)
+    body = error_body(str(exc), 400)
+    if isinstance(exc, AmbiguityError):
+        body["error"]["code"] = "ambiguous_heteronym"
+        body["error"]["param"] = "input"
+        body["error"]["ambiguities"] = exc.ambiguities
+    return JSONResponse(body, status_code=400)
 
 
 async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:

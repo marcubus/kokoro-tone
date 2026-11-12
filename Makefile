@@ -15,7 +15,7 @@ export KOKORO_VERSION := $(shell cat engine.version)
 .DEFAULT_GOAL := help
 .PHONY: help install lint fmt fmt-check type-check check verify security-check pin-check test \
         version engine config build up up-image pull down restart ps logs \
-        narrate analyse clean
+        narrate script analyse clean
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -91,6 +91,11 @@ narrate: ## Render a transcript through the running stack: make narrate FILE=scr
 	@test -n "$(FILE)" || { echo "FILE is required (make narrate FILE=script.txt)"; exit 2; }
 	$(COMPOSE) exec -T kokoro-tone python scripts/narrate.py - --out - \
 		--url http://127.0.0.1:8000 < "$(FILE)" > "$(OUT)"
+
+script: ## Compile a script to spoken text, no server: make script FILE=script.txt [NORMALISE=1]
+	@test -n "$(FILE)" || { echo "FILE is required (make script FILE=script.txt)"; exit 2; }
+	uv run python -m kokoro_tone.script_cli --lexicon lexicon/lexicon.json \
+		$(if $(NORMALISE),--normalise,) "$(FILE)"
 
 analyse: ## Measure an audio file: make analyse FILE=out.mp3
 	@test -n "$(FILE)" || { echo "FILE is required (make analyse FILE=out.mp3)"; exit 2; }

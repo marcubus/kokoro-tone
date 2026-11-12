@@ -9,6 +9,7 @@ expensive to reverse, the options that lost, and what the choice costs.
 | [0012](0012-pronunciation-lexicon-and-ambiguity-policy.md) | Pronunciation belongs to the gateway, and a guess is better than a failed render | accepted |
 | [0013](0013-level-voice-before-emotion.md) | Level the voice before applying emotion | accepted (implemented) |
 | [0014](0014-opentelemetry-metrics.md) | OpenTelemetry metrics through a collector | accepted (implemented) |
+| [0015](0015-script-layer-is-the-product.md) | The script layer is the product; tone is an experimental lab | accepted |
 
 ## Why the numbers start at 0009
 

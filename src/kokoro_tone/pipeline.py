@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 
-from . import audio, levelling, lexicon, parse, pronounce, request
+from . import audio, levelling, parse, pronounce, request, script
 from .context import Context
 from .errors import RequestError
 from .parse import Turn
@@ -48,7 +48,7 @@ def volume_multiplier(voice: str | None, ctx: Context) -> float | None:
     return value if abs(value - 1.0) > 1e-4 else None
 
 
-def _validate(body: SpeechRequest, ctx: Context) -> tuple[str, str]:
+def _validate(body: SpeechRequest, ctx: Context) -> str:
     limits = ctx.settings.limits
     request.check_model(body.model)
 
@@ -60,89 +60,35 @@ def _validate(body: SpeechRequest, ctx: Context) -> tuple[str, str]:
     stream_format = (body.stream_format or "audio").lower()
     if stream_format not in ("audio", "sse"):
         raise RequestError("stream_format must be 'audio' or 'sse'")
-    ambiguity = (body.ambiguity or "guess").strip().lower()
-    if ambiguity not in ("guess", "ignore"):
-        raise RequestError("ambiguity must be 'guess' or 'ignore'")
-    return stream_format, ambiguity
+    return stream_format
 
 
 def prepare(body: SpeechRequest, ctx: Context) -> Prepared:
-    """Validate the body, resolve voices and rewrite the text into turns."""
-    limits = ctx.settings.limits
-    stream_format, ambiguity = _validate(body, ctx)
-
-    instructions = request.clean_instructions(body.instructions, limits)
-    data = ctx.lexicon.current()
-    aliases, voice = request.voice_spec(body.voice, limits, data)
-    default_voice = voice or ctx.settings.default_voice
-    payload = request.sanitise_input(body.input)
-
-    try:
-        flags = pronounce.parse_flags(body.normalise, ctx.settings.normalise)
-        request_global, request_alias = lexicon.parse_request_sets(body.pronunciations, limits)
-    except parse.MarkupError as exc:
-        raise RequestError(str(exc)) from exc
-
-    token = request.voice_token(body.voice)
-    found: list[pronounce.Ambiguity] = []
-    collect = found if ambiguity != "ignore" else None
-    guessing = ambiguity == "guess"
-    plain = isinstance(payload, str) and not parse.has_markup(payload)
-    if isinstance(payload, str) and plain:
-        payload = request.rewrite(
-            payload,
-            token,
-            default_voice,
-            request_global,
-            request_alias,
-            data,
-            flags,
-            ctx.settings.normalise,
-            limits,
-            collect,
-            guessing,
-        )
-        if len(payload) > limits.input_chars:
-            raise RequestError(f"input exceeds {limits.input_chars} characters")
-
-    try:
-        turns = parse.parse_input(payload, default_voice, limits)
-    except parse.MarkupError as exc:
-        raise RequestError(str(exc)) from exc
-
-    tokens = [turn.voice for turn in turns]
-    request.apply_aliases(turns, aliases)
-
-    if not plain:
-        for turn, turn_token in zip(turns, tokens, strict=True):
-            turn.text = request.rewrite(
-                turn.text,
-                turn_token,
-                turn.voice,
-                request_global,
-                request_alias,
-                data,
-                flags,
-                ctx.settings.normalise,
-                limits,
-                collect,
-                guessing,
-                turn.markers,
-            )
-        total = sum(len(turn.text) for turn in turns)
-        if total > limits.input_chars:
-            raise RequestError(f"input exceeds {limits.input_chars} characters")
+    """Validate the body, then let the script layer rewrite the text into turns."""
+    stream_format = _validate(body, ctx)
+    compiled = script.compile_script(
+        script.ScriptInput(
+            input=body.input,
+            voice=body.voice,
+            instructions=body.instructions,
+            pronunciations=body.pronunciations,
+            normalise=body.normalise,
+            ambiguity=body.ambiguity,
+        ),
+        lexicon_data=ctx.lexicon.current(),
+        settings=ctx.settings,
+    )
 
     return Prepared(
-        turns=turns,
-        voice=default_voice,
-        payload=payload,
-        instructions=instructions,
-        flags=flags,
-        found=found,
-        ambiguity=ambiguity,
+        turns=list(compiled.turns),
+        voice=compiled.voice,
+        payload=compiled.payload,
+        instructions=compiled.instructions,
+        flags=compiled.flags,
+        found=list(compiled.found),
+        ambiguity=compiled.ambiguity,
         stream_format=stream_format,
-        passthrough=request.is_passthrough(payload, instructions),
+        passthrough=compiled.passthrough,
     )
 
 

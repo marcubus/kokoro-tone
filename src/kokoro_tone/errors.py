@@ -15,6 +15,18 @@ class RequestError(ValueError):
     """
 
 
+class AmbiguityError(RequestError):
+    """A heteronym the script left open, in `ambiguity: "error"` mode.
+
+    Carries the same detail the response body publishes, so the HTTP layer does
+    not have to re-scan the text to explain the failure.
+    """
+
+    def __init__(self, message: str, ambiguities: list[dict]) -> None:
+        super().__init__(message)
+        self.ambiguities = ambiguities
+
+
 _ERROR_TYPES = {
     400: "invalid_request_error",
     401: "authentication_error",

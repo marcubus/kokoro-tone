@@ -5,8 +5,11 @@
 [![python](https://img.shields.io/badge/python-3.12-blue.svg)](pyproject.toml)
 
 An OpenAI-compatible speech endpoint for a small, local TTS model - built on
-[Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI), with the prosody and
-mastering that make it feel closer to a much larger one.
+[Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI). The strongest part is
+a **script layer**: deterministic pronunciation, heteronym, acronym and number
+handling that turns a readable script into the text the engine should say. An
+**experimental prosody layer** sits on top, for trying measurable DSP against a
+model that cannot take direction.
 
 > **Unofficial hobby project.** This is an independent wrapper. It is not
 > affiliated with, endorsed by, or supported by the Kokoro-FastAPI maintainers,
@@ -17,37 +20,35 @@ mastering that make it feel closer to a much larger one.
 
 [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) is tiny, fast and
 CPU-friendly. It is also not an instruction-following model: it will read the
-words, but it will not take direction. **The goal is to make a lightweight TTS model approximate the
-behaviour of a much more expensive one** - using signal processing and a
-familiar API, so a hobby lab gets narration that feels closer to a hosted model
-without paying for it.
+words, but it will not take direction, and it has no opinion about how a word
+should be pronounced. **The useful part is the layer that decides what the words
+are** - which reading of *bass*, whether `HTML` is a word or four letters,
+whether `3,913` is a number or a model name - and does it the same way every
+time.
 
-Concretely, `instructions` and `[emotion:…]` become measurable prosody (rate,
-pitch, gain and EQ), the whole file is mastered to a broadcast-ish loudness
-target, and the wire format is OpenAI's. The model stays Kokoro-82M.
+The script layer is stable, deterministic and useful on its own. It does not
+need Kokoro, ffmpeg or the HTTP endpoint; `python -m kokoro_tone.script_cli`
+compiles a script with no server running. The prosody presets are the opposite:
+experimental, uncalibrated, and explicitly a lab for trying rate, pitch, gain and
+spectral tilt. They are not a claim that a filter can add acting.
 
 This is a hobby project for my self-hosted lab. It runs on a Dell OptiPlex 7060
 (Intel Core i5-8500T, 16 GB RAM, Intel UHD 630 - no discrete GPU). The engine is
 CPU-only; the gateway is a thin FastAPI + ffmpeg shim. It is built for one
 household on a LAN, not for multi-tenant production.
 
-**In scope:** narration, podcast-style dialogue, assistant speech, OpenAI client
-compatibility, and a bounded LAN service.
+**In scope:** script interpretation, narration, podcast-style dialogue,
+assistant speech, OpenAI client compatibility, and a bounded LAN service.
 
 **Out of scope:** training or fine-tuning, voice cloning, parity with OpenAI's
 instruction-following model, and real-time mastering while streaming.
 
 ## How it works
 
-```
-client ──POST /v1/audio/speech──▶ kokoro-tone (FastAPI + ffmpeg, no model)
-                                    │  parse markup, map instructions
-                                    ▼
-                                  kokoro (Kokoro-FastAPI, Kokoro-82M)
-                                    │  raw PCM back
-                                    ▼
-                                  kokoro-tone: prosody → tone chain → loudness → encode
-```
+![Request lifecycle: a plain request streams unmastered, while a tagged request is rendered, mastered and encoded once](docs/diagrams/request-lifecycle.png)
+
+*Diagram: [source](docs/diagrams/request-lifecycle.excalidraw). The two paths
+are the whole trade-off: streaming is unmastered, mastering is buffered.*
 
 The gateway is a client of the engine, not a fork. It asks for raw PCM, applies
 per-turn prosody, concatenates the turns, masters the whole file once, and
@@ -97,34 +98,50 @@ trusted LAN.
 
 ## What this adds over the engine
 
-Kokoro-FastAPI is the engine, and it is good at what it does: inference,
-voices, blending and chunking. The table below is the set of presentation-layer
-features I wanted on top of its OpenAI endpoint. The gateway supplies them as a
-client, without patching the engine, so the engine can be upgraded
-independently.
+Kokoro-FastAPI is the engine, and it is good at what it does: inference, voices,
+blending and chunking. The gateway supplies presentation features as a client,
+without patching the engine, so the engine can be upgraded independently.
+
+### Script layer - the hero
+
+This is the part with the stable contract: text in, spoken text out, the same
+way every time. It runs without the engine and without HTTP.
+
+| Capability | Engine's OpenAI endpoint | kokoro-tone | Proven by |
+|---|---|---|---|
+| Word → sound mapping | none | ordered literal rules with optional context, per-voice sets and server aliases | `tests/test_pronounce.py` |
+| Heteronym senses | the engine's own tagger, unreliable on these | `[sense:word=sense]`, a specificity ladder, and a *reported* guess instead of silence | `tests/test_pronounce.py` |
+| Ambiguity policy | not applicable | `guess` (default), `ignore`, or `error` with the pasteable tags; the header names what was assumed | `tests/test_api.py` |
+| Number and acronym normalisation | none | Australian cardinals, decimals, percent, ranges and letter-spelled acronyms, all opt-in | `tests/test_normalise.py` |
+| Deployment lexicon | server-side config only | JSON sets, per-voice rules, overlays, aliases and hot reload | `tests/test_lexicon.py` |
+| Script markup | not a recognised tag set | `[voice:]`, `[emotion:]`, `[rate:]`, `[pause:]`, `[sense:]`, `[filter:]` | `tests/test_parse.py` |
+| Multi-turn `input` | the OpenAI endpoint takes a string only | an array of `{text, voice, instructions}` turns, rendered with gaps into one file | `tests/test_api.py` |
+| Alias maps | `voice_aliases` is server-side config, not an OpenAI request field | `voice` accepts a map, with an `id` entry setting the default | `tests/test_api.py` |
+| Standalone compiler | not applicable | `python -m kokoro_tone.script_cli`, no server or engine | `tests/test_script.py` |
+
+### Audio layer - experimental
+
+Every preset except `neutral` is experimental; see the [to-do](#to-do). The
+mechanics are real, the calibration is not finished.
 
 | Capability | Engine's OpenAI endpoint | kokoro-tone | Proven by |
 |---|---|---|---|
 | `instructions` | accepted but not applied; the response has no prosody change | keyword-matched to one preset (warm, bright, sad, tired, angry, whisper, excited); the file-wide default that `[emotion:]` overrides per turn | `tests/test_prosody.py` |
 | Pitch | applies `rate`, but not pitch or volume | formant-preserving shift via `rubberband`, clamped | `tests/test_audio.py` |
 | Per-preset tone | not part of the endpoint | rate, pitch, gain and EQ per preset; every preset except `neutral` is experimental | `tests/test_audio.py` |
+| Declarative filters | not a recognised tag | `[filter:block key=value ...]` selects a validated, typed DSP block; clients never supply filter syntax | `tests/test_filters.py` |
 | Mastering | dry model output | low-shelf, high-shelf, compression, tanh saturation, one linear gain to −16 LUFS, limiter at −1 dBFS sample peak | `tests/test_audio.py` |
 | Loudness across turns | not applicable | one gain for the whole file; a whispered turn is never normalised back up | `tests/test_audio.py` |
 | Voice loudness | dry model output, 9.2 dB spread across English voices | static per-voice casting gain for all 72 measured voices, blends interpolated, on both the mastered and passthrough paths | `tests/test_levelling.py` |
-| Multi-turn `input` | the OpenAI endpoint takes a string only | an array of `{text, voice, instructions}` turns, rendered with gaps into one file | `tests/test_api.py` |
-| `[emotion:…]` | not a recognised tag | preset selector, sticky across turns and voices; `[emotion:neutral]` clears it | `tests/test_parse.py` |
 | OpenAI SSE | `stream: true` returns chunked audio, not the OpenAI event contract | `stream_format: "sse"` → `speech.audio.delta` frames + `speech.audio.done` | `tests/test_api.py` |
 | OpenAI errors | FastAPI `{"detail": …}` | `{"error": {message, type, param, code}}`, 400/401/413/502 mapped | `tests/test_api.py` |
-| Alias maps | `voice_aliases` is server-side config, not an OpenAI request field | `voice` accepts a map, with an `id` entry setting the default | `tests/test_api.py` |
 | Input bounds | not part of the endpoint | every request is capped (rate, pitch, pause, turns, aliases, body) with env overrides | `tests/test_security.py` |
-| Word → sound mapping | none | ordered literal rules with optional context, per-voice sets and server aliases | `tests/test_pronounce.py` |
-| Number and acronym normalisation | none | Australian cardinals, decimals, percent, ranges and letter-spelled acronyms, all opt-in | `tests/test_normalise.py` |
 
 **Emotion is prosody, not acting.** Kokoro's glottal source is fixed: a filter
 can move pitch, rate, loudness and spectral tilt, but it cannot add breathiness,
 creak, a smile or F0 *range* inside a sentence. `[emotion:sad]` means "slower,
-lower, darker", not "sad". The point is to approximate the *behaviour* of a
-larger model, not to claim its range.
+lower, darker", not "sad". The point is to experiment with measurable behaviour,
+not to claim a larger model's range.
 
 ## To-do
 
@@ -146,6 +163,12 @@ validated.
 - [ ] Rework `sad` and `whisper`. `sad`'s 6 kHz lowpass plus −3 dB reads as
       muffled rather than sad, and `whisper`'s 8 kHz lowpass removes the air
       that would make it read as a whisper.
+- [ ] Move the preset table onto the declarative filter registry, so a preset is
+      data that can be edited and reloaded rather than a Python constant. Keep
+      `tests/test_audio.py`'s pinned values as the migration check.
+- [ ] Add a calibration sweep (`make sweep`) over preset × voice × prose,
+      reusing `make analyse` for tilt, HF, LUFS and F0. That is what turns
+      "experimental" into falsifiable.
 
 The [sample page](docs/samples/index.md) is illustrative and will be re-rendered
 when these land.
@@ -201,6 +224,20 @@ Every example assumes `Authorization: Bearer $KOKORO_TONE_API_KEY` and
 `http://kokoro-tone:8000/v1` (the compose service name, reachable from another
 container on the same network).
 
+### The script layer on its own
+
+No server, no engine. This is the part you can put in a pipeline or an editor
+hook:
+
+```bash
+printf 'The bass player read HTML at 15%%.\n' \
+  | python -m kokoro_tone.script_cli --lexicon lexicon/lexicon.json --normalise --json
+```
+
+The output is the text the engine would receive, plus any heteronym the rules
+had to guess. `--ambiguity ignore` leaves those words alone; `--voice` selects a
+voice's rule set. It is the same code path the HTTP endpoint uses.
+
 ### Passthrough - unmastered, fastest
 
 ```bash
@@ -234,8 +271,10 @@ curl -sS http://kokoro-tone:8000/v1/audio/speech \
 
 Tags are sticky: `[voice:]` and `[emotion:]` apply until changed. `[pause:]`
 adds silence after the turn it follows; `[rate:]` multiplies the current rate.
-Unknown `[tag:value]` pairs are left in the text untouched. `[emotion:neutral]`
-clears the emotion, so a script can return to the request default mid-file.
+`[filter:block key=value ...]` selects one declarative DSP block for the turn,
+and `[filter:none]` clears it. Unknown `[tag:value]` pairs are left in the text
+untouched. `[emotion:neutral]` clears the emotion, so a script can return to the
+request default mid-file.
 
 Changing `[voice:]` resets neither the emotion nor the rate, so a tag set once
 follows every later speaker until it is changed. Request `instructions` set a
@@ -293,11 +332,14 @@ The README is the overview. The reference material lives in `docs/`:
 |---|---|
 | [`docs/usage.md`](docs/usage.md) | request examples, use cases, the engine subset, voices and blends, streaming, errors |
 | [`docs/pronunciation.md`](docs/pronunciation.md) | `pronunciations`, heteronym senses and guessing, `normalise`, per-voice sets, the deployment lexicon |
-| [`docs/audio.md`](docs/audio.md) | `instructions` and `[emotion:]` presets, mastering, passthrough vs rendered gain |
+| [`docs/audio.md`](docs/audio.md) | `instructions` and `[emotion:]` presets, `[filter:]` blocks, mastering, passthrough vs rendered gain |
+| [`docs/plugins.md`](docs/plugins.md) | adding a filter block with a JSON manifest or an entry point |
 | [`docs/voice-loudness.md`](docs/voice-loudness.md) | the per-voice loudness review behind the mastering and casting decisions |
 | [`docs/configuration.md`](docs/configuration.md) | every environment variable and bound, logs, metrics, token rotation, the OpenRouter fallback |
 | [`docs/observability.md`](docs/observability.md) | OpenTelemetry metrics, the collector, Prometheus scraping and alert examples |
 | [`docs/development.md`](docs/development.md) | toolchain, `make` targets, the pinned ffmpeg build, versioning |
+| [`docs/diagrams/README.md`](docs/diagrams/README.md) | diagram sources, conventions and the registry |
+| [`docs/samples/index.md`](docs/samples/index.md) | the emotion sample recordings and their script |
 | [`docs/adr/README.md`](docs/adr/README.md) | architecture decision records and why they exist |
 | [`lexicon/README.md`](lexicon/README.md) | the deployment lexicon's JSON schema |
 

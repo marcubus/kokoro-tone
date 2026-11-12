@@ -9,6 +9,7 @@ which parts each one leans on.
 
 | If you want… | Send | Features that matter | Engine subset |
 |---|---|---|---|
+| **Compile a script without synthesising it** | plain prose plus `normalise: true`, a `pronunciations` map, or `[sense:]` tags | heteronyms, acronyms, numbers, per-voice rules, reported guesses; no server or engine | none - `python -m kokoro_tone.script_cli` |
 | **Narrate a long script or audiobook chapter** | a string with `[voice:]`, `[emotion:]`, `[pause:]`, or a turn array | multi-turn rendering, sticky tags, one mastered file, a loudness target per deliverable | `POST /v1/audio/speech` with `response_format: pcm`, one call per turn |
 | **Produce a two-host podcast** | an alias map (`id`, `host_a`, `host_b`) and per-turn `instructions` | alias defaults, voice blends, per-turn prosody, whole-file mastering so both hosts sit at the same loudness | `voice` names and blends, passed through unchanged |
 | **Speak an assistant's reply in a chat UI** | a plain string, no tags | passthrough, OpenAI SDK compatibility, `stream: true` or `stream_format: "sse"`, no mastering latency | engine streaming and OpenAI voice aliases |
@@ -41,14 +42,31 @@ the engine directly, but they are outside this contract.
 
 The trade-off is deliberate: **a request either streams unmastered or is
 mastered after rendering.** The assistant case takes the first path; the
-narration and podcast cases take the second. See
-[Passthrough, rendering and gain](audio.md#passthrough-rendering-and-gain).
+narration and podcast cases take the second. See the
+[request lifecycle diagram](../README.md#how-it-works) for the two paths, and
+[Passthrough, rendering and gain](audio.md#passthrough-rendering-and-gain) for
+the gain details.
 
 ## Request examples
 
 Every example assumes `Authorization: Bearer $KOKORO_TONE_API_KEY` and
 `http://kokoro-tone:8000/v1` (the compose service name, reachable from another
 container on the same network).
+
+### The script layer without a server
+
+The script compiler is the stable part of the gateway, and it runs on its own:
+
+```bash
+printf 'The bass player read HTML at 15%%.\n' \
+  | python -m kokoro_tone.script_cli --lexicon lexicon/lexicon.json --normalise --json
+```
+
+`--json` prints every turn with its resolved text, voice, emotion, rate and
+filter, plus any heteronym the rules had to guess. Without `--json` it prints
+one line per turn. `--ambiguity ignore` leaves unsettled words alone;
+`--voice` selects that voice's rule set. This is the same `script.compile_script`
+path the HTTP endpoint uses.
 
 ### Passthrough - unmastered, fastest
 
@@ -83,7 +101,8 @@ curl -sS http://kokoro-tone:8000/v1/audio/speech \
 
 Tags are sticky: `[voice:]` and `[emotion:]` apply until changed. `[pause:]`
 adds silence after the turn it follows; `[rate:]` multiplies the current rate.
-Unknown `[tag:value]` pairs are left in the text untouched.
+`[filter:]` selects one declarative DSP block for the turn. Unknown
+`[tag:value]` pairs are left in the text untouched.
 
 `[emotion:neutral]` clears the emotion rather than selecting a preset, so a
 script can return to the request default mid-file:
@@ -152,6 +171,31 @@ alone, so an omitted `emotion` or `rate` is simply unset for that turn.
 ```
 
 `[rate:]` multiplies the preset rate and is clamped to the configured range.
+
+### Declarative filters - experimental
+
+`[filter:block key=value ...]` selects one named DSP block. The client supplies
+numbers, never ffmpeg syntax; the gateway formats a constant template and
+checks the result against a filter allowlist.
+
+```json
+{
+  "input": "[filter:high_shelf gain=4 freq=6000] A brighter line.\n[filter:none] Back to the preset.",
+  "response_format": "mp3"
+}
+```
+
+The shipped blocks are `low_shelf`, `high_shelf`, `lowpass`, `highpass`,
+`compressor`, `saturate` and `gain`. A block's parameters are bounded; an
+unknown block, key or out-of-range value is a `400`, not a silently ignored
+tag. `[filter:none]` clears a sticky filter. The block list is in
+[`src/kokoro_tone/filters.py`](../src/kokoro_tone/filters.py) and discoverable
+with `--list-filters`; add blocks with a JSON manifest through
+`KOKORO_TONE_FILTER_MANIFESTS` or an installed entry point. See
+[`plugins.md`](plugins.md).
+
+This is a lab for measurable DSP, not a claim of acting. See
+[Prosody and mastering](audio.md#declarative-filter-blocks).
 
 ### Turn array (OpenRouter shape)
 

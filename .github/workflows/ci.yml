@@ -68,7 +68,7 @@ jobs:
         run: docker build -t kokoro-tone:ci .
 
       - name: Smoke test the image
-        run: docker run --rm kokoro-tone:ci python -c "import kokoro_tone, kokoro_tone.context, kokoro_tone.main, kokoro_tone.pipeline; print(kokoro_tone.__version__, 'imports ok')"
+        run: docker run --rm kokoro-tone:ci python -c "import kokoro_tone, kokoro_tone.context, kokoro_tone.main, kokoro_tone.pipeline, kokoro_tone.script, kokoro_tone.script_cli, kokoro_tone.filters, kokoro_tone.plugins; print(kokoro_tone.__version__, 'imports ok')"
 
       # SARIF is built with every severity so code scanning sees the full
       # picture. The action drops the severity filter in this mode, so the

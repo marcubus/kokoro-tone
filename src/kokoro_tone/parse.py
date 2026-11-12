@@ -13,9 +13,10 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field, replace
 
+from . import filters
 from .limits import DEFAULT_LIMITS, Limits
 
-TAG_NAMES = ("voice", "emotion", "rate", "pause", "sense")
+TAG_NAMES = ("voice", "emotion", "rate", "pause", "sense", "filter")
 
 # `[emotion:neutral]` clears a sticky emotion instead of selecting a preset. It is
 # the only accepted value with no preset behind it, so it reads as "stop
@@ -49,6 +50,9 @@ class Turn:
     instructions: str | None = None
     gap_ms: int = 0  # silence *after* this turn
     lead_ms: int = 0  # silence *before* this turn (only set on the first)
+    # One declarative DSP block selected with `[filter:block key=value ...]`.
+    # Sticky like `[emotion:]`; `[filter:none]` clears it.
+    filter: filters.FilterSpec | None = None
     # Markers a `[sense:]` tag desugared to. Kept so an unresolved one can be
     # reported without treating a literal `|` in prose as a marker.
     markers: list[str] = field(default_factory=list)
@@ -156,6 +160,14 @@ def _parse_emotion(value: str) -> str | None:
     return None if name == EMOTION_RESET else name
 
 
+def _parse_filter(value: str) -> filters.FilterSpec | None:
+    """Validate a `[filter:block key=value ...]` value against the registry."""
+    try:
+        return filters.parse_spec(value)
+    except filters.FilterError as exc:
+        raise MarkupError(str(exc)) from exc
+
+
 def parse_markup(
     text: str,
     default_voice: str | None = None,
@@ -179,6 +191,7 @@ def parse_markup(
     voice = default_voice
     emotion: str | None = None
     rate: float | None = None
+    filter_spec: filters.FilterSpec | None = None
 
     def flush() -> None:
         raw = "".join(buffer)
@@ -191,6 +204,7 @@ def parse_markup(
                     voice=voice,
                     emotion=emotion,
                     rate=rate,
+                    filter=filter_spec,
                     markers=pending_markers.copy(),
                 )
             )
@@ -225,6 +239,8 @@ def parse_markup(
             voice = validate_voice(value, limits.voice_chars)
         elif name == "emotion":
             emotion = _parse_emotion(value)
+        elif name == "filter":
+            filter_spec = _parse_filter(value)
         else:  # rate
             rate = _parse_rate(value, limits)
 
@@ -286,12 +302,16 @@ def parse_input(
                 if not isinstance(voice, str):
                     raise MarkupError("turn 'voice' must be a string")
                 voice = validate_voice(voice.strip(), limits.voice_chars)
+            filter_value = item.get("filter")
+            if filter_value is not None and not isinstance(filter_value, str):
+                raise MarkupError("turn 'filter' must be a string")
             turns.append(
                 Turn(
                     text=text,
                     voice=voice,
                     emotion=_parse_emotion(emotion) if emotion else None,
                     rate=_optional_float(item.get("rate"), limits),
+                    filter=_parse_filter(filter_value) if filter_value else None,
                     instructions=instructions,
                     markers=markers,
                 )

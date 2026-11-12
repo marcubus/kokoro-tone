@@ -23,7 +23,7 @@
       },
       {
         "match": "Terraform",
-        "say": "tare-ah-form"
+        "say": "ter-uh-form"
       },
       {
         "match": "Ansible",
@@ -1124,6 +1124,28 @@
         }
       },
       {
+        "match": "live",
+        "say": "lyve",
+        "when": {
+          "before": [
+            "a",
+            "an",
+            "the",
+            "this",
+            "that",
+            "these",
+            "those",
+            "his",
+            "her",
+            "their",
+            "our",
+            "my",
+            "your",
+            "its"
+          ]
+        }
+      },
+      {
         "match": "read",
         "say": "reed",
         "when": {
@@ -1362,6 +1384,30 @@
             "its",
             "some",
             "any"
+          ]
+        }
+      },
+      {
+        "match": "record",
+        "say": "rek-awd",
+        "when": {
+          "before": [
+            "finance",
+            "financial",
+            "employment",
+            "medical",
+            "public",
+            "track",
+            "service",
+            "academic",
+            "criminal",
+            "historical",
+            "official",
+            "company",
+            "tax",
+            "health",
+            "school",
+            "credit"
           ]
         }
       },
@@ -1949,6 +1995,46 @@
             "looks",
             "look",
             "looked"
+          ]
+        }
+      },
+      {
+        "match": "separate",
+        "say": "sep-uh-rut",
+        "when": {
+          "before": [
+            "a",
+            "an",
+            "the",
+            "this",
+            "that",
+            "these",
+            "those",
+            "one",
+            "two",
+            "three",
+            "four",
+            "five",
+            "six",
+            "seven",
+            "eight",
+            "nine"
+          ]
+        }
+      },
+      {
+        "match": "separate",
+        "say": "sep-uh-rut",
+        "when": {
+          "before": [
+            "ten",
+            "eleven",
+            "twelve",
+            "several",
+            "many",
+            "multiple",
+            "each",
+            "every"
           ]
         }
       },

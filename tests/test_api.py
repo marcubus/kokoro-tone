@@ -263,6 +263,7 @@ def test_health_reports_voice_levelling(gateway):
 
     assert payload["voice_levelling"]["enabled"] is True
     assert payload["voice_levelling"]["voices"] == len(levelling.VOICE_GAIN_DB)
+    assert "high_shelf" in payload["filters"]
 
 
 def test_voice_map_resolves_alias_tags(gateway):
@@ -754,7 +755,7 @@ def test_a_malformed_sense_tag_is_rejected(ambiguous_gateway):
     assert "invalid sense tag" in response.json()["error"]["message"]
 
 
-@pytest.mark.parametrize("mode", ["shout", "error"])
+@pytest.mark.parametrize("mode", ["shout", "maybe"])
 def test_an_unknown_ambiguity_mode_is_rejected(ambiguous_gateway, mode):
     client, server = ambiguous_gateway
     response = client.post(
@@ -764,8 +765,44 @@ def test_an_unknown_ambiguity_mode_is_rejected(ambiguous_gateway, mode):
     )
 
     assert response.status_code == 400
-    assert "ambiguity must be 'guess' or 'ignore'" in response.json()["error"]["message"]
+    assert "ambiguity must be 'guess', 'ignore' or 'error'" in response.json()["error"]["message"]
     assert server.requests == []
+
+
+def test_ambiguity_error_stops_with_the_tags_to_paste(ambiguous_gateway):
+    client, server = ambiguous_gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "The bass was loud.", "ambiguity": "error"},
+    )
+
+    assert response.status_code == 400
+    error = response.json()["error"]
+    assert error["code"] == "ambiguous_heteronym"
+    assert error["param"] == "input"
+    assert error["ambiguities"] == [
+        {
+            "word": "bass",
+            "offset": 4,
+            "options": ["[sense:bass=music]", "[sense:bass=fish]"],
+            "says": ["base", "bas"],
+            "chosen": "bass=music",
+        }
+    ]
+    assert server.requests == []
+
+
+def test_ambiguity_error_passes_when_every_word_is_settled(ambiguous_gateway):
+    client, server = ambiguous_gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "He plays bass in the band.", "ambiguity": "error"},
+    )
+
+    assert response.status_code == 200
+    assert server.last_request["input"] == "He plays base in the band."
 
 
 def test_a_literal_pipe_in_prose_is_not_a_marker(ambiguous_gateway):

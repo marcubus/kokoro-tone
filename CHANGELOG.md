@@ -9,6 +9,30 @@ month and increments per release; tags are prefixed with `v`.
 
 ### Added
 
+- A standalone script compiler: `script.py` exposes `ScriptInput` →
+  `Compiled`, and `python -m kokoro_tone.script_cli` (or `make script`) resolves
+  pronunciation, heteronyms, acronyms and numbers without a server or the
+  engine. `pipeline.prepare` is now a thin adapter over the same facade.
+  `compile_text()` needs no settings, and `Compiled.text`, `as_dict()` and
+  `to_json()` make the result directly consumable.
+- Filter blocks can be added with a JSON manifest through
+  `KOKORO_TONE_FILTER_MANIFESTS`, without packaging a distribution. Entry-point
+  manifests still work; local files load last and win. See
+  [`docs/plugins.md`](docs/plugins.md).
+- `python -m kokoro_tone.script_cli --list-filters` prints every block, its
+  template and its parameter bounds, so the `[filter:]` surface is discoverable.
+- The script CLI accepts `--ambiguity error` and returns exit code `4` for an
+  unresolved heteronym, distinct from `3` for an invalid script.
+- A declarative filter registry and the `[filter:block key=value ...]` tag.
+  Blocks are constant ffmpeg templates with typed, bounded numeric parameters;
+  the rendered expression is still checked against the filter allowlist and the
+  constants-only grammar. `[filter:none]` clears a sticky filter.
+- Declarative plugin manifests through the `kokoro_tone.filters` entry point.
+  The payload is validated by the same schema as the built-in blocks; a bad
+  manifest is skipped with a warning.
+- `ambiguity: "error"` now does what the docs always said: it returns a `400`
+  with `code: "ambiguous_heteronym"` and the pasteable `[sense:…]` options,
+  instead of being rejected as an unknown mode.
 - OpenTelemetry metrics exported over OTLP/HTTP to a collector: HTTP server
   metrics, speech work and render cost, upstream latency and health, ffmpeg
   stages, mastering gain and peak, and lexicon problems. The gateway exposes no
@@ -25,6 +49,10 @@ month and increments per release; tags are prefixed with `v`.
 
 ### Changed
 
+- Repositioned the project around the script layer: the README, package
+  description and `AGENTS.md` now lead with pronunciation, heteronyms and
+  normalisation, and present the prosody presets as an experimental lab. See
+  [ADR-0015](docs/adr/0015-script-layer-is-the-product.md).
 - Drop `pip` from the runtime image, since nothing installs Python packages
   after the build stage, and split the CI Trivy scan into a full-severity SARIF
   upload plus a separate `HIGH,CRITICAL` gate. The SARIF mode ignores the
@@ -54,6 +82,13 @@ month and increments per release; tags are prefixed with `v`.
 
 ### Documentation
 
+- Added four Excalidraw diagrams - request lifecycle, audio pipeline,
+  pronunciation resolution and observability pipelines - embedded in the docs,
+  with the source files and a registry under [`docs/diagrams/`](docs/diagrams/README.md).
+- Added a "Start here" reading order and a fuller document map to `AGENTS.md`,
+  and filled the missing pronunciation, development, diagram, sample and lexicon
+  entries in the README documentation table.
+- Fixed the sample page's link to the README to-do.
 - Clarified how the tags interact, in [`docs/usage.md`](docs/usage.md),
   [`docs/audio.md`](docs/audio.md) and ADR-0009: `[voice:]` resets neither the
   emotion nor the rate, so a tag set for one speaker follows the next;
@@ -61,6 +96,14 @@ month and increments per release; tags are prefixed with `v`.
   `[emotion:neutral]` returns to; and a preset is applied before the tone chain,
   so it is a delta on the voice's own timbre and the chain's shelves stack with
   it.
+
+### Fixed
+
+- Decided the Morning Glory heteronyms that were being guessed wrong: `record`
+  after a noun cue such as `finance` is the noun, `separate` after a number or
+  determiner is the adjective, and `live` before a noun is the adjective.
+  Corrected `Terraform` to `ter-uh-form`. Added regression coverage in
+  `tests/test_lexicon.py`.
 
 ## [2026.11.2] - 2026-11-11
 

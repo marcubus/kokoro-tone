@@ -19,7 +19,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from . import __version__, audio, levelling, pipeline, pronounce
+from . import __version__, audio, filters, levelling, pipeline, pronounce
 from .context import Context, get_context
 from .log import event
 from .request import MODELS, SpeechRequest
@@ -83,6 +83,7 @@ def health(ctx: Ctx) -> JSONResponse:
         "model": MODELS[0],
         "upstream": ctx.settings.upstream_base_url,
         "rubberband": audio.has_rubberband(),
+        "filters": sorted(filters.registry()),
         "voice_levelling": {
             "enabled": ctx.settings.voice_levelling,
             "voices": len(levelling.VOICE_GAIN_DB),

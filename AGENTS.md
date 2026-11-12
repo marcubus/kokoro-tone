@@ -4,19 +4,39 @@ Guidance for coding agents working in this repository.
 
 ## What this is
 
-An OpenAI-compatible speech gateway in front of Kokoro-FastAPI. The model is
-Kokoro-82M and cannot take direction, so "emotion" here is measurable prosody -
-rate, pitch, gain and spectral tilt - applied with ffmpeg, then mastered once
-per file. Nothing in this repo claims to add acting.
+An OpenAI-compatible speech gateway in front of Kokoro-FastAPI. The product is
+the **script layer**: deterministic pronunciation, heteronym, acronym and number
+handling that turns a readable script into the text the engine should say. It is
+engine-independent and has a standalone CLI. The **tone layer** is an
+experimental lab: the model cannot take direction, so "emotion" here is
+measurable prosody - rate, pitch, gain and spectral tilt - applied with ffmpeg,
+then mastered once per file. Nothing in this repo claims to add acting.
 
 The wire format is the contract. `instructions`, `[emotion:…]` and the turn
 array are OpenAI-shaped inputs that this gateway translates into DSP.
+
+## Start here
+
+Read in this order, and stop when the task is covered:
+
+1. `README.md` - what this is, the feature table and the open to-do.
+2. `docs/audio.md` - pipeline order, presets and the mastering chain.
+3. `docs/usage.md` - request shapes, tags and the engine subset.
+4. `docs/pronunciation.md` - text policy, heteronyms and normalisation.
+5. `docs/development.md` - the module map and the task list.
+6. The ADR for the decision you are about to change, then the code.
+
+The docs are the contract; the code and tests enforce it. When a doc and an ADR
+disagree, the doc is current and the ADR records why the decision was made.
 
 ## Ground rules
 
 - **Filter strings are built from constants only.** `audio._filters` refuses
   anything outside `_FILTER_SAFE`. Never interpolate client text into a filter;
-  a new filter must be a constant or a formatted float.
+  a new filter must be a constant or a formatted float. `[filter:…]` selects a
+  declarative block from `filters.py`; its template is a constant and its
+  parameters are typed, bounded numbers. A plugin manifest is data, validated by
+  the same schema - never a code path that emits a filter.
 - **Presets are pinned by tests.** `tests/test_audio.py` holds `ADR_PRESETS`
   (rate, pitch, gain) and `ADR_FILTERS` (the exact filter tuples). Changing a
   preset means updating those, `docs/audio.md`, ADR-0009 and the changelog in
@@ -59,14 +79,26 @@ optional - CI runs it, and `security-check` fails on `eval`, `pickle`,
 | `README.md` | what differs from OpenAI, each row pointing at its test |
 | `docs/usage.md` | request shapes, markup, tag interactions |
 | `docs/audio.md` | presets, tone chain, how a preset lands, passthrough vs rendered |
+| `docs/pronunciation.md` | request rules, the deployment lexicon, heteronyms and normalisation |
 | `docs/configuration.md` | environment variables and defaults |
 | `docs/observability.md` | OpenTelemetry instruments, cardinality rules, collector and scrape |
 | `docs/voice-loudness.md` | the per-voice measurements behind `levelling.py` |
+| `docs/development.md` | module map, task list, pinned ffmpeg and releasing |
+| `docs/diagrams/README.md` | diagram sources, conventions and the registry |
+| `docs/samples/index.md` | the emotion sample recordings and their script |
+| `lexicon/README.md` | the deployment lexicon's JSON schema |
 | `docs/adr/` | decisions and their rejected alternatives |
 | `CHANGELOG.md` | user-visible changes; CalVer `YYYY.MM.MICRO`, tag `v…` |
 
 Version lives in exactly one place, `src/kokoro_tone/__init__.py`. The engine
 tag lives only in `engine.version`; `make pin-check` enforces both.
+
+## Changing a doc
+
+A doc change is part of the change, not a follow-up. Update the owning doc, the
+README table if the contract moved, and the ADR only if the decision moved. If
+the flow or the pipeline order changed, update the matching diagram source and
+re-render it; the registry is in `docs/diagrams/README.md`.
 
 ## Measuring audio
 

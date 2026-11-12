@@ -54,13 +54,16 @@ class Ambiguity:
     """A heteronym no bare rule settled, so the ordered rules decide it.
 
     `say` is the first candidate's respelling; `chosen` is the compact
-    `word=sense` the response header reports.
+    `word=sense` the response header reports. `options` and `says` are the
+    pasteable tags and their respellings, for the `error` mode's 400 body.
     """
 
     word: str
     offset: int
     say: str
     chosen: str
+    options: tuple[str, ...] = ()
+    says: tuple[str, ...] = ()
 
 
 # ---------------------------------------------------------------- precedence
@@ -230,7 +233,12 @@ class _RuleMatcher:
         self.pairs, self.pairs_by_head = self._pairs(rules)
 
     @staticmethod
-    def _pairs(rules: tuple[Rule, ...]) -> tuple[dict[str, tuple[str, str]], dict[str, list[str]]]:
+    def _pairs(
+        rules: tuple[Rule, ...],
+    ) -> tuple[
+        dict[str, tuple[str, str, tuple[str, ...], tuple[str, ...]]],
+        dict[str, list[str]],
+    ]:
         # The header reports the compact `word=sense`; the scanner uses the
         # first candidate's respelling.
         markers: dict[str, list[tuple[str, str]]] = {}
@@ -243,7 +251,7 @@ class _RuleMatcher:
                 bucket = says.setdefault(rule.match.casefold(), [])
                 if rule.say not in bucket:
                     bucket.append(rule.say)
-        pairs: dict[str, tuple[str, str]] = {}
+        pairs: dict[str, tuple[str, str, tuple[str, ...], tuple[str, ...]]] = {}
         for word, values in says.items():
             if len(values) < 2:
                 continue
@@ -252,7 +260,12 @@ class _RuleMatcher:
             # and `chosen` must name the sense that produces it: a guess and its
             # header have to agree even if a lexicon orders markers differently.
             chosen = next((compact for compact, say in available if say == values[0]), values[0])
-            pairs[word] = (values[0], chosen)
+            pairs[word] = (
+                values[0],
+                chosen,
+                tuple(f"[sense:{compact}]" for compact, _ in available),
+                tuple(say for _, say in available),
+            )
         by_head: dict[str, list[str]] = {}
         for word in pairs:
             by_head.setdefault(word[0], []).append(word)
@@ -303,8 +316,15 @@ class _RuleMatcher:
             # A marker, a longer rule, or a hint that fired all settle it.
             if self._match(index) is not None:
                 continue
-            say, chosen = self.pairs[word]
-            return Ambiguity(word=self.text[index:end], offset=index, say=say, chosen=chosen)
+            say, chosen, options, says = self.pairs[word]
+            return Ambiguity(
+                word=self.text[index:end],
+                offset=index,
+                say=say,
+                chosen=chosen,
+                options=options,
+                says=says,
+            )
         return None
 
     def guess_at(self, index: int) -> tuple[Ambiguity, int, str] | None:

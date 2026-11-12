@@ -99,7 +99,56 @@ turn: a turn's `[emotion:]` replaces the request-level choice rather than
 combining with it. `[voice:]` resets neither the emotion nor the rate, so a tag
 set for one speaker follows the next until it is changed.
 
+## Declarative filter blocks
+
+The preset table is fixed in code. For experimentation, `[filter:block
+key=value ...]` selects one *declarative* block: a constant ffmpeg template plus
+typed, bounded numeric parameters. The client never supplies filter syntax.
+
+```json
+{"input": "[filter:high_shelf gain=4 freq=6000] A brighter line."}
+```
+
+The registry lives in [`../src/kokoro_tone/filters.py`](../src/kokoro_tone/filters.py).
+A block is:
+
+```python
+Block(
+    name="high_shelf",
+    template="treble=g={gain}:f={freq}:w={width}",
+    params=(
+        Param("gain", "float", -20.0, 20.0, 0.0),
+        Param("freq", "int", 1000.0, 16000.0, 6000.0),
+        Param("width", "float", 0.1, 4.0, 0.7),
+    ),
+)
+```
+
+Three checks keep the constants-only invariant intact:
+
+1. Every placeholder in the template must be a declared parameter.
+2. The rendered filter names must be in `ALLOWED_FILTERS`.
+3. The finished expression must match the same character grammar
+   `audio._filters` enforces.
+
+A value outside its bounds, an unknown block or an unknown key is a `400`. A
+filter selected this way is appended after the preset's own filters, before the
+whole-file tone chain.
+
+Plugins are manifests, not code paths. Add a block with a JSON file through
+`KOKORO_TONE_FILTER_MANIFESTS`, or advertise one through the
+`kokoro_tone.filters` entry point; the same validation runs, and a bad manifest
+is skipped with a warning. See [`plugins.md`](plugins.md) for the schema and
+examples. A new filter name also needs its `--enable-filter` in the Dockerfile,
+or the request fails at runtime with `No such filter`.
+
 ## Tone chain and mastering
+
+![Audio pipeline: voice levelling and per-turn prosody run per turn, then one tone chain, one gain and one limiter run over the whole file](diagrams/audio-pipeline.png)
+
+*Diagram: [source](diagrams/audio-pipeline.excalidraw). Levelling comes first so
+the preset gain stays relative; the master runs once because per-segment
+`loudnorm` would erase a whispered turn.*
 
 Applied once, to the whole file:
 

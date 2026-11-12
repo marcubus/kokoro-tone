@@ -7,8 +7,9 @@ so a bad edit fails here before it reaches a request.
 import json
 import pathlib
 
-from kokoro_tone import lexicon
+from kokoro_tone import lexicon, pronounce
 from kokoro_tone.limits import DEFAULT_LIMITS
+from kokoro_tone.normalise import NormaliseSettings
 
 LEXICON = pathlib.Path(__file__).resolve().parent.parent / "lexicon"
 FILE = LEXICON / "lexicon.json"
@@ -86,3 +87,29 @@ def test_the_file_carries_the_deployment_tables():
     assert defaults.acronyms
     assert defaults.letters
     assert "END" in defaults.protect
+
+
+def test_the_morning_glory_heteronyms_are_decided():
+    """The committed lexicon decides the words that were guessed wrong in the
+    Morning Glory render: record after finance, separate after a number, live
+    before a noun, and Terraform's stress."""
+    settings = NormaliseSettings()
+    effective = pronounce.effective_set(None, None, (), {}, data(), settings)
+    rewriter = pronounce.build_rewriter(
+        effective, pronounce.Flags(lexicon=True), settings, DEFAULT_LIMITS
+    )
+    text = (
+        "the regulated finance record against it. "
+        "eleven separate vulnerabilities. "
+        "It is Terraform at scale. "
+        "a live tool."
+    )
+    out = rewriter.apply(text).lower()
+    assert "rek-awd" in out
+    assert "sep-uh-rut" in out
+    assert "ter-uh-form" in out
+    assert "lyve tool" in out
+    assert "rih-kawd" not in out
+    assert "sep-uh-rayt" not in out
+    assert "tare-ah-form" not in out
+    assert "liv tool" not in out

@@ -44,7 +44,7 @@ Loki. The shape is `event=<name> key=value …`, so `grep event=speech` and Loki
 event=lexicon rules=462 voices=0 aliases=0 locale=en-AU overlay=no problems=0
 event=speech status=200 passthrough=yes stream=audio chars=16 turns=1 voice=bm_lewis fmt=mp3 normalise=lexicon+acronyms+numbers ms=1132
 event=speech status=200 passthrough=no stream=audio chars=26 turns=1 voice=bm_lewis fmt=mp3 normalise=lexicon+acronyms+numbers guess=bass=music upstream_ms=1424 render_ms=79 bytes=60044
-event=error path=/v1/audio/speech status=400 detail="ambiguity must be 'guess' or 'ignore'"
+event=error path=/v1/audio/speech status=400 detail="ambiguity must be 'guess', 'ignore' or 'error'"
 ```
 
 | Field | Meaning |
@@ -99,6 +99,7 @@ collector configuration and alert examples.
 | `PRONUNCIATION_OVERRIDES` | `/etc/kokoro-tone/custom.json` | optional user overlay, composed in memory over the defaults |
 | `LOCALE` | `en-AU` | `en-AU`, `en-GB` or `en-US` |
 | `NORMALISE_DEFAULT` | `false` | what an absent `normalise` field means |
+| `KOKORO_TONE_FILTER_MANIFESTS` | unset | a JSON file or directory of `[filter:]` block manifests; see [`plugins.md`](plugins.md) |
 
 The `MIN_*`/`MAX_*` request bounds are in [Bounds and limits](#bounds-and-limits).
 
