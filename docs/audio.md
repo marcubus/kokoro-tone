@@ -42,6 +42,49 @@ Pitch uses `rubberband` with formant preservation. If ffmpeg lacks it, the chain
 falls back to `asetrate` + `atempo`, which shifts formants and is audible.
 Measured delivery is within ±0.26 st of the request in both directions.
 
+### Listen to the presets
+
+Seven voices, each reading the same English script: the tone name, a
+three-second pause, then the same two sentences. Five are English voices; the
+last two are non-English voices reading English. Every file is mastered once at
+the default −16 LUFS target. The blend weights two of the English voices 2:1.
+
+[Open the sample page](samples/index.md) for all eight players.
+
+**af_heart** (US English, female)
+
+<audio controls preload="none" src="samples/af_heart.mp3"></audio>
+
+**af_bella** (US English, female, brighter timbre)
+
+<audio controls preload="none" src="samples/af_bella.mp3"></audio>
+
+**am_michael** (US English, male)
+
+<audio controls preload="none" src="samples/am_michael.mp3"></audio>
+
+**bm_george** (British English, male)
+
+<audio controls preload="none" src="samples/bm_george.mp3"></audio>
+
+**bm_lewis** (British English, male, deeper timbre)
+
+<audio controls preload="none" src="samples/bm_lewis.mp3"></audio>
+
+**ff_siwis** (French voice, reading English)
+
+<audio controls preload="none" src="samples/ff_siwis.mp3"></audio>
+
+**jm_kumo** (Japanese voice, reading English)
+
+<audio controls preload="none" src="samples/jm_kumo.mp3"></audio>
+
+**Blend: `am_michael(2)+bm_george(1)`**
+
+<audio controls preload="none" src="samples/blend-am_michael-bm_george.mp3"></audio>
+
+The script is [`samples/emotions.txt`](samples/emotions.txt).
+
 ### How a preset lands
 
 A preset is applied to that voice's audio, before the whole-file tone chain. It

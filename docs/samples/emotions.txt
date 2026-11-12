@@ -1,0 +1,8 @@
+[emotion:neutral] Neutral. [pause:3s] The morning light came through the window. It settled on the table.
+[emotion:warm] Warm. [pause:3s] The morning light came through the window. It settled on the table.
+[emotion:bright] Bright. [pause:3s] The morning light came through the window. It settled on the table.
+[emotion:sad] Sad. [pause:3s] The morning light came through the window. It settled on the table.
+[emotion:tired] Tired. [pause:3s] The morning light came through the window. It settled on the table.
+[emotion:angry] Angry. [pause:3s] The morning light came through the window. It settled on the table.
+[emotion:whisper] Whisper. [pause:3s] The morning light came through the window. It settled on the table.
+[emotion:excited] Excited. [pause:3s] The morning light came through the window. It settled on the table.
