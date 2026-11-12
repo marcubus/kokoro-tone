@@ -9,6 +9,9 @@ month and increments per release; tags are prefixed with `v`.
 
 ### Changed
 
+- Moved the upstream HTTP client from `httpx` to `httpx2`, the maintained
+  successor. Starlette's test client already prefers `httpx2`, so the test
+  stack no longer installs two HTTP clients.
 - Split the gateway into a composition root and a pipeline. `main.create_app`
   builds one `Context` (settings, lexicon, upstream client) per app; routes take
   it through a dependency, `pipeline.py` owns the order of operations, and no

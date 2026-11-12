@@ -140,7 +140,7 @@ def components(voice: str | None) -> list[tuple[str, float]]:
     position = 0
     while position < len(text):
         match = _TERM_RE.match(text, position)
-        if match is None or match.start() != position:
+        if match is None:
             return []
         sign, name, weight = match.groups()
         if position > 0 and not sign:

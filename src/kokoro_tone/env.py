@@ -25,10 +25,22 @@ def read_int(name: str, default: int) -> int:
     if not raw:
         return default
     try:
-        value = int(float(raw))
+        # Plain integers keep full precision; going via float first would round
+        # anything above 2**53 and turn "3.9" into 3.
+        value = int(raw)
     except ValueError:
-        warning(f"{name}={raw!r} is not a number; using {default}")
-        return default
+        # Still accept an integral decimal such as "4096.0", but reject
+        # fractional values and "inf"/"nan". `int()` on those raises
+        # OverflowError/ValueError, so they must be filtered before the cast.
+        try:
+            number = float(raw)
+        except ValueError:
+            warning(f"{name}={raw!r} is not a whole number; using {default}")
+            return default
+        if not number.is_integer():
+            warning(f"{name}={raw!r} is not a whole number; using {default}")
+            return default
+        value = int(number)
     if value <= 0:
         warning(f"{name}={value} must be positive; using {default}")
         return default

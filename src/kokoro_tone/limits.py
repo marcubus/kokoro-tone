@@ -8,11 +8,11 @@ minutes of inserted silence, an arbitrarily large body).
 
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass, replace
 from typing import Any, cast
 
 from .env import read_float, read_int
+from .log import warning
 
 
 @dataclass(frozen=True)
@@ -98,10 +98,7 @@ def _repair(limits: Limits) -> Limits:
         ("speed_min", "speed_max"),
     ):
         if getattr(limits, low) >= getattr(limits, high):
-            print(
-                f"{low} >= {high}; using the default {low}/{high}",
-                file=sys.stderr,
-            )
+            warning(f"{low} >= {high}; using the default {low}/{high}")
             fixes[low] = getattr(DEFAULT_LIMITS, low)
             fixes[high] = getattr(DEFAULT_LIMITS, high)
     if limits.total_pause_ms < limits.pause_ms:

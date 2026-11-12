@@ -1,8 +1,9 @@
 """The composition root: everything one request needs, in one object.
 
 `main.create_app` builds this once and stores it on `app.state`. Routes take it
-through a FastAPI dependency, so no module reads settings or an HTTP client at
-import time.
+through a FastAPI dependency, so no domain module reads settings or an HTTP
+client at import time. `main` itself builds the ASGI app from the environment
+at import, as an entrypoint does.
 """
 
 from __future__ import annotations

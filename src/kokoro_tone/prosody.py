@@ -127,6 +127,14 @@ KEYWORDS: dict[str, tuple[str, ...]] = {
     "excited": ("excited", "excitedly", "thrilled", "eager", "enthusiastic"),
 }
 
+# Precompiled at import: `match_instructions` runs per turn and the keyword set
+# is constant. Dict order is preserved, which keeps the longest-match tie-break.
+_KEYWORD_PATTERNS: tuple[tuple[str, int, re.Pattern[str]], ...] = tuple(
+    (preset, len(word), re.compile(rf"\b{re.escape(word)}\b"))
+    for preset, words in KEYWORDS.items()
+    for word in words
+)
+
 
 class UnknownEmotion(ValueError):
     """An `[emotion:]` value with no preset behind it."""
@@ -148,13 +156,12 @@ def match_instructions(text: str | None) -> str | None:
     lowered = text.lower()
     best: str | None = None
     best_length = 0
-    for preset, words in KEYWORDS.items():
-        for word in words:
-            if len(word) <= best_length:
-                continue
-            if re.search(rf"\b{re.escape(word)}\b", lowered):
-                best = preset
-                best_length = len(word)
+    for preset, length, pattern in _KEYWORD_PATTERNS:
+        if length <= best_length:
+            continue
+        if pattern.search(lowered):
+            best = preset
+            best_length = length
     return best
 
 
@@ -179,7 +186,7 @@ def resolve(
     preset_name = (
         emotion or match_instructions(turn.instructions) or match_instructions(request_instructions)
     )
-    preset = PRESETS.get(preset_name, NEUTRAL) if preset_name else NEUTRAL
+    preset = PRESETS.get(preset_name or "", NEUTRAL)
 
     speed = request_speed if request_speed and request_speed > 0 else 1.0
     rate = preset.rate * (turn.rate or 1.0) * speed

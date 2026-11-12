@@ -13,12 +13,13 @@ import json
 import math
 import secrets
 import time
+from collections.abc import Callable, Iterator
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from . import __version__, audio, levelling, pipeline, pronounce, prosody
+from . import __version__, audio, levelling, pipeline, pronounce
 from .context import Context, get_context
 from .log import event
 from .request import MODELS, SpeechRequest
@@ -151,8 +152,6 @@ def speech(body: SpeechRequest, ctx: Ctx, _: Auth) -> Response:
 
     try:
         rendered = pipeline.render(prepared, body, ctx)
-    except prosody.UnknownEmotion as exc:
-        raise HTTPException(400, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     except audio.AudioError as exc:
@@ -219,7 +218,7 @@ def _passthrough(
 
     media_type = upstream.headers.get("content-type", "audio/mpeg").split(";")[0]
 
-    def body_stream():
+    def body_stream() -> Iterator[bytes]:
         try:
             yield from upstream.iter_raw()
         finally:
@@ -232,7 +231,7 @@ def _passthrough(
     )
 
 
-def _chunks(data: bytes, size: int = 65536):
+def _chunks(data: bytes, size: int = 65536) -> Iterator[bytes]:
     for start in range(0, len(data), size):
         yield data[start : start + size]
 
@@ -249,10 +248,14 @@ def _sse_event(event: str, payload: dict) -> bytes:
     return f"event: {event}\ndata: {body}\n\n".encode()
 
 
-def _sse_response(chunks, usage: dict[str, int], on_close=None) -> StreamingResponse:
+def _sse_response(
+    chunks: Iterator[bytes],
+    usage: dict[str, int],
+    on_close: Callable[[], None] | None = None,
+) -> StreamingResponse:
     """OpenAI speech SSE: base64 `speech.audio.delta` frames, then `.done`."""
 
-    def generate():
+    def generate() -> Iterator[bytes]:
         try:
             for chunk in chunks:
                 if not chunk:

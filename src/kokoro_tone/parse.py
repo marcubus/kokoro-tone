@@ -133,14 +133,14 @@ def _desugar_senses(text: str, limits: Limits) -> tuple[str, list[str]]:
     """Replace `[sense:word=sense]` tags with the markers a rule matches."""
     markers: list[str] = []
 
-    def replace(match: re.Match[str]) -> str:
+    def _substitute(match: re.Match[str]) -> str:
         if match.group(1).lower() != "sense":
             return match.group(0)
         marker = _parse_sense(match.group(2), limits)
         markers.append(marker)
         return marker
 
-    return _TAG_RE.sub(replace, text), markers
+    return _TAG_RE.sub(_substitute, text), markers
 
 
 def _parse_emotion(value: str) -> str | None:
@@ -176,11 +176,9 @@ def parse_markup(
     pos = 0
     leading_pause = 0
     total_pause = 0
-    state: dict[str, object] = {
-        "voice": default_voice,
-        "emotion": None,
-        "rate": None,
-    }
+    voice = default_voice
+    emotion: str | None = None
+    rate: float | None = None
 
     def flush() -> None:
         raw = "".join(buffer)
@@ -188,7 +186,13 @@ def parse_markup(
         cleaned = raw.strip()
         if cleaned:
             turns.append(
-                Turn(text=cleaned, markers=pending_markers.copy(), **state)  # type: ignore[arg-type]
+                Turn(
+                    text=cleaned,
+                    voice=voice,
+                    emotion=emotion,
+                    rate=rate,
+                    markers=pending_markers.copy(),
+                )
             )
         pending_markers.clear()
 
@@ -218,11 +222,11 @@ def parse_markup(
             else:
                 leading_pause += gap
         elif name == "voice":
-            state["voice"] = validate_voice(value, limits.voice_chars)
+            voice = validate_voice(value, limits.voice_chars)
         elif name == "emotion":
-            state["emotion"] = _parse_emotion(value)
+            emotion = _parse_emotion(value)
         else:  # rate
-            state["rate"] = _parse_rate(value, limits)
+            rate = _parse_rate(value, limits)
 
     buffer.append(text[pos:])
     flush()

@@ -85,25 +85,25 @@ def _log_level() -> str:
 
 def load_settings() -> Settings:
     return Settings(
-        upstream_base_url=os.environ.get("UPSTREAM_BASE_URL", "http://kokoro:8880/v1").rstrip("/"),
+        upstream_base_url=env.read_str("UPSTREAM_BASE_URL", "http://kokoro:8880/v1").rstrip("/"),
         # One secret in .env: an explicit UPSTREAM_API_KEY wins (OpenRouter
         # fallback), otherwise the engine key is reused.
-        upstream_api_key=os.environ.get("UPSTREAM_API_KEY")
-        or os.environ.get("KOKORO_FASTAPI_API_KEY", ""),
-        upstream_model=os.environ.get("UPSTREAM_MODEL", "kokoro"),
+        upstream_api_key=env.read_str("UPSTREAM_API_KEY", "")
+        or env.read_str("KOKORO_FASTAPI_API_KEY", ""),
+        upstream_model=env.read_str("UPSTREAM_MODEL", "kokoro"),
         gateway_keys=_token_list(
-            os.environ.get("KOKORO_TONE_API_KEYS", ""),
-            os.environ.get("KOKORO_TONE_API_KEY", ""),
+            env.read_str("KOKORO_TONE_API_KEYS", ""),
+            env.read_str("KOKORO_TONE_API_KEY", ""),
         ),
-        default_voice=os.environ.get("DEFAULT_VOICE", "af_heart"),
+        default_voice=env.read_str("DEFAULT_VOICE", "af_heart"),
         loudness_lufs=_loudness(),
         voice_levelling=env.read_bool("VOICE_LEVELLING", True),
         limits=load_limits(),
         normalise=normalise.load_normalise_settings(),
-        lexicon_path=os.environ.get("PRONUNCIATION_LEXICON", "/etc/kokoro-tone/lexicon.json"),
+        lexicon_path=env.read_str("PRONUNCIATION_LEXICON", "/etc/kokoro-tone/lexicon.json"),
         # Optional user overlay, composed in memory over the shipped defaults.
         # Missing is normal: the defaults alone are a complete lexicon.
-        lexicon_overlay_path=os.environ.get(
+        lexicon_overlay_path=env.read_str(
             "PRONUNCIATION_OVERRIDES", "/etc/kokoro-tone/custom.json"
         ),
         log_level=_log_level(),

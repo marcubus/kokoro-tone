@@ -10,7 +10,7 @@ from __future__ import annotations
 import threading
 import time
 
-import httpx
+import httpx2
 
 from .settings import Settings
 
@@ -24,7 +24,7 @@ class UpstreamError(Exception):
         self.detail = detail
 
 
-def _raise_for_upstream(response: httpx.Response) -> None:
+def _raise_for_upstream(response: httpx2.Response) -> None:
     if response.status_code < 400:
         return
     if response.status_code == 400:
@@ -34,7 +34,7 @@ def _raise_for_upstream(response: httpx.Response) -> None:
     raise UpstreamError(502, f"upstream returned {response.status_code}: {_detail(response)}")
 
 
-def _detail(response: httpx.Response) -> str:
+def _detail(response: httpx2.Response) -> str:
     try:
         body = response.json()
     except ValueError:
@@ -51,7 +51,7 @@ class Upstream:
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        self._client = httpx.Client(timeout=httpx.Timeout(180.0, connect=10.0))
+        self._client = httpx2.Client(timeout=httpx2.Timeout(180.0, connect=10.0))
         self._voices_lock = threading.Lock()
         self._voices: dict | None = None
         self._voices_at = 0.0
@@ -90,7 +90,7 @@ class Upstream:
         for url in self.health_urls():
             try:
                 response = self._client.get(url, headers=self._headers(), timeout=5.0)
-            except httpx.HTTPError as exc:
+            except httpx2.HTTPError as exc:
                 detail = f"upstream unreachable: {exc.__class__.__name__}"
                 continue
             if response.status_code == 200:
@@ -116,7 +116,7 @@ class Upstream:
             response = self._client.get(
                 self._url("audio/voices"), headers=self._headers(), timeout=15.0
             )
-        except httpx.HTTPError as exc:
+        except httpx2.HTTPError as exc:
             raise UpstreamError(502, f"upstream unreachable: {exc.__class__.__name__}") from exc
         if response.status_code != 200:
             raise UpstreamError(502, f"upstream returned {response.status_code}")
@@ -155,7 +155,7 @@ class Upstream:
         speed: float | None,
         stream: bool,
         volume_multiplier: float | None = None,
-    ) -> httpx.Response:
+    ) -> httpx2.Response:
         """Send a streaming speech request and return the open response.
 
         The caller owns the response and must close it after consuming the body.
@@ -170,7 +170,7 @@ class Upstream:
         )
         try:
             response = self._client.send(request, stream=True)
-        except httpx.HTTPError as exc:
+        except httpx2.HTTPError as exc:
             raise UpstreamError(502, f"upstream unreachable: {exc.__class__.__name__}") from exc
         if response.status_code >= 400:
             try:
@@ -188,7 +188,7 @@ class Upstream:
                 json=self._speech_payload(text, voice, "pcm", None, False, volume_multiplier),
                 headers=self._headers(),
             )
-        except httpx.HTTPError as exc:
+        except httpx2.HTTPError as exc:
             raise UpstreamError(502, f"upstream unreachable: {exc.__class__.__name__}") from exc
         _raise_for_upstream(response)
         return response.content

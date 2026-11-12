@@ -13,10 +13,10 @@ in the three places that matter to speech: `Zee`, `zero` and `percent`.
 from __future__ import annotations
 
 import re
-import sys
 from dataclasses import dataclass, field
 
 from .env import read_bool, read_str
+from .log import warning
 
 # Letter names for the acronym fallback. `Aigh` is the only spelling that
 # reads as the letter A in Kokoro's bm_lewis voice; the rest are the in-flow
@@ -155,8 +155,9 @@ _GROUPED_RE = re.compile(r"^\d{1,3}(?:,\d{3})+$")
 # match when they sit immediately before it; at the right edge a punctuation
 # mark only blocks when a digit follows, so `15.` is a sentence end while
 # `2.1.0` stays a version.
+# The two edges share a set today; kept as two names because the rules differ.
 _LEFT_BLOCKERS = frozenset("._,-/:")
-_RIGHT_BLOCKERS = frozenset("._,-/:")
+_RIGHT_BLOCKERS = _LEFT_BLOCKERS
 
 
 @dataclass(frozen=True)
@@ -192,7 +193,7 @@ class NumberStyle:
 def load_normalise_settings() -> NormaliseSettings:
     locale = read_str("LOCALE", DEFAULT_LOCALE)
     if locale not in LOCALES:
-        print(f"LOCALE={locale!r} is not supported; using {DEFAULT_LOCALE}", file=sys.stderr)
+        warning(f"LOCALE={locale!r} is not supported; using {DEFAULT_LOCALE}")
         locale = DEFAULT_LOCALE
     return NormaliseSettings(locale=locale, default_on=read_bool("NORMALISE_DEFAULT", False))
 
@@ -311,7 +312,7 @@ def _number_words(body: str, style: NumberStyle) -> str | None:
     return _cardinal(int(body.replace(",", "")), style)
 
 
-def _match_percent(text: str, index: int, style: NumberStyle):
+def _match_percent(text: str, index: int, style: NumberStyle) -> tuple[int, str] | None:
     match = _PERCENT_RE.match(text, index)
     if not match:
         return None
@@ -327,7 +328,7 @@ def _match_percent(text: str, index: int, style: NumberStyle):
     return end, f"{words} {style.percent}"
 
 
-def _match_ordinal(text: str, index: int, style: NumberStyle):
+def _match_ordinal(text: str, index: int, style: NumberStyle) -> tuple[int, str] | None:
     match = _ORDINAL_RE.match(text, index)
     if not match:
         return None
@@ -341,7 +342,7 @@ def _match_ordinal(text: str, index: int, style: NumberStyle):
     return end, words
 
 
-def _match_decimal(text: str, index: int, style: NumberStyle):
+def _match_decimal(text: str, index: int, style: NumberStyle) -> tuple[int, str] | None:
     match = _DECIMAL_RE.match(text, index)
     if not match:
         return None
@@ -362,7 +363,7 @@ def _match_decimal(text: str, index: int, style: NumberStyle):
     return end, words
 
 
-def _match_range(text: str, index: int, style: NumberStyle):
+def _match_range(text: str, index: int, style: NumberStyle) -> tuple[int, str] | None:
     match = _RANGE_RE.match(text, index)
     if not match:
         return None
@@ -385,7 +386,7 @@ def _match_range(text: str, index: int, style: NumberStyle):
     return end, words
 
 
-def _match_cardinal(text: str, index: int, style: NumberStyle):
+def _match_cardinal(text: str, index: int, style: NumberStyle) -> tuple[int, str] | None:
     match = _CARDINAL_RE.match(text, index)
     if not match:
         return None
@@ -413,7 +414,7 @@ _NUMBER_MATCHERS = (
 )
 
 
-def number_match(text: str, index: int, style: NumberStyle):
+def number_match(text: str, index: int, style: NumberStyle) -> tuple[int, str] | None:
     """Return `(end, replacement)` for a number starting at `index`, or None."""
     if _blocked_left(text, index):
         return None
@@ -430,7 +431,7 @@ def acronym_match(
     table: dict[str, str],
     letters: dict[str, str],
     protect: frozenset[str],
-):
+) -> tuple[int, str] | None:
     """Return `(end, spoken)` for an uppercase token at `index`, or None."""
     if index > 0 and (text[index - 1].isalnum() or text[index - 1] == "_"):
         return None

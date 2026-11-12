@@ -11,6 +11,7 @@ so a future edit that interpolates client text fails loudly instead of running.
 from __future__ import annotations
 
 import json
+import math
 import re
 import subprocess
 from collections.abc import Callable
@@ -63,26 +64,13 @@ class AudioError(RuntimeError):
 def _filters(values: list[str]) -> str:
     """Join a filter chain, refusing anything outside the known grammar."""
     text = ",".join(values)
-    if not _FILTER_SAFE.match(text):
+    if not _FILTER_SAFE.fullmatch(text):
         raise AudioError("refusing to run an unexpected filter expression")
     return text
 
 
-def _pcm_input() -> list[str]:
-    return [
-        "-f",
-        "s16le",
-        "-ar",
-        str(SAMPLE_RATE),
-        "-ac",
-        str(CHANNELS),
-        "-i",
-        "pipe:0",
-    ]
-
-
-def _pcm_output() -> list[str]:
-    return ["-f", "s16le", "-ar", str(SAMPLE_RATE), "-ac", str(CHANNELS), "pipe:1"]
+_PCM_INPUT = ("-f", "s16le", "-ar", str(SAMPLE_RATE), "-ac", str(CHANNELS), "-i", "pipe:0")
+_PCM_OUTPUT = ("-f", "s16le", "-ar", str(SAMPLE_RATE), "-ac", str(CHANNELS), "pipe:1")
 
 
 def _run(args: list[str], data: bytes | None = None) -> bytes:
@@ -156,13 +144,13 @@ def apply_prosody(pcm: bytes, settings: prosody_mod.Prosody) -> bytes:
     if not filters:
         return pcm
     filters.append(f"aresample={SAMPLE_RATE}")
-    return _run([*_pcm_input(), "-af", _filters(filters), *_pcm_output()], pcm)
+    return _run([*_PCM_INPUT, "-af", _filters(filters), *_PCM_OUTPUT], pcm)
 
 
 def measure_loudness(pcm: bytes) -> tuple[float, float]:
     """Integrated LUFS and true peak of the input, via loudnorm's analysis."""
     args = [
-        *_pcm_input(),
+        *_PCM_INPUT,
         "-af",
         "loudnorm=I=-16:TP=-1:LRA=11:print_format=json",
         "-f",
@@ -194,7 +182,7 @@ def measure_loudness(pcm: bytes) -> tuple[float, float]:
 def apply_tone(pcm: bytes) -> bytes:
     """Shelves, compression and saturation - no gain, no limiter."""
     return _run(
-        [*_pcm_input(), "-af", _filters(list(TONE_CHAIN)), *_pcm_output()],
+        [*_PCM_INPUT, "-af", _filters(list(TONE_CHAIN)), *_PCM_OUTPUT],
         pcm,
     )
 
@@ -210,7 +198,7 @@ def master(pcm: bytes, target_lufs: float = -16.0) -> bytes:
 
     measured, _peak = measure_loudness(shaped)
     gain_db = 0.0
-    if measured != float("-inf"):
+    if math.isfinite(measured):
         gain_db = max(-30.0, min(30.0, target_lufs - measured))
 
     filters: list[str] = []
@@ -219,7 +207,7 @@ def master(pcm: bytes, target_lufs: float = -16.0) -> bytes:
     filters.append(LIMITER)
     filters.append(f"aresample={SAMPLE_RATE}")
 
-    return _run([*_pcm_input(), "-af", _filters(filters), *_pcm_output()], shaped)
+    return _run([*_PCM_INPUT, "-af", _filters(filters), *_PCM_OUTPUT], shaped)
 
 
 def encode(pcm: bytes, response_format: str) -> tuple[bytes, str]:
@@ -228,7 +216,7 @@ def encode(pcm: bytes, response_format: str) -> tuple[bytes, str]:
         known = ", ".join(sorted(FORMATS))
         raise ValueError(f"unsupported response_format {response_format!r}; use {known}")
     args, media_type = FORMATS[fmt]
-    return _run([*_pcm_input(), *args, "pipe:1"], pcm), media_type
+    return _run([*_PCM_INPUT, *args, "pipe:1"], pcm), media_type
 
 
 def render(

@@ -119,3 +119,22 @@ def test_the_env_readers_fall_back_rather_than_raising(monkeypatch):
 
     assert env.read_int("MAX_TURNS", 100) == 100
     assert env.read_bool("NORMALISE_DEFAULT", False) is False
+
+
+@pytest.mark.parametrize("raw", ["inf", "-inf", "nan", "3.9", "0.5"])
+def test_read_int_rejects_non_whole_values_without_raising(monkeypatch, raw):
+    from kokoro_tone import env
+
+    monkeypatch.setenv("MAX_TURNS", raw)
+
+    assert env.read_int("MAX_TURNS", 100) == 100
+
+
+def test_read_int_keeps_full_precision_and_integral_decimals(monkeypatch):
+    from kokoro_tone import env
+
+    monkeypatch.setenv("MAX_BODY_BYTES", "9007199254740993")
+    assert env.read_int("MAX_BODY_BYTES", 1) == 9007199254740993
+
+    monkeypatch.setenv("MAX_BODY_BYTES", "4096.0")
+    assert env.read_int("MAX_BODY_BYTES", 1) == 4096

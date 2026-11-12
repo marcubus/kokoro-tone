@@ -88,8 +88,7 @@ def prepare(body: SpeechRequest, ctx: Context) -> Prepared:
     collect = found if ambiguity != "ignore" else None
     guessing = ambiguity == "guess"
     plain = isinstance(payload, str) and not parse.has_markup(payload)
-    if plain:
-        assert isinstance(payload, str)
+    if isinstance(payload, str) and plain:
         payload = request.rewrite(
             payload,
             token,
@@ -115,7 +114,7 @@ def prepare(body: SpeechRequest, ctx: Context) -> Prepared:
     request.apply_aliases(turns, aliases)
 
     if not plain:
-        for turn, turn_token in zip(turns, tokens, strict=False):
+        for turn, turn_token in zip(turns, tokens, strict=True):
             turn.text = request.rewrite(
                 turn.text,
                 turn_token,
