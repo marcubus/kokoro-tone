@@ -265,6 +265,10 @@ each turn stands alone.
 Pitch is `rubberband` with formant preservation; the fallback is `asetrate` +
 `atempo`, which shifts formants and is only used if `rubberband` is unavailable.
 
+**Current status:** the calibration claim below was the position at the time of
+this decision. Every preset except `neutral` is now experimental; see
+[`../audio.md`](../audio.md) and the README to-do.
+
 The EQ constants are calibrated against measured post-master tilt, not derived
 from the nominal filter gain. The treble-lifting presets move tilt from both
 ends - a treble shelf up and a low-mid shelf down - because the tone chain's

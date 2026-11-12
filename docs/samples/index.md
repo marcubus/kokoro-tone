@@ -5,7 +5,7 @@ pause, then the same two sentences with that emotion applied. Every file is
 mastered once at the default −16 LUFS target.
 
 The samples are illustrative, not a quality claim. Every preset except `neutral`
-is experimental; see the [to-do](../README.md#to-do).
+is experimental; see the [to-do](../../README.md#to-do).
 
 The French and Japanese voices read the same English script, so their
 pronunciation carries an accent.

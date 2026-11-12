@@ -5,12 +5,10 @@ latency, ffmpeg cost and mastering drift. It instruments with the OpenTelemetry
 API and pushes OTLP/HTTP to a collector. The collector owns the Prometheus
 endpoint; the gateway itself has no `/metrics` route.
 
-```
-kokoro-tone ──OTLP/HTTP :4318──▶ otel-collector ──prometheus :8889──▶ Prometheus ──▶ Grafana
-      │                                │
-      └── cAdvisor ────────────────────┘   container CPU/mem/restarts
-      └── logfmt ──▶ Loki                 event=speech
-```
+![Observability pipelines: the gateway exports OTLP to a collector, cAdvisor and logs take separate paths, and Grafana reads Prometheus and Loki](diagrams/observability-pipelines.png)
+
+*Diagram: [source](diagrams/observability-pipelines.excalidraw). The gateway has
+no `/metrics` route; the collector owns the Prometheus endpoint.*
 
 Container metrics stay with cAdvisor. Logs stay as logfmt in Loki. Metrics are
 aggregate operator signals, never a copy of the script.
