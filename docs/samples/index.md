@@ -6,16 +6,21 @@ same two sentences. Every file is mastered once at the default −16 LUFS target
 The French and Japanese voices read the same English script, so their
 pronunciation carries an accent.
 
-| Voice | Character | Player |
-|---|---|---|
-| `af_heart` | US English, female | <audio controls preload="none" src="af_heart.mp3"></audio> [mp3](af_heart.mp3) |
-| `af_bella` | US English, female, brighter timbre | <audio controls preload="none" src="af_bella.mp3"></audio> [mp3](af_bella.mp3) |
-| `am_michael` | US English, male | <audio controls preload="none" src="am_michael.mp3"></audio> [mp3](am_michael.mp3) |
-| `bm_george` | British English, male | <audio controls preload="none" src="bm_george.mp3"></audio> [mp3](bm_george.mp3) |
-| `bm_lewis` | British English, male, deeper timbre | <audio controls preload="none" src="bm_lewis.mp3"></audio> [mp3](bm_lewis.mp3) |
-| `ff_siwis` | French voice, reading English | <audio controls preload="none" src="ff_siwis.mp3"></audio> [mp3](ff_siwis.mp3) |
-| `jm_kumo` | Japanese voice, reading English | <audio controls preload="none" src="jm_kumo.mp3"></audio> [mp3](jm_kumo.mp3) |
-| `am_michael(2)+bm_george(1)` | Blend, weighted 2:1 | <audio controls preload="none" src="blend-am_michael-bm_george.mp3"></audio> [mp3](blend-am_michael-bm_george.mp3) |
+GitHub strips `<audio>` and `<video>` tags from Markdown, so a bare `.mp3` link
+cannot play inline. Each player below is the same audio in a small MP4 (a
+waveform over the audio track), uploaded as a GitHub user attachment. The
+`mp3` link is the gateway's original output, unchanged.
+
+| Voice | Character | Player | Download |
+|---|---|---|---|
+| `af_heart` | US English, female | https://github.com/user-attachments/assets/63ecfb4b-bd5f-4854-b6b2-be697526cab7 | [mp3](af_heart.mp3) |
+| `af_bella` | US English, female, brighter timbre | https://github.com/user-attachments/assets/56c0cc9c-16c5-48c1-b5f1-9c38a1087e2e | [mp3](af_bella.mp3) |
+| `am_michael` | US English, male | https://github.com/user-attachments/assets/2358e4a5-7890-4bf4-95e4-9da48d37edb4 | [mp3](am_michael.mp3) |
+| `bm_george` | British English, male | https://github.com/user-attachments/assets/bf5476bd-8234-4944-8857-b917e526fa64 | [mp3](bm_george.mp3) |
+| `bm_lewis` | British English, male, deeper timbre | https://github.com/user-attachments/assets/fead0a6b-3c94-4db4-a3ca-bd0d0ec3112a | [mp3](bm_lewis.mp3) |
+| `ff_siwis` | French voice, reading English | https://github.com/user-attachments/assets/ad0fee2a-1cf8-41b9-9d76-ee5d725e0ce5 | [mp3](ff_siwis.mp3) |
+| `jm_kumo` | Japanese voice, reading English | https://github.com/user-attachments/assets/a2951f69-4e19-494c-982e-520c44e2930a | [mp3](jm_kumo.mp3) |
+| `am_michael(2)+bm_george(1)` | Blend, weighted 2:1 | https://github.com/user-attachments/assets/63608341-0509-4f45-895b-5446d984867e | [mp3](blend-am_michael-bm_george.mp3) |
 
 ## Script
 
@@ -30,4 +35,17 @@ pronunciation carries an accent.
 [emotion:excited] Excited. [pause:3s] The morning light came through the window. It settled on the table.
 ```
 
-Rendering used `scripts/narrate.py` against a running gateway.
+## How the players are made
+
+Rendering used `scripts/narrate.py` against a running gateway. Each MP3 was
+then wrapped in an MP4 with its own waveform:
+
+```bash
+ffmpeg -i voice.mp3 \
+  -filter_complex "[0:a]showwaves=s=960x240:mode=cline:rate=10:colors=0x58a6ff,format=yuv420p[v]" \
+  -map "[v]" -map 0:a -c:v libx264 -preset veryfast -crf 32 \
+  -c:a aac -b:a 96k -movflags +faststart -shortest voice.mp4
+```
+
+The MP4s are not committed. They are uploaded as user attachments, because
+that is the only form GitHub renders as a player in Markdown.
