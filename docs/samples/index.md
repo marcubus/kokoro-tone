@@ -4,10 +4,8 @@ Each file uses the same script: a neutral label naming the emotion, a one-second
 pause, then the same two sentences with that emotion applied. Every file is
 mastered once at the default −16 LUFS target.
 
-> **These are illustrative, not a quality claim.** Only the `bright` preset has
-> been calibrated against measurement. The others are provisional; `sad` and
-> `whisper` are known to need work, and a preset's nominal gain is not the gain
-> you hear. See the [preset table and calibration status](../audio.md#instructions--prosody).
+The samples are illustrative, not a quality claim; see the
+[to-do](../README.md#to-do).
 
 The French and Japanese voices read the same English script, so their
 pronunciation carries an accent.

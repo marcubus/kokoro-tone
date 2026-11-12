@@ -107,7 +107,7 @@ independently.
 |---|---|---|---|
 | `instructions` | accepted but not applied; the response has no prosody change | keyword-matched to one preset (warm, bright, sad, tired, angry, whisper, excited); the file-wide default that `[emotion:]` overrides per turn | `tests/test_prosody.py` |
 | Pitch | applies `rate`, but not pitch or volume | formant-preserving shift via `rubberband`, clamped | `tests/test_audio.py` |
-| Per-preset tone | not part of the endpoint | rate, pitch, gain and EQ per preset, each measured | `tests/test_audio.py` |
+| Per-preset tone | not part of the endpoint | rate, pitch, gain and EQ per preset; only `bright` is calibrated so far | `tests/test_audio.py` |
 | Mastering | dry model output | low-shelf, high-shelf, compression, tanh saturation, one linear gain to −16 LUFS, limiter at −1 dBFS sample peak | `tests/test_audio.py` |
 | Loudness across turns | not applicable | one gain for the whole file; a whispered turn is never normalised back up | `tests/test_audio.py` |
 | Voice loudness | dry model output, 9.2 dB spread across English voices | static per-voice casting gain for all 72 measured voices, blends interpolated, on both the mastered and passthrough paths | `tests/test_levelling.py` |
@@ -125,6 +125,28 @@ can move pitch, rate, loudness and spectral tilt, but it cannot add breathiness,
 creak, a smile or F0 *range* inside a sentence. `[emotion:sad]` means "slower,
 lower, darker", not "sad". The point is to approximate the *behaviour* of a
 larger model, not to claim its range.
+
+## To-do
+
+Preset calibration is the open piece. Only `bright` has been calibrated against
+a measured post-master tilt; the rest are provisional.
+
+- [ ] Calibrate `warm`, `sad`, `tired`, `angry`, `whisper` and `excited` the way
+      `bright` was: measure post-master tilt and HF against neutral for the same
+      voice and prose, then set the constants from the result.
+- [ ] Fix preset gain delivery. Gain is applied before the preset EQ and the
+      tone chain, so the nominal column is not what a listener hears. Measured
+      on `af_heart`, same sentence, after the master: warm +0.3 dB, bright
+      +0.4 dB, sad −2.9 dB, tired −1.7 dB, angry +0.3 dB, whisper −8.7 dB,
+      excited +0.7 dB, against nominal +1, +1, −3, −2, +4, −8, +2. Decide
+      whether the gain moves after the chain or the constants are
+      pre-compensated.
+- [ ] Rework `sad` and `whisper`. `sad`'s 6 kHz lowpass plus −3 dB reads as
+      muffled rather than sad, and `whisper`'s 8 kHz lowpass removes the air
+      that would make it read as a whisper.
+
+The [sample page](docs/samples/index.md) is illustrative and will be re-rendered
+when these land.
 
 ## What the engine already does
 

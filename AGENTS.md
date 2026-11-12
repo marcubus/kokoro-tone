@@ -104,10 +104,8 @@ These were learned the hard way. Following them avoids re-deriving them.
 
 ## Calibration status
 
-- **Only `bright` is calibrated against measurement.** The other presets are
-  provisional. Their nominal gain is applied before the preset EQ and the tone
-  chain, so it is not the delivered gain, and `sad` and `whisper` are known to
-  need work. Do not present them as validated.
+Preset calibration is an open to-do in `README.md` § To-do. Only `bright` is
+calibrated; do not present the others as validated.
 
 ## Deployment
 

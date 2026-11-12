@@ -25,9 +25,8 @@ month and increments per release; tags are prefixed with `v`.
 
 ### Changed
 
-- Documented that only the `bright` preset is calibrated against measurement.
-  The other presets are provisional: their nominal gain is not the delivered
-  gain, and `sad` and `whisper` are known to need work.
+- Added a README to-do for preset calibration and the known `sad`/`whisper`
+  work.
 - Re-rendered the emotion samples from the live container with a one-second
   pause and neutral labels, so only the sentence after each pause carries the
   emotion.
