@@ -83,7 +83,7 @@ the default −16 LUFS target. The blend weights two of the English voices 2:1.
 
 <audio controls preload="none" src="samples/blend-am_michael-bm_george.mp3"></audio>
 
-The script is [`samples/emotions.txt`](samples/emotions.txt).
+The script is quoted on the [sample page](samples/index.md#script).
 
 ### How a preset lands
 
