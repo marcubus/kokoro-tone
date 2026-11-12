@@ -9,6 +9,11 @@ month and increments per release; tags are prefixed with `v`.
 
 ### Added
 
+- OpenTelemetry metrics exported over OTLP/HTTP to a collector: HTTP server
+  metrics, speech work and render cost, upstream latency and health, ffmpeg
+  stages, mastering gain and peak, and lexicon problems. The gateway exposes no
+  `/metrics` route; the collector owns the Prometheus endpoint. See
+  [`docs/observability.md`](docs/observability.md).
 - Publish signed, scanned `linux/amd64` and `linux/arm64` images to
   `ghcr.io/marcubus/kokoro-tone` on a `v*` tag: full version, `YYYY.MM` line and
   `latest` tags, a Trivy scan, and a keyless cosign signature. The GitHub

@@ -41,6 +41,11 @@ class Settings:
     lexicon_path: str
     lexicon_overlay_path: str
     log_level: str
+    otel_endpoint: str
+    otel_service_name: str
+    otel_export_interval_ms: int
+    otel_export_timeout_ms: int
+    otel_disabled: bool
 
 
 def _token_list(*values: str) -> tuple[str, ...]:
@@ -83,7 +88,43 @@ def _log_level() -> str:
     return raw
 
 
+def _otel_interval() -> int:
+    raw = os.environ.get("OTEL_METRIC_EXPORT_INTERVAL", "").strip()
+    try:
+        value = int(raw) if raw else 15_000
+    except ValueError:
+        warning(f"OTEL_METRIC_EXPORT_INTERVAL={raw!r} is not a whole number; using 15000")
+        return 15_000
+    clamped = max(1_000, min(300_000, value))
+    if clamped != value:
+        warning(f"OTEL_METRIC_EXPORT_INTERVAL {value} is outside 1000..300000; using {clamped}")
+    return clamped
+
+
+def _otel_timeout() -> int:
+    raw = os.environ.get("OTEL_EXPORTER_OTLP_TIMEOUT", "").strip()
+    try:
+        value = int(raw) if raw else 5_000
+    except ValueError:
+        warning(f"OTEL_EXPORTER_OTLP_TIMEOUT={raw!r} is not a whole number; using 5000")
+        return 5_000
+    clamped = max(1_000, min(60_000, value))
+    if clamped != value:
+        warning(f"OTEL_EXPORTER_OTLP_TIMEOUT {value} is outside 1000..60000; using {clamped}")
+    return clamped
+
+
+def _otel_protocol() -> None:
+    raw = os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL", "").strip().lower()
+    if raw and raw not in ("http/protobuf", "http"):
+        warning(
+            f"OTEL_EXPORTER_OTLP_PROTOCOL={raw!r} is not supported; "
+            "the gateway exports OTLP over HTTP/protobuf"
+        )
+
+
 def load_settings() -> Settings:
+    _otel_protocol()
     return Settings(
         upstream_base_url=env.read_str("UPSTREAM_BASE_URL", "http://kokoro:8880/v1").rstrip("/"),
         # One secret in .env: an explicit UPSTREAM_API_KEY wins (OpenRouter
@@ -107,4 +148,10 @@ def load_settings() -> Settings:
             "PRONUNCIATION_OVERRIDES", "/etc/kokoro-tone/custom.json"
         ),
         log_level=_log_level(),
+        otel_endpoint=env.read_str("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "")
+        or env.read_str("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
+        otel_service_name=env.read_str("OTEL_SERVICE_NAME", "kokoro-tone"),
+        otel_export_interval_ms=_otel_interval(),
+        otel_export_timeout_ms=_otel_timeout(),
+        otel_disabled=env.read_bool("OTEL_SDK_DISABLED", False),
     )

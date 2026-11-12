@@ -13,7 +13,8 @@ The package is flat; each module owns one seam.
 | `limits.py` | request bounds and their environment overrides |
 | `log.py` | the logfmt event line and its `logging` backend |
 | `errors.py` | the OpenAI error envelope and `RequestError` |
-| `middleware.py` | the body-size limit |
+| `middleware.py` | the body-size limit and the HTTP metrics middleware |
+| `telemetry.py` | the OpenTelemetry meter, instruments, views and OTLP exporter |
 | `upstream.py` | the `Upstream` client: health probe, voices, PCM synthesis and passthrough streaming |
 | `request.py` | request validation, voice aliases and markup rewriting |
 | `context.py` | `Context` and the FastAPI dependency that supplies it |

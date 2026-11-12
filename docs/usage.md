@@ -18,7 +18,7 @@ which parts each one leans on.
 | **Drive it from an existing OpenAI client** | `model: "kokoro-v1_0"`, `voice: "alloy"` | OpenAI model/voice aliases, OpenAI error envelope, SSE | OpenAI voice-name mapping in the engine |
 | **Turn a researched script into an episode** | plain prose plus `normalise: true` and a `pronunciations` map | digits to words, acronyms spelled out, homophones and heteronyms mapped, per-voice rules | plain `/v1/audio/speech` |
 | **Catch a word the script left ambiguous** | nothing to send | a guess, rendered, with `X-Kokoro-Tone-Guessed` naming each assumption; `ambiguity: "error"` for a hard stop | plain `/v1/audio/speech` |
-| **Put a bounded service on a LAN** | any of the above | env-tunable rate/pitch/pause/turn/alias/body caps, bearer token list, no model passthrough | `API_KEYS` bearer, `GET /health` |
+| **Put a bounded service on a LAN** | any of the above | env-tunable rate/pitch/pause/turn/alias/body caps, bearer token list, no model passthrough | `API_KEYS` bearer, `GET /health`, OTLP metrics |
 
 ### The Kokoro-FastAPI subset this uses
 

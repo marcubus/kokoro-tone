@@ -33,6 +33,9 @@ array are OpenAI-shaped inputs that this gateway translates into DSP.
 - **`instructions` are not parsed semantically.** Word-boundary keyword match,
   longest keyword wins, no negation: "don't whisper" selects `whisper`. Do not
   describe them as understanding the request.
+- **Metric attributes are bounded.** A metric is an operator signal, never a
+  copy of the script: no request text, voice name, alias, client address or
+  request id. Unknown paths are labelled `unmatched`, not the raw path.
 
 ## Commands
 
@@ -57,6 +60,7 @@ optional - CI runs it, and `security-check` fails on `eval`, `pickle`,
 | `docs/usage.md` | request shapes, markup, tag interactions |
 | `docs/audio.md` | presets, tone chain, how a preset lands, passthrough vs rendered |
 | `docs/configuration.md` | environment variables and defaults |
+| `docs/observability.md` | OpenTelemetry instruments, cardinality rules, collector and scrape |
 | `docs/voice-loudness.md` | the per-voice measurements behind `levelling.py` |
 | `docs/adr/` | decisions and their rejected alternatives |
 | `CHANGELOG.md` | user-visible changes; CalVer `YYYY.MM.MICRO`, tag `v…` |

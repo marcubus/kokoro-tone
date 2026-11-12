@@ -15,6 +15,7 @@ from fastapi import Request
 
 from .lexicon import Lexicon
 from .settings import Settings
+from .telemetry import Telemetry
 from .upstream import Upstream
 
 
@@ -23,6 +24,7 @@ class Context:
     settings: Settings
     lexicon: Lexicon
     upstream: Upstream
+    telemetry: Telemetry
 
 
 def get_context(request: Request) -> Context:

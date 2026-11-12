@@ -271,7 +271,8 @@ The README is the overview. The reference material lives in `docs/`:
 | [`docs/pronunciation.md`](docs/pronunciation.md) | `pronunciations`, heteronym senses and guessing, `normalise`, per-voice sets, the deployment lexicon |
 | [`docs/audio.md`](docs/audio.md) | `instructions` and `[emotion:]` presets, mastering, passthrough vs rendered gain |
 | [`docs/voice-loudness.md`](docs/voice-loudness.md) | the per-voice loudness review behind the mastering and casting decisions |
-| [`docs/configuration.md`](docs/configuration.md) | every environment variable and bound, logs, token rotation, the OpenRouter fallback |
+| [`docs/configuration.md`](docs/configuration.md) | every environment variable and bound, logs, metrics, token rotation, the OpenRouter fallback |
+| [`docs/observability.md`](docs/observability.md) | OpenTelemetry metrics, the collector, Prometheus scraping and alert examples |
 | [`docs/development.md`](docs/development.md) | toolchain, `make` targets, the pinned ffmpeg build, versioning |
 | [`docs/adr/README.md`](docs/adr/README.md) | architecture decision records and why they exist |
 | [`lexicon/README.md`](lexicon/README.md) | the deployment lexicon's JSON schema |

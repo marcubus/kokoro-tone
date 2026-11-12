@@ -20,6 +20,7 @@ from . import normalise
 from .limits import Limits
 from .log import event, warning
 from .parse import MarkupError, sanitise_text, validate_voice
+from .telemetry import Telemetry
 
 _SET_KEYS = frozenset({"rules", "acronyms", "protect", "letters", "locale"})
 _RULE_KEYS = frozenset({"match", "say", "when", "case_sensitive", "whole_word"})
@@ -441,10 +442,17 @@ class Lexicon:
     defaults and the defaults never have to know about a deployment.
     """
 
-    def __init__(self, path: str, limits: Limits, overlay_path: str | None = None) -> None:
+    def __init__(
+        self,
+        path: str,
+        limits: Limits,
+        overlay_path: str | None = None,
+        telemetry: Telemetry | None = None,
+    ) -> None:
         self.path = path
         self.overlay_path = overlay_path
         self.limits = limits
+        self._telemetry = telemetry
         self._lock = threading.Lock()
         self._stamp: tuple[tuple[int, int] | None, tuple[int, int] | None] | None = None
         self._data = EMPTY_LEXICON
@@ -466,6 +474,8 @@ class Lexicon:
         with self._lock:
             self._data = data
             self._stamp = stamp
+        if self._telemetry is not None:
+            self._telemetry.lexicon_problems.set(len(data.problems))
         for problem in data.problems:
             warning(f"pronunciation lexicon: {problem}")
         event(

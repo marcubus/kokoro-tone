@@ -65,6 +65,15 @@ The engine logs separately and defaults to `API_LOG_LEVEL=DEBUG`, which prints
 every text chunk verbatim. `compose.yml` sets `INFO`; the chunk text is the
 script, so leave it there.
 
+## Metrics
+
+The gateway instruments with OpenTelemetry and pushes OTLP/HTTP to a collector.
+Metrics are disabled by default: nothing is exported until
+`OTEL_EXPORTER_OTLP_ENDPOINT` is set. The gateway has no `/metrics` route of its
+own; the collector exposes the Prometheus endpoint. See
+[Observability](observability.md) for the instrument list, cardinality rules,
+collector configuration and alert examples.
+
 ## Configuration
 
 | Variable | Default | Purpose |
@@ -76,6 +85,13 @@ script, so leave it there.
 | `UPSTREAM_API_KEY` | - | explicit engine key; empty reuses `KOKORO_FASTAPI_API_KEY` |
 | `UPSTREAM_MODEL` | `kokoro` | engine mapping key; `hexgrad/kokoro-82m` for OpenRouter |
 | `LOG_LEVEL` | `INFO` | gateway log level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | empty | OTLP/HTTP collector base URL; empty disables metrics export |
+| `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` | empty | signal-specific OTLP metrics URL; wins over the base |
+| `OTEL_SERVICE_NAME` | `kokoro-tone` | `service.name` resource attribute |
+| `OTEL_RESOURCE_ATTRIBUTES` | - | extra OTel resource attributes |
+| `OTEL_METRIC_EXPORT_INTERVAL` | `15000` | export interval in milliseconds |
+| `OTEL_EXPORTER_OTLP_TIMEOUT` | `5000` | export timeout in milliseconds |
+| `OTEL_SDK_DISABLED` | `false` | `true` starts no exporter |
 | `DEFAULT_VOICE` | `af_heart` | voice when the request omits one |
 | `LOUDNESS_LUFS` | `-16` | podcast target; clamped to −30…−12 |
 | `VOICE_LEVELLING` | `true` | static per-voice casting gain; `false` leaves the engine's raw level |

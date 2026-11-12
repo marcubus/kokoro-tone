@@ -120,8 +120,25 @@ def voices(ctx: Ctx, _: Auth) -> object:
         raise HTTPException(exc.status, exc.detail) from exc
 
 
+def _record_speech(
+    ctx: Context,
+    *,
+    passthrough: bool,
+    stream_format: str,
+    fmt: str,
+    chars: int,
+) -> None:
+    attributes: dict[str, str | bool] = {
+        "kokoro_tone.passthrough": passthrough,
+        "kokoro_tone.stream_format": stream_format,
+        "kokoro_tone.format": fmt.lower(),
+    }
+    ctx.telemetry.speech_requests.add(1, attributes)
+    ctx.telemetry.speech_chars.record(chars, {"kokoro_tone.passthrough": passthrough})
+
+
 @router.post("/v1/audio/speech")
-def speech(body: SpeechRequest, ctx: Ctx, _: Auth) -> Response:
+def speech(body: SpeechRequest, request: Request, ctx: Ctx, _: Auth) -> Response:
     prepared = pipeline.prepare(body, ctx)
     started = time.perf_counter()
     spoken = {"chars": prepared.chars, "turns": len(prepared.turns)}
@@ -135,6 +152,14 @@ def speech(body: SpeechRequest, ctx: Ctx, _: Auth) -> Response:
             ctx,
             volume_multiplier=pipeline.volume_multiplier(prepared.voice, ctx),
             sse=prepared.stream_format == "sse",
+        )
+        request.state.streaming = True
+        _record_speech(
+            ctx,
+            passthrough=True,
+            stream_format=prepared.stream_format,
+            fmt=body.response_format,
+            chars=prepared.chars,
         )
         event(
             "speech",
@@ -159,6 +184,13 @@ def speech(body: SpeechRequest, ctx: Ctx, _: Auth) -> Response:
     except UpstreamError as exc:
         raise HTTPException(exc.status, exc.detail) from exc
 
+    _record_speech(
+        ctx,
+        passthrough=False,
+        stream_format=prepared.stream_format,
+        fmt=body.response_format,
+        chars=prepared.chars,
+    )
     total_ms = (time.perf_counter() - started) * 1000.0
     event(
         "speech",
@@ -178,6 +210,7 @@ def speech(body: SpeechRequest, ctx: Ctx, _: Auth) -> Response:
     if prepared.stream_format == "sse":
         # Mastered output cannot be emitted before the file is complete, so the
         # events arrive after rendering rather than during it.
+        request.state.streaming = True
         return _mark_guessed(
             _sse_response(_chunks(rendered.data), _usage(prepared.payload)),
             prepared.found,

@@ -99,10 +99,18 @@ def _start_server() -> ThreadingHTTPServer:
     return server
 
 
-def build_app(monkeypatch, server, **env: object):
+def build_app(monkeypatch, server, *, metric_reader=None, **env: object):
     """Build one app from the fake engine and the given environment."""
     monkeypatch.setenv("UPSTREAM_BASE_URL", f"http://127.0.0.1:{server.server_address[1]}/v1")
     monkeypatch.setenv("UPSTREAM_API_KEY", "engine-key")
+    # Never let a developer's ambient OTel endpoint start an exporter thread
+    # during the suite; a test that wants export passes its own reader.
+    for name in (
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
+        "OTEL_SDK_DISABLED",
+    ):
+        monkeypatch.delenv(name, raising=False)
     for name, value in env.items():
         if value is None:
             monkeypatch.delenv(name, raising=False)
@@ -112,14 +120,14 @@ def build_app(monkeypatch, server, **env: object):
     from kokoro_tone.main import create_app
     from kokoro_tone.settings import load_settings
 
-    return create_app(load_settings())
+    return create_app(load_settings(), metric_reader=metric_reader)
 
 
 @contextmanager
-def _client(monkeypatch, server, **env: object):
+def _client(monkeypatch, server, *, metric_reader=None, **env: object):
     from fastapi.testclient import TestClient
 
-    with TestClient(build_app(monkeypatch, server, **env)) as client:
+    with TestClient(build_app(monkeypatch, server, metric_reader=metric_reader, **env)) as client:
         yield client
 
 
@@ -133,6 +141,23 @@ def gateway(monkeypatch):
         KOKORO_TONE_API_KEYS=None,
     ) as client:
         yield client, server
+    server.shutdown()
+
+
+@pytest.fixture()
+def metrics_gateway(monkeypatch):
+    from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+
+    server = _start_server()
+    reader = InMemoryMetricReader()
+    with _client(
+        monkeypatch,
+        server,
+        metric_reader=reader,
+        KOKORO_TONE_API_KEY="secret",
+        KOKORO_TONE_API_KEYS=None,
+    ) as client:
+        yield client, server, reader
     server.shutdown()
 
 

@@ -13,6 +13,7 @@ import time
 import httpx2
 
 from .settings import Settings
+from .telemetry import Telemetry
 
 VOICES_TTL_SECONDS = 300
 
@@ -49,15 +50,37 @@ def _detail(response: httpx2.Response) -> str:
 class Upstream:
     """One engine client for the life of the app."""
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, telemetry: Telemetry | None = None) -> None:
         self._settings = settings
+        self._telemetry = telemetry
         self._client = httpx2.Client(timeout=httpx2.Timeout(180.0, connect=10.0))
         self._voices_lock = threading.Lock()
         self._voices: dict | None = None
         self._voices_at = 0.0
+        if self._telemetry is not None:
+            self._telemetry.upstream_up.set(0)
 
     def close(self) -> None:
         self._client.close()
+
+    # ------------------------------------------------------------ telemetry
+
+    def _record_request(self, mode: str, status: int, started: float) -> None:
+        if self._telemetry is None:
+            return
+        attributes: dict[str, str | int] = {
+            "kokoro_tone.upstream.mode": mode,
+            "http.response.status_code": status,
+        }
+        self._telemetry.upstream_duration.record(time.perf_counter() - started, attributes)
+
+    def _mark_success(self) -> None:
+        if self._telemetry is not None:
+            self._telemetry.upstream_up.set(1)
+
+    def _mark_down(self) -> None:
+        if self._telemetry is not None:
+            self._telemetry.upstream_up.set(0)
 
     # ------------------------------------------------------------ addressing
 
@@ -94,8 +117,10 @@ class Upstream:
                 detail = f"upstream unreachable: {exc.__class__.__name__}"
                 continue
             if response.status_code == 200:
+                self._mark_success()
                 return True, "ok"
             detail = f"upstream returned {response.status_code} from {url}"
+        self._mark_down()
         return False, detail
 
     def voices(self) -> dict:
@@ -105,10 +130,16 @@ class Upstream:
             if self._voices is not None and now - self._voices_at < VOICES_TTL_SECONDS:
                 return self._voices
         # Load outside the lock: a slow engine must not block other readers.
-        data = self._list_voices()
+        try:
+            data = self._list_voices()
+        except UpstreamError as exc:
+            if exc.status >= 500:
+                self._mark_down()
+            raise
         with self._voices_lock:
             self._voices = data
             self._voices_at = time.monotonic()
+        self._mark_success()
         return data
 
     def _list_voices(self) -> dict:
@@ -168,27 +199,51 @@ class Upstream:
             ),
             headers=self._headers(),
         )
+        started = time.perf_counter()
+        status = 502
         try:
             response = self._client.send(request, stream=True)
+            if response.status_code >= 400:
+                try:
+                    _raise_for_upstream(response)
+                finally:
+                    response.close()
+            status = 200
+            self._mark_success()
+            return response
+        except UpstreamError as exc:
+            status = exc.status
+            if status >= 500:
+                self._mark_down()
+            raise
         except httpx2.HTTPError as exc:
+            self._mark_down()
             raise UpstreamError(502, f"upstream unreachable: {exc.__class__.__name__}") from exc
-        if response.status_code >= 400:
-            try:
-                _raise_for_upstream(response)
-            finally:
-                response.close()
-        return response
+        finally:
+            self._record_request("stream", status, started)
 
     def synthesise(
         self, text: str, voice: str | None, volume_multiplier: float | None = None
     ) -> bytes:
+        started = time.perf_counter()
+        status = 502
         try:
             response = self._client.post(
                 self._url("audio/speech"),
                 json=self._speech_payload(text, voice, "pcm", None, False, volume_multiplier),
                 headers=self._headers(),
             )
+            _raise_for_upstream(response)
+            status = 200
+            self._mark_success()
+            return response.content
+        except UpstreamError as exc:
+            status = exc.status
+            if status >= 500:
+                self._mark_down()
+            raise
         except httpx2.HTTPError as exc:
+            self._mark_down()
             raise UpstreamError(502, f"upstream unreachable: {exc.__class__.__name__}") from exc
-        _raise_for_upstream(response)
-        return response.content
+        finally:
+            self._record_request("synth", status, started)

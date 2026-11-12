@@ -14,6 +14,7 @@ import json
 import math
 import re
 import subprocess
+import time
 from collections.abc import Callable
 from functools import lru_cache
 from typing import NamedTuple
@@ -21,6 +22,7 @@ from typing import NamedTuple
 from . import prosody as prosody_mod
 from .limits import DEFAULT_LIMITS, Limits
 from .parse import Turn
+from .telemetry import Telemetry
 
 SAMPLE_RATE = 24000
 BYTES_PER_SAMPLE = 2
@@ -73,7 +75,24 @@ _PCM_INPUT = ("-f", "s16le", "-ar", str(SAMPLE_RATE), "-ac", str(CHANNELS), "-i"
 _PCM_OUTPUT = ("-f", "s16le", "-ar", str(SAMPLE_RATE), "-ac", str(CHANNELS), "pipe:1")
 
 
-def _run(args: list[str], data: bytes | None = None) -> bytes:
+def _record_ffmpeg(telemetry: Telemetry | None, stage: str, started: float, ok: bool) -> None:
+    if telemetry is None:
+        return
+    attributes = {"kokoro_tone.stage": stage}
+    if not ok:
+        telemetry.ffmpeg_failures.add(1, attributes)
+    telemetry.ffmpeg_duration.record(time.perf_counter() - started, attributes)
+
+
+def _run(
+    args: list[str],
+    data: bytes | None = None,
+    *,
+    telemetry: Telemetry | None = None,
+    stage: str = "unknown",
+) -> bytes:
+    started = time.perf_counter()
+    ok = False
     try:
         proc = subprocess.run(
             ["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin", "-y", *args],
@@ -82,12 +101,15 @@ def _run(args: list[str], data: bytes | None = None) -> bytes:
             timeout=300,
             check=False,
         )
+        if proc.returncode != 0:
+            detail = proc.stderr.decode("utf-8", "replace").strip()[-800:]
+            raise AudioError(detail or f"ffmpeg exited {proc.returncode}")
+        ok = True
+        return proc.stdout
     except (OSError, subprocess.SubprocessError) as exc:
         raise AudioError(f"ffmpeg could not run: {exc}") from exc
-    if proc.returncode != 0:
-        detail = proc.stderr.decode("utf-8", "replace").strip()[-800:]
-        raise AudioError(detail or f"ffmpeg exited {proc.returncode}")
-    return proc.stdout
+    finally:
+        _record_ffmpeg(telemetry, stage, started, ok)
 
 
 @lru_cache(maxsize=1)
@@ -120,7 +142,12 @@ def duration_seconds(pcm: bytes) -> float:
     return len(pcm) / float(SAMPLE_RATE * frame)
 
 
-def apply_prosody(pcm: bytes, settings: prosody_mod.Prosody) -> bytes:
+def apply_prosody(
+    pcm: bytes,
+    settings: prosody_mod.Prosody,
+    *,
+    telemetry: Telemetry | None = None,
+) -> bytes:
     """Pitch, tempo and preset EQ for one turn."""
     filters: list[str] = []
     rate = settings.rate
@@ -144,10 +171,15 @@ def apply_prosody(pcm: bytes, settings: prosody_mod.Prosody) -> bytes:
     if not filters:
         return pcm
     filters.append(f"aresample={SAMPLE_RATE}")
-    return _run([*_PCM_INPUT, "-af", _filters(filters), *_PCM_OUTPUT], pcm)
+    return _run(
+        [*_PCM_INPUT, "-af", _filters(filters), *_PCM_OUTPUT],
+        pcm,
+        telemetry=telemetry,
+        stage="prosody",
+    )
 
 
-def measure_loudness(pcm: bytes) -> tuple[float, float]:
+def measure_loudness(pcm: bytes, *, telemetry: Telemetry | None = None) -> tuple[float, float]:
     """Integrated LUFS and true peak of the input, via loudnorm's analysis."""
     args = [
         *_PCM_INPUT,
@@ -157,6 +189,8 @@ def measure_loudness(pcm: bytes) -> tuple[float, float]:
         "null",
         "-",
     ]
+    started = time.perf_counter()
+    ok = False
     try:
         proc = subprocess.run(
             ["ffmpeg", "-hide_banner", "-nostats", "-nostdin", *args],
@@ -166,40 +200,51 @@ def measure_loudness(pcm: bytes) -> tuple[float, float]:
             timeout=300,
             check=False,
         )
+        stderr = proc.stderr.decode("utf-8", "replace")
+        blocks = re.findall(r"\{[^{}]*\"input_i\"[^{}]*\}", stderr, re.S)
+        if proc.returncode != 0 or not blocks:
+            raise AudioError(stderr.strip()[-800:] or "loudnorm produced no measurement")
+        data = json.loads(blocks[-1])
+        measured = float(data["input_i"])
+        peak = float(data["input_tp"])
+        ok = True
+        return measured, peak
     except (OSError, subprocess.SubprocessError) as exc:
         raise AudioError(f"ffmpeg could not run: {exc}") from exc
-    stderr = proc.stderr.decode("utf-8", "replace")
-    blocks = re.findall(r"\{[^{}]*\"input_i\"[^{}]*\}", stderr, re.S)
-    if proc.returncode != 0 or not blocks:
-        raise AudioError(stderr.strip()[-800:] or "loudnorm produced no measurement")
-    try:
-        data = json.loads(blocks[-1])
-        return float(data["input_i"]), float(data["input_tp"])
     except (ValueError, KeyError) as exc:
         raise AudioError(f"unreadable loudnorm output: {exc}") from exc
+    finally:
+        _record_ffmpeg(telemetry, "measure", started, ok)
 
 
-def apply_tone(pcm: bytes) -> bytes:
+def apply_tone(pcm: bytes, *, telemetry: Telemetry | None = None) -> bytes:
     """Shelves, compression and saturation - no gain, no limiter."""
     return _run(
         [*_PCM_INPUT, "-af", _filters(list(TONE_CHAIN)), *_PCM_OUTPUT],
         pcm,
+        telemetry=telemetry,
+        stage="tone",
     )
 
 
-def master(pcm: bytes, target_lufs: float = -16.0) -> bytes:
+def master(pcm: bytes, target_lufs: float = -16.0, *, telemetry: Telemetry | None = None) -> bytes:
     """Tone chain, then one linear gain to target, then a -1 dBTP ceiling.
 
     Loudness is measured after the chain (the compressor and shelves move it)
     and corrected once, across the whole file. Per-segment normalisation would
     boost a whispered line back to normal and erase it.
     """
-    shaped = apply_tone(pcm)
+    shaped = apply_tone(pcm, telemetry=telemetry)
 
-    measured, _peak = measure_loudness(shaped)
+    measured, peak = measure_loudness(shaped, telemetry=telemetry)
     gain_db = 0.0
     if math.isfinite(measured):
         gain_db = max(-30.0, min(30.0, target_lufs - measured))
+
+    if telemetry is not None:
+        if math.isfinite(peak):
+            telemetry.true_peak.record(peak)
+        telemetry.loudness_gain.record(gain_db)
 
     filters: list[str] = []
     if abs(gain_db) > 0.05:
@@ -207,16 +252,31 @@ def master(pcm: bytes, target_lufs: float = -16.0) -> bytes:
     filters.append(LIMITER)
     filters.append(f"aresample={SAMPLE_RATE}")
 
-    return _run([*_PCM_INPUT, "-af", _filters(filters), *_PCM_OUTPUT], shaped)
+    return _run(
+        [*_PCM_INPUT, "-af", _filters(filters), *_PCM_OUTPUT],
+        shaped,
+        telemetry=telemetry,
+        stage="limit",
+    )
 
 
-def encode(pcm: bytes, response_format: str) -> tuple[bytes, str]:
+def encode(
+    pcm: bytes, response_format: str, *, telemetry: Telemetry | None = None
+) -> tuple[bytes, str]:
     fmt = (response_format or "mp3").lower()
     if fmt not in FORMATS:
         known = ", ".join(sorted(FORMATS))
         raise ValueError(f"unsupported response_format {response_format!r}; use {known}")
     args, media_type = FORMATS[fmt]
-    return _run([*_PCM_INPUT, *args, "pipe:1"], pcm), media_type
+    return (
+        _run(
+            [*_PCM_INPUT, *args, "pipe:1"],
+            pcm,
+            telemetry=telemetry,
+            stage="encode",
+        ),
+        media_type,
+    )
 
 
 def render(
@@ -228,6 +288,7 @@ def render(
     target_lufs: float = -16.0,
     turn_gap_ms: int | None = None,
     limits: Limits = DEFAULT_LIMITS,
+    telemetry: Telemetry | None = None,
 ) -> bytes:
     """Render turns to mastered PCM. `synthesise(text, voice) -> PCM`."""
     if not turns:
@@ -242,7 +303,7 @@ def render(
         pcm = synthesise(turn.text, turn.voice)
         if not pcm:
             raise AudioError("upstream returned empty audio")
-        parts.append(apply_prosody(pcm, settings))
+        parts.append(apply_prosody(pcm, settings, telemetry=telemetry))
 
         last = index == len(turns) - 1
         default_gap = limits.turn_gap_ms if turn_gap_ms is None else turn_gap_ms
@@ -250,4 +311,4 @@ def render(
         if gap > 0:
             parts.append(silence(gap))
 
-    return master(b"".join(parts), target_lufs)
+    return master(b"".join(parts), target_lufs, telemetry=telemetry)

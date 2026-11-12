@@ -47,6 +47,23 @@ def test_voice_levelling_is_on_by_default_and_can_be_disabled(monkeypatch):
     assert settings.load_settings().voice_levelling is True
 
 
+def test_metrics_are_disabled_by_default(monkeypatch):
+    for name in (
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
+        "OTEL_SDK_DISABLED",
+        "OTEL_METRIC_EXPORT_INTERVAL",
+        "OTEL_EXPORTER_OTLP_TIMEOUT",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+    loaded = settings.load_settings()
+    assert loaded.otel_endpoint == ""
+    assert loaded.otel_disabled is False
+    assert loaded.otel_export_interval_ms == 15_000
+    assert loaded.otel_export_timeout_ms == 5_000
+
+
 def test_limits_defaults_are_the_documented_bounds():
     from kokoro_tone.limits import load_limits
 

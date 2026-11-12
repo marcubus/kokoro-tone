@@ -149,6 +149,8 @@ def prepare(body: SpeechRequest, ctx: Context) -> Prepared:
 def render(prepared: Prepared, body: SpeechRequest, ctx: Context) -> Rendered:
     """Synthesise every turn, master the file and encode it once."""
     limits = ctx.settings.limits
+    telemetry = ctx.telemetry
+    started = time.perf_counter()
     upstream_ms = 0.0
 
     def render_turn(text: str, voice: str | None) -> bytes:
@@ -171,6 +173,11 @@ def render(prepared: Prepared, body: SpeechRequest, ctx: Context) -> Rendered:
         instructions=prepared.instructions,
         target_lufs=ctx.settings.loudness_lufs,
         limits=limits,
+        telemetry=telemetry,
     )
-    data, media_type = audio.encode(pcm, body.response_format)
+    audio_seconds = audio.duration_seconds(pcm)
+    data, media_type = audio.encode(pcm, body.response_format, telemetry=telemetry)
+    render_seconds = time.perf_counter() - started
+    telemetry.speech_duration.record(render_seconds)
+    telemetry.speech_audio_duration.record(audio_seconds)
     return Rendered(data=data, media_type=media_type, upstream_ms=upstream_ms)
