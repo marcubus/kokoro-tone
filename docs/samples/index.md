@@ -1,7 +1,13 @@
 # kokoro-tone emotion samples
 
-Each file uses the same script: the tone name, a three-second pause, then the
-same two sentences. Every file is mastered once at the default −16 LUFS target.
+Each file uses the same script: a neutral label naming the emotion, a one-second
+pause, then the same two sentences with that emotion applied. Every file is
+mastered once at the default −16 LUFS target.
+
+> **These are illustrative, not a quality claim.** Only the `bright` preset has
+> been calibrated against measurement. The others are provisional; `sad` and
+> `whisper` are known to need work, and a preset's nominal gain is not the gain
+> you hear. See the [preset table and calibration status](../audio.md#instructions--prosody).
 
 The French and Japanese voices read the same English script, so their
 pronunciation carries an accent.
@@ -13,32 +19,41 @@ waveform over the audio track), uploaded as a GitHub user attachment. The
 
 | Voice | Character | Player | Download |
 |---|---|---|---|
-| `af_heart` | US English, female | https://github.com/user-attachments/assets/63ecfb4b-bd5f-4854-b6b2-be697526cab7 | [mp3](af_heart.mp3) |
-| `af_bella` | US English, female, brighter timbre | https://github.com/user-attachments/assets/56c0cc9c-16c5-48c1-b5f1-9c38a1087e2e | [mp3](af_bella.mp3) |
-| `am_michael` | US English, male | https://github.com/user-attachments/assets/2358e4a5-7890-4bf4-95e4-9da48d37edb4 | [mp3](am_michael.mp3) |
-| `bm_george` | British English, male | https://github.com/user-attachments/assets/bf5476bd-8234-4944-8857-b917e526fa64 | [mp3](bm_george.mp3) |
-| `bm_lewis` | British English, male, deeper timbre | https://github.com/user-attachments/assets/fead0a6b-3c94-4db4-a3ca-bd0d0ec3112a | [mp3](bm_lewis.mp3) |
-| `ff_siwis` | French voice, reading English | https://github.com/user-attachments/assets/ad0fee2a-1cf8-41b9-9d76-ee5d725e0ce5 | [mp3](ff_siwis.mp3) |
-| `jm_kumo` | Japanese voice, reading English | https://github.com/user-attachments/assets/a2951f69-4e19-494c-982e-520c44e2930a | [mp3](jm_kumo.mp3) |
-| `am_michael(2)+bm_george(1)` | Blend, weighted 2:1 | https://github.com/user-attachments/assets/63608341-0509-4f45-895b-5446d984867e | [mp3](blend-am_michael-bm_george.mp3) |
+| `af_heart` | US English, female | https://github.com/user-attachments/assets/35ea6f92-1686-47cb-a89d-e80cd48f3b27 | [mp3](af_heart.mp3) |
+| `af_bella` | US English, female, brighter timbre | https://github.com/user-attachments/assets/1eb75903-b6fc-4d43-8621-b50c37061a1e | [mp3](af_bella.mp3) |
+| `am_michael` | US English, male | https://github.com/user-attachments/assets/06e9f1e9-b7a9-4825-b058-fa76b3c0cbde | [mp3](am_michael.mp3) |
+| `bm_george` | British English, male | https://github.com/user-attachments/assets/aaf03172-e3eb-4ccd-8613-03720ae6a5b4 | [mp3](bm_george.mp3) |
+| `bm_lewis` | British English, male, deeper timbre | https://github.com/user-attachments/assets/2caef2b5-c831-4369-a551-64c68b68203e | [mp3](bm_lewis.mp3) |
+| `ff_siwis` | French voice, reading English | https://github.com/user-attachments/assets/33a5d5fe-3d67-4b7b-ae64-10378e83e433 | [mp3](ff_siwis.mp3) |
+| `jm_kumo` | Japanese voice, reading English | https://github.com/user-attachments/assets/42cb4e41-4f4e-4245-8c22-567ae7b193ef | [mp3](jm_kumo.mp3) |
+| `am_michael(2)+bm_george(1)` | Blend, weighted 2:1 | https://github.com/user-attachments/assets/584ca0c9-31f9-464d-8306-810462fc4e85 | [mp3](blend-am_michael-bm_george.mp3) |
 
 ## Script
 
 ```text
-[emotion:neutral] Neutral. [pause:3s] The morning light came through the window. It settled on the table.
-[emotion:warm] Warm. [pause:3s] The morning light came through the window. It settled on the table.
-[emotion:bright] Bright. [pause:3s] The morning light came through the window. It settled on the table.
-[emotion:sad] Sad. [pause:3s] The morning light came through the window. It settled on the table.
-[emotion:tired] Tired. [pause:3s] The morning light came through the window. It settled on the table.
-[emotion:angry] Angry. [pause:3s] The morning light came through the window. It settled on the table.
-[emotion:whisper] Whisper. [pause:3s] The morning light came through the window. It settled on the table.
-[emotion:excited] Excited. [pause:3s] The morning light came through the window. It settled on the table.
+[emotion:neutral] Neutral. [pause:1s] [emotion:neutral] The morning light came through the window. It settled on the table.
+[emotion:neutral] Warm. [pause:1s] [emotion:warm] The morning light came through the window. It settled on the table.
+[emotion:neutral] Bright. [pause:1s] [emotion:bright] The morning light came through the window. It settled on the table.
+[emotion:neutral] Sad. [pause:1s] [emotion:sad] The morning light came through the window. It settled on the table.
+[emotion:neutral] Tired. [pause:1s] [emotion:tired] The morning light came through the window. It settled on the table.
+[emotion:neutral] Angry. [pause:1s] [emotion:angry] The morning light came through the window. It settled on the table.
+[emotion:neutral] Whisper. [pause:1s] [emotion:whisper] The morning light came through the window. It settled on the table.
+[emotion:neutral] Excited. [pause:1s] [emotion:excited] The morning light came through the window. It settled on the table.
 ```
+
+The label is always `[emotion:neutral]`; only the sentence after the pause
+carries the emotion.
 
 ## How the players are made
 
-Rendering used `scripts/narrate.py` against a running gateway. Each MP3 was
-then wrapped in an MP4 with its own waveform:
+Every file was rendered by the live `kokoro-tone` container, not on the host:
+
+```bash
+docker exec -i kokoro-tone python scripts/narrate.py - \
+  --out - --url http://127.0.0.1:8000 --voice af_heart --format mp3
+```
+
+Each MP3 was then wrapped in an MP4 with its own waveform:
 
 ```bash
 ffmpeg -i voice.mp3 \

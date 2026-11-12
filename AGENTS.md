@@ -101,8 +101,13 @@ These were learned the hard way. Following them avoids re-deriving them.
   master's de-harshing and must stay bounded.
 - **A voice's spectral character is not a defect.** Do not EQ a dark voice
   bright in the master; `docs/voice-loudness.md` §4 argues this at length.
-- **`sad`, `tired`, `angry` and `whisper` are not broken.** They use filters,
-  which the tone chain does not cancel, and already deliver their intent.
+
+## Calibration status
+
+- **Only `bright` is calibrated against measurement.** The other presets are
+  provisional. Their nominal gain is applied before the preset EQ and the tone
+  chain, so it is not the delivered gain, and `sad` and `whisper` are known to
+  need work. Do not present them as validated.
 
 ## Deployment
 

@@ -24,14 +24,31 @@ the master, so they are what a listener actually hears rather than the nominal
 filter gain. A shelf's gain is asymptotic: `+5 dB @ 6 kHz` arrives as +2.4 dB in
 the 8 kHz octave band.
 
+> **Calibration status.** Only `bright` has been calibrated against a measured
+> post-master tilt (the `bm_lewis(4)+bm_fable(1)` blend). The other rows are
+> provisional: their EQ constants are reasoned from the filter response, not
+> validated by a full measurement pass, and their Δ tilt and Δ HF figures are
+> estimates. `sad` and `whisper` are the weakest. `sad`'s 6 kHz lowpass plus
+> −3 dB reads as muffled rather than sad, and `whisper`'s 8 kHz lowpass removes
+> the air that would make it read as a whisper. Expect these presets to change.
+
+> **Gain is nominal, not delivered.** The `gain` column is applied before the
+> preset EQ and before the tone chain's compressor and limiter. Positive gains
+> are partly absorbed; negative gains mostly survive. Measured on `af_heart`,
+> same sentence, after the master: warm +0.3 dB, bright +0.4 dB, sad −2.9 dB,
+> tired −1.7 dB, angry +0.3 dB, whisper −8.7 dB, excited +0.7 dB, against
+> nominal +1, +1, −3, −2, +4, −8, +2. Do not treat the gain column as a
+> promise.
+
 Tilt is moved from **both ends** - a treble shelf up and a low-mid shelf down.
 The bass cut is about a third of the effect (the `+5` shelf alone gives
 +0.38 dB/oct, the `−1 @ 600` adds +0.27), which lets the treble shelf stay
 2.5 dB smaller for the same brightness. That matters because a large treble
 boost is what makes sibilants spit.
 
-The constants are calibrated against measurement, not derived. A linear shelf's
-gain is voice-independent, so one constant per preset is correct: the same
+The `bright` constants are calibrated against measurement, not derived; the
+rest are provisional (above). A linear shelf's gain is voice-independent, so one
+constant per preset is correct: the same
 `+5 dB` shelf moves 13 male voices by +0.40…+0.67 dB/oct (mean +0.52,
 sd 0.09). Per-voice preset tables were measured and rejected - closing the
 2.6 dB/oct spread between the darkest and brightest voice would take roughly
@@ -44,12 +61,14 @@ Measured delivery is within ±0.26 st of the request in both directions.
 
 ### Listen to the presets
 
-Seven voices, each reading the same English script: the tone name, a
-three-second pause, then the same two sentences. Five are English voices; the
-last two are non-English voices reading English. Every file is mastered once at
-the default −16 LUFS target. The blend weights two of the English voices 2:1.
+Seven voices, each reading the same English script: a neutral label naming the
+emotion, a one-second pause, then the same two sentences with that emotion
+applied. Five are English voices; the last two are non-English voices reading
+English. Every file is mastered once at the default −16 LUFS target. The blend
+weights two of the English voices 2:1.
 
-GitHub strips `<audio>` from Markdown, so the players live on the
+The samples are illustrative, not a quality claim; see the calibration status
+above. GitHub strips `<audio>` from Markdown, so the players live on the
 [sample page](samples/index.md): one row per voice, each with an inline player
 and the original MP3. The script is quoted
 [there too](samples/index.md#script).

@@ -25,6 +25,12 @@ month and increments per release; tags are prefixed with `v`.
 
 ### Changed
 
+- Documented that only the `bright` preset is calibrated against measurement.
+  The other presets are provisional: their nominal gain is not the delivered
+  gain, and `sad` and `whisper` are known to need work.
+- Re-rendered the emotion samples from the live container with a one-second
+  pause and neutral labels, so only the sentence after each pause carries the
+  emotion.
 - Moved the upstream HTTP client from `httpx` to `httpx2`, the maintained
   successor. Starlette's test client already prefers `httpx2`, so the test
   stack no longer installs two HTTP clients.
