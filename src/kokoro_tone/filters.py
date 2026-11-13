@@ -16,8 +16,10 @@ from __future__ import annotations
 import math
 import re
 import string
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import lru_cache
+from types import MappingProxyType
 
 from . import plugins
 from .log import warning
@@ -222,11 +224,13 @@ _BASE: dict[str, Block] = {
 
 
 @lru_cache(maxsize=1)
-def registry() -> dict[str, Block]:
+def registry() -> Mapping[str, Block]:
     """The shipped blocks plus any validated plugin manifests.
 
-    Cached for the process. A new or edited manifest needs `reload()` (the
-    gateway restarts; the CLI is a fresh process each run).
+    The returned mapping is read-only: a caller cannot add, remove or replace a
+    block in the process-wide registry. Cached for the process; a new or edited
+    manifest needs `reload()` (the gateway restarts; the CLI is a fresh process
+    each run).
     """
     merged = dict(_BASE)
     for origin, payload in plugins.manifests(plugins.FILTER_GROUP):
@@ -238,7 +242,7 @@ def registry() -> dict[str, Block]:
                 merged[str(name)] = parse_block(str(name), raw)
             except FilterError as exc:
                 warning(f"filter plugin {origin!r}: {exc}; ignored")
-    return merged
+    return MappingProxyType(merged)
 
 
 def reload() -> None:

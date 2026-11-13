@@ -54,6 +54,8 @@ month and increments per release; tags are prefixed with `v`.
   request model, and `parse.py` no longer imports the audio filter registry:
   the script layer carries `[filter:]` as written and the audio layer validates
   it.
+- `filters.registry()` now returns a read-only mapping, so no caller can mutate
+  the process-wide block registry.
 - Repositioned the project around the script layer: the README, package
   description and `AGENTS.md` now lead with pronunciation, heteronyms and
   normalisation, and present the prosody presets as an experimental lab. See

@@ -117,6 +117,14 @@ def test_a_bad_plugin_manifest_is_skipped(monkeypatch):
         filters.reload()
 
 
+def test_the_registry_is_read_only():
+    blocks = filters.registry()
+
+    assert not isinstance(blocks, dict)
+    with pytest.raises(TypeError):
+        blocks["new_block"] = filters.Block("new_block", "volume=0dB", ())  # type: ignore[index]
+
+
 def test_no_manifest_env_means_no_file_plugins(monkeypatch):
     monkeypatch.delenv(plugins.MANIFEST_ENV, raising=False)
     assert plugins.file_manifests(plugins.FILTER_GROUP) == []
