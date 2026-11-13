@@ -18,12 +18,12 @@ from .request import SpeechRequest
 
 @dataclass(frozen=True)
 class Prepared:
-    turns: list[Turn]
+    turns: tuple[Turn, ...]
     voice: str
     payload: object
     instructions: str | None
     flags: pronounce.Flags
-    found: list[pronounce.Ambiguity]
+    found: tuple[pronounce.Ambiguity, ...]
     ambiguity: str
     stream_format: str
     passthrough: bool
@@ -80,12 +80,12 @@ def prepare(body: SpeechRequest, ctx: Context) -> Prepared:
     )
 
     return Prepared(
-        turns=list(compiled.turns),
+        turns=compiled.turns,
         voice=compiled.voice,
         payload=compiled.payload,
         instructions=compiled.instructions,
         flags=compiled.flags,
-        found=list(compiled.found),
+        found=compiled.found,
         ambiguity=compiled.ambiguity,
         stream_format=stream_format,
         passthrough=compiled.passthrough,
@@ -111,7 +111,7 @@ def render(prepared: Prepared, body: SpeechRequest, ctx: Context) -> Rendered:
         finally:
             upstream_ms += (time.perf_counter() - at) * 1000.0
 
-    turns = parse.split_long(prepared.turns, limits.segment_chars)
+    turns = parse.split_long(list(prepared.turns), limits.segment_chars)
     pcm = audio.render(
         turns,
         render_turn,

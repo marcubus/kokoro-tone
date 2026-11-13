@@ -65,6 +65,15 @@ class Ambiguity:
     options: tuple[str, ...] = ()
     says: tuple[str, ...] = ()
 
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "word": self.word,
+            "offset": self.offset,
+            "options": list(self.options),
+            "says": list(self.says),
+            "chosen": self.chosen,
+        }
+
 
 # ---------------------------------------------------------------- precedence
 

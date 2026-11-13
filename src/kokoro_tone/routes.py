@@ -13,7 +13,7 @@ import json
 import math
 import secrets
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -29,7 +29,7 @@ router = APIRouter()
 Ctx = Annotated[Context, Depends(get_context)]
 
 
-def _guessed(found: list[pronounce.Ambiguity], mode: str) -> str | None:
+def _guessed(found: Sequence[pronounce.Ambiguity], mode: str) -> str | None:
     """The compact `word=sense` list, deduplicated in first-seen order."""
     if mode != "guess" or not found:
         return None
@@ -37,7 +37,7 @@ def _guessed(found: list[pronounce.Ambiguity], mode: str) -> str | None:
     return ",".join(assumed)[:512]
 
 
-def _mark_guessed(response: Response, found: list[pronounce.Ambiguity], mode: str) -> Response:
+def _mark_guessed(response: Response, found: Sequence[pronounce.Ambiguity], mode: str) -> Response:
     """A guess never fails the render: it says what it assumed, in a header."""
     guessed = _guessed(found, mode)
     if guessed:

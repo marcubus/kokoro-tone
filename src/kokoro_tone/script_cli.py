@@ -94,6 +94,17 @@ def main(argv: list[str] | None = None) -> int:
         print(f"kokoro-tone-script: {exc}", file=sys.stderr)
         return 3
 
+    # The script layer carries `[filter:]` as written; validate it here so a
+    # one-shot compile fails before the caller pipes it into a renderer.
+    for turn in compiled.turns:
+        if not turn.filter:
+            continue
+        try:
+            filters.render_spec(turn.filter)
+        except filters.FilterError as exc:
+            print(f"kokoro-tone-script: {exc}", file=sys.stderr)
+            return 3
+
     if args.json:
         sys.stdout.write(compiled.to_json())
         sys.stdout.write("\n")

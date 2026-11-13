@@ -5,8 +5,8 @@ script a client sends - plain prose, sticky `[voice:]`/`[emotion:]`/`[rate:]`/
 `[pause:]`/`[sense:]`/`[filter:]` markup, or an array of turns - and resolves
 pronunciations, heteronyms, acronyms and numbers into the text the engine
 should say. It knows nothing about HTTP, audio rendering or Kokoro. A `[filter:]`
-tag is validated against the declarative block registry, but no ffmpeg process
-runs here.
+tag is carried through as written; the audio layer owns the block registry, its
+bounds and the ffmpeg call.
 
 `pipeline.prepare` calls this; the `kokoro_tone.script_cli` entry point calls it
 without a server, which is what makes the script layer usable on its own.
@@ -15,10 +15,10 @@ without a server, which is what makes the script layer usable on its own.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Protocol
 
-from . import lexicon, parse, pronounce, request
+from . import lexicon, parse, pronounce, text
 from .errors import AmbiguityError, RequestError
 from .lexicon import LexiconData
 from .limits import DEFAULT_LIMITS, Limits
@@ -95,7 +95,7 @@ class Compiled:
                     "voice": turn.voice,
                     "emotion": turn.emotion,
                     "rate": turn.rate,
-                    "filter": turn.filter.as_text() if turn.filter else None,
+                    "filter": turn.filter,
                     "gap_ms": turn.gap_ms,
                     "lead_ms": turn.lead_ms,
                 }
@@ -104,7 +104,7 @@ class Compiled:
             "voice": self.voice,
             "instructions": self.instructions,
             "ambiguity": self.ambiguity,
-            "ambiguities": [asdict(item) for item in self.found],
+            "ambiguities": [item.as_dict() for item in self.found],
             "passthrough": self.passthrough,
             "chars": self.chars,
         }
@@ -130,16 +130,7 @@ def _raise_ambiguity(found: list[pronounce.Ambiguity]) -> None:
         f"{len(found)} {noun} a sense tag: {listed}. "
         "Write the tag in the text, or add a pronunciation rule for it."
     )
-    payload = [
-        {
-            "word": item.word,
-            "offset": item.offset,
-            "options": list(item.options),
-            "says": list(item.says),
-            "chosen": item.chosen,
-        }
-        for item in found
-    ]
+    payload = [item.as_dict() for item in found]
     raise AmbiguityError(message, payload)
 
 
@@ -159,10 +150,10 @@ def compile_script(
     data_lexicon = lexicon_data or lexicon.EMPTY_LEXICON
     limits = config.limits
 
-    instructions = request.clean_instructions(data.instructions, limits)
-    aliases, voice = request.voice_spec(data.voice, limits, data_lexicon)
+    instructions = text.clean_instructions(data.instructions, limits)
+    aliases, voice = text.voice_spec(data.voice, limits, data_lexicon)
     default_voice = voice or config.default_voice
-    payload = request.sanitise_input(data.input)
+    payload = text.sanitise_input(data.input)
     ambiguity = _ambiguity(data.ambiguity)
 
     try:
@@ -171,13 +162,13 @@ def compile_script(
     except parse.MarkupError as exc:
         raise RequestError(str(exc)) from exc
 
-    token = request.voice_token(data.voice)
+    token = text.voice_token(data.voice)
     found: list[pronounce.Ambiguity] = []
     collect = found if ambiguity != "ignore" else None
     guessing = ambiguity == "guess"
     plain = isinstance(payload, str) and not parse.has_markup(payload)
     if isinstance(payload, str) and plain:
-        payload = request.rewrite(
+        payload = text.rewrite(
             payload,
             token,
             default_voice,
@@ -199,11 +190,11 @@ def compile_script(
         raise RequestError(str(exc)) from exc
 
     tokens = [turn.voice for turn in turns]
-    request.apply_aliases(turns, aliases)
+    text.apply_aliases(turns, aliases)
 
     if not plain:
         for turn, turn_token in zip(turns, tokens, strict=True):
-            turn.text = request.rewrite(
+            turn.text = text.rewrite(
                 turn.text,
                 turn_token,
                 turn.voice,
@@ -232,7 +223,7 @@ def compile_script(
         flags=flags,
         found=tuple(found),
         ambiguity=ambiguity,
-        passthrough=request.is_passthrough(payload, instructions),
+        passthrough=text.is_passthrough(payload, instructions),
     )
 
 

@@ -64,28 +64,29 @@ def test_the_filter_tag_is_sticky_and_can_be_cleared():
         "[filter:high_shelf gain=3] One. [voice:am_michael] Two. [filter:none] Three."
     )
 
-    assert turns[0].filter is not None
+    assert turns[0].filter == "high_shelf gain=3"
     assert turns[1].filter == turns[0].filter
     assert turns[2].filter is None
 
 
 def test_the_filter_tag_reaches_the_prosody_chain():
-    spec = filters.parse_spec("high_shelf gain=5")
-    assert spec is not None
-    resolved = prosody.resolve(Turn(text="x", filter=spec))
+    resolved = prosody.resolve(Turn(text="x", filter="high_shelf gain=5"))
 
     assert "treble=g=5:f=6000:w=0.7" in resolved.filters
 
 
-def test_an_unknown_filter_tag_is_a_markup_error():
-    with pytest.raises(parse.MarkupError, match="unknown filter block"):
-        parse.parse_markup("[filter:nope] Hi.")
+def test_an_unknown_filter_tag_is_rejected_by_the_audio_layer():
+    turns = parse.parse_markup("[filter:nope] Hi.")
+
+    with pytest.raises(filters.FilterError, match="unknown filter block"):
+        prosody.resolve(turns[0])
 
 
 def test_a_turn_array_accepts_a_filter():
     turns = parse.parse_input([{"text": "Hi.", "filter": "lowpass freq=5000"}])
-    assert turns[0].filter is not None
-    assert filters.render(turns[0].filter) == "lowpass=f=5000"
+
+    assert turns[0].filter == "lowpass freq=5000"
+    assert filters.render_spec(turns[0].filter) == "lowpass=f=5000"
 
 
 def test_a_plugin_manifest_adds_a_validated_block(monkeypatch):

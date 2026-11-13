@@ -805,6 +805,19 @@ def test_ambiguity_error_passes_when_every_word_is_settled(ambiguous_gateway):
     assert server.last_request["input"] == "He plays base in the band."
 
 
+def test_an_unknown_filter_block_is_rejected_before_the_engine(gateway):
+    client, server = gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "[filter:nope] Hello."},
+    )
+
+    assert response.status_code == 400
+    assert "unknown filter block" in response.json()["error"]["message"]
+    assert server.requests == []
+
+
 def test_a_literal_pipe_in_prose_is_not_a_marker(ambiguous_gateway):
     """Only a tag desugars to a marker; `a|b` in prose is just text."""
     client, server = ambiguous_gateway

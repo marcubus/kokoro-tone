@@ -16,7 +16,8 @@ The package is flat; each module owns one seam.
 | `middleware.py` | the body-size limit and the HTTP metrics middleware |
 | `telemetry.py` | the OpenTelemetry meter, instruments, views and OTLP exporter |
 | `upstream.py` | the `Upstream` client: health probe, voices, PCM synthesis and passthrough streaming |
-| `request.py` | request validation, voice aliases and markup rewriting |
+| `request.py` | the OpenAI speech body, model catalog and model check |
+| `text.py` | pure text and voice shaping: sanitise, aliases, rewrite, passthrough |
 | `script.py` | the script-layer facade: `ScriptInput` → `Compiled`, no HTTP or audio |
 | `script_cli.py` | the standalone compiler CLI (`python -m kokoro_tone.script_cli`) |
 | `filters.py` | declarative ffmpeg blocks, their schema and the `[filter:]` builder |

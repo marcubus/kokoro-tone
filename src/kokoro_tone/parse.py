@@ -13,7 +13,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field, replace
 
-from . import filters
 from .limits import DEFAULT_LIMITS, Limits
 
 TAG_NAMES = ("voice", "emotion", "rate", "pause", "sense", "filter")
@@ -30,6 +29,9 @@ _OPENER_RE = re.compile(r"\[([A-Za-z_]+):")
 _PAUSE_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*(ms|s)?$", re.IGNORECASE)
 _VOICE_RE = re.compile(r"^[A-Za-z0-9_.+()\-]+$")
 _EMOTION_RE = re.compile(r"^[A-Za-z][A-Za-z_-]*$")
+# `[filter:block key=value ...]` is grammar here; the block registry and the
+# numeric bounds belong to the audio layer, so this only checks the shape.
+_FILTER_TOKEN_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 # `[sense:word=sense]` names which reading of a heteronym to use. The word is a
 # normal English token; the sense is the hyphenated key the lexicon publishes.
 _SENSE_RE = re.compile(r"^([A-Za-z][A-Za-z'\-]*)=([a-z0-9]+(?:-[a-z0-9]+)*)$")
@@ -51,8 +53,9 @@ class Turn:
     gap_ms: int = 0  # silence *after* this turn
     lead_ms: int = 0  # silence *before* this turn (only set on the first)
     # One declarative DSP block selected with `[filter:block key=value ...]`.
-    # Sticky like `[emotion:]`; `[filter:none]` clears it.
-    filter: filters.FilterSpec | None = None
+    # Sticky like `[emotion:]`; `[filter:none]` clears it. Kept as the written
+    # spec: the audio layer owns the block registry and its bounds.
+    filter: str | None = None
     # Markers a `[sense:]` tag desugared to. Kept so an unresolved one can be
     # reported without treating a literal `|` in prose as a marker.
     markers: list[str] = field(default_factory=list)
@@ -160,12 +163,23 @@ def _parse_emotion(value: str) -> str | None:
     return None if name == EMOTION_RESET else name
 
 
-def _parse_filter(value: str) -> filters.FilterSpec | None:
-    """Validate a `[filter:block key=value ...]` value against the registry."""
-    try:
-        return filters.parse_spec(value)
-    except filters.FilterError as exc:
-        raise MarkupError(str(exc)) from exc
+def _parse_filter(value: str) -> str | None:
+    """Check the tag shape; the audio layer resolves the block and its bounds."""
+    tokens = value.split()
+    if not tokens:
+        raise MarkupError("filter needs a block name; use [filter:none] to clear")
+    name = tokens[0].lower()
+    if name == "none":
+        if len(tokens) > 1:
+            raise MarkupError("filter none takes no parameters")
+        return None
+    if not _FILTER_TOKEN_RE.match(name):
+        raise MarkupError(f"invalid filter block {_short(name)}")
+    for token in tokens[1:]:
+        key, separator, raw = token.partition("=")
+        if not separator or not raw or not _FILTER_TOKEN_RE.match(key):
+            raise MarkupError(f"filter parameter {_short(token)} must be key=value")
+    return " ".join([name, *tokens[1:]])
 
 
 def parse_markup(
@@ -191,7 +205,7 @@ def parse_markup(
     voice = default_voice
     emotion: str | None = None
     rate: float | None = None
-    filter_spec: filters.FilterSpec | None = None
+    filter_spec: str | None = None
 
     def flush() -> None:
         raw = "".join(buffer)

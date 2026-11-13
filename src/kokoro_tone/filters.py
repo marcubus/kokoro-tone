@@ -341,3 +341,13 @@ def render(spec: FilterSpec) -> str:
     if block is None:
         raise FilterError(f"unknown filter block {spec.block!r}")
     return _build(block, dict(spec.values))
+
+
+def render_spec(value: str) -> str | None:
+    """Validate and render a `[filter:]` value in one step.
+
+    Returns None for `none` (the clear tag). Raises `FilterError` for anything
+    the registry does not accept.
+    """
+    spec = parse_spec(value)
+    return None if spec is None else render(spec)

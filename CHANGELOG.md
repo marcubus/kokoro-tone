@@ -49,6 +49,11 @@ month and increments per release; tags are prefixed with `v`.
 
 ### Changed
 
+- Split pure text and voice shaping into `text.py`, leaving `request.py` with
+  only the OpenAI body and model catalog. `script.py` no longer depends on the
+  request model, and `parse.py` no longer imports the audio filter registry:
+  the script layer carries `[filter:]` as written and the audio layer validates
+  it.
 - Repositioned the project around the script layer: the README, package
   description and `AGENTS.md` now lead with pronunciation, heteronyms and
   normalisation, and present the prosody presets as an experimental lab. See

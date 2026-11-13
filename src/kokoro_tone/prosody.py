@@ -193,8 +193,10 @@ def resolve(
     rate = preset.rate * (turn.rate or 1.0) * speed
 
     chain = preset.filters
-    if turn.filter is not None:
-        chain = (*chain, filters.render(turn.filter))
+    if turn.filter:
+        fragment = filters.render_spec(turn.filter)
+        if fragment is not None:
+            chain = (*chain, fragment)
 
     return Prosody(
         rate=_clamp(rate, limits.rate_min, limits.rate_max),
