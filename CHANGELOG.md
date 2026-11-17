@@ -7,6 +7,8 @@ month and increments per release; tags are prefixed with `v`.
 
 ## [Unreleased]
 
+## [2026.11.4] - 2026-11-17
+
 ### Added
 
 - `POST /v1/script/compile`: the render's own `pipeline.prepare` step, returned
