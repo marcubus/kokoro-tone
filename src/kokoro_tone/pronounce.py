@@ -219,6 +219,11 @@ def _rule_end(
         if rule.match[-1].isalnum() and end < len(text):
             if text[end].isalnum() or text[end] == "_":
                 return None
+    # A bare rule must not consume the word half of a sense marker. The marker
+    # is the caller's explicit choice; leave it for a marker rule, or for
+    # unresolved_markers to reject loudly.
+    if "|" not in rule.match and end < len(text) and text[end] == "|":
+        return None
     if not _context_ok(index, end, rule, words, before_words):
         return None
     return end

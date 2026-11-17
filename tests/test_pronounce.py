@@ -400,6 +400,21 @@ def test_an_unknown_sense_marker_is_left_as_text():
     assert rewrite("bass|jazz", global_rules=parsed) == "bass|jazz"
 
 
+def test_a_bare_rule_does_not_consume_a_sense_marker_prefix():
+    """`read|past` is not the word `read`; a cue rule must not eat its head."""
+    parsed = rules(
+        [
+            {"match": "read|present-verb", "say": "reed"},
+            {"match": "read|past-verb", "say": "red"},
+            {"match": "read", "say": "red", "when": {"before": ["were"]}},
+        ]
+    )
+    assert (
+        rewrite("they were read|past this morning", global_rules=parsed)
+        == "they were read|past this morning"
+    )
+
+
 def test_a_replacement_keeps_a_sentence_initial_capital():
     parsed = rules({"wind": "wined"})
     assert rewrite("Wind the clock", global_rules=parsed) == "Wined the clock"
