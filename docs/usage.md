@@ -32,6 +32,7 @@ served by this subset:
 | `voice` names, blends (`a(2)+b(1)`), OpenAI aliases | passed through unchanged | podcast, dubbing, OpenAI-client cases |
 | `API_KEYS` bearer | upstream auth | all cases |
 | `GET /health`, `GET /v1/audio/voices` | gateway health, voice list | operations, voice discovery |
+| `POST /v1/pronunciations/lookup`, `/learn`, `/forget` | inspect and extend the deployment lexicon at runtime | agents that discover a name or a heteronym sense |
 | `stream: true` | SSE passthrough | assistant/chat and any passthrough case |
 
 Nothing else in the engine is required. The gateway does not call
@@ -240,6 +241,24 @@ curl -N -sS http://kokoro-tone:8000/v1/audio/speech \
   -H 'Content-Type: application/json' \
   -d '{"input":"[voice:af_bella] Hello.","stream_format":"sse","response_format":"mp3"}'
 ```
+
+### Pronunciation lookup and learning
+
+```bash
+curl -sS http://kokoro-tone:8000/v1/pronunciations/lookup \
+  -H "Authorization: Bearer $KOKORO_TONE_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"words":["read","Banyule"]}'
+
+curl -sS http://kokoro-tone:8000/v1/pronunciations/learn \
+  -H "Authorization: Bearer $KOKORO_TONE_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"word":"Aurec","say":"AW-rek"}'
+```
+
+`learn` writes to the learned overlay only when `PRONUNCIATION_WRITE=true`.
+Add `"sense":"present-verb"` to learn a heteronym reading. `forget` removes a
+learned rule and leaves the user overlay and the defaults alone.
 
 ### Errors
 

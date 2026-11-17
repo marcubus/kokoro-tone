@@ -72,27 +72,31 @@ With no `within`, a `before` cue looks back two words (syntax is local) and an
 `after` cue looks to the end of the sentence (lexical cues travel). Neither
 crosses a sentence boundary.
 
-## Defaults and the user overlay
+## Defaults, the user overlay and the learned overlay
 
 `lexicon.json` is the shipped defaults. A deployment can add `custom.json`
 (`PRONUNCIATION_OVERRIDES`) beside it; the gateway composes the two **in
-memory** when it loads them:
+memory** when it loads them. A third file, `learned/learned.json`
+(`PRONUNCIATION_LEARNED`), is written by the pronunciation API when
+`PRONUNCIATION_WRITE=true`. Priority is user overlay, then learned overlay, then
+the shipped defaults:
 
 | Key | Composition |
 |---|---|
-| `rules` | overlay rules are tried first, then the defaults |
-| `acronyms`, `letters` | overlay keys win |
-| `protect` | union of both lists |
-| `locale` | overlay wins if it sets one |
-| `voices` | per token, the overlay set is composed over the default set |
-| `aliases`, default voice | overlay wins |
+| `rules` | user rules first, then learned rules, then the defaults |
+| `acronyms`, `letters` | user wins over learned, learned wins over defaults |
+| `protect` | union of all lists |
+| `locale` | the highest layer that sets one wins |
+| `voices` | per token, each layer is composed over the one below |
+| `aliases`, default voice | the highest layer that sets one wins |
 
-The overlay never has to repeat the defaults, and the defaults never contain a
+The overlays never have to repeat the defaults, and the defaults never contain a
 deployment's private names. A missing overlay is normal. Per-request
 `pronunciations` and `voice` still sit on top of the composed result.
 
 `custom.example.json` is the empty shape to copy. `custom.json` is gitignored:
-it is the user's file, not the project's.
+it is the user's file, not the project's. `learned/` is gitignored too; it is
+machine-written and can be removed to forget everything the gateway learned.
 
 ## Verification
 

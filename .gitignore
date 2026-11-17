@@ -30,3 +30,6 @@ lexicon/custom.json
 .vscode/
 *.swp
 *~
+
+# Machine-written pronunciation overlay
+lexicon/learned/

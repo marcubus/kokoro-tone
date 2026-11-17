@@ -40,6 +40,8 @@ class Settings:
     normalise: normalise.NormaliseSettings
     lexicon_path: str
     lexicon_overlay_path: str
+    lexicon_learned_path: str
+    lexicon_write: bool
     log_level: str
     otel_endpoint: str
     otel_service_name: str
@@ -147,6 +149,12 @@ def load_settings() -> Settings:
         lexicon_overlay_path=env.read_str(
             "PRONUNCIATION_OVERRIDES", "/etc/kokoro-tone/custom.json"
         ),
+        # Machine-written overlay. Separate from the user overlay so a learned
+        # rule can never overwrite a deliberate deployment choice.
+        lexicon_learned_path=env.read_str(
+            "PRONUNCIATION_LEARNED", "/etc/kokoro-tone/learned/learned.json"
+        ),
+        lexicon_write=env.read_bool("PRONUNCIATION_WRITE", False),
         log_level=_log_level(),
         otel_endpoint=env.read_str("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "")
         or env.read_str("OTEL_EXPORTER_OTLP_ENDPOINT", ""),

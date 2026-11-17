@@ -881,3 +881,128 @@ def test_a_request_rule_wins_over_the_overlay(overlay_gateway):
 
     assert response.status_code == 200
     assert server.last_request["input"] == "Ask Request."
+
+
+# ---------------------------------------------------------------- pronunciation API
+
+
+def test_pronunciation_lookup_returns_heteronym_senses(learned_gateway):
+    client, _, _ = learned_gateway
+    response = client.post(
+        "/v1/pronunciations/lookup",
+        headers=AUTH,
+        json={"words": ["read", "Banyule", "Aurec", "Unknown"]},
+    )
+
+    assert response.status_code == 200
+    results = {item["word"]: item for item in response.json()["results"]}
+    assert results["read"]["found"] is True
+    assert {item["sense"] for item in results["read"]["senses"]} == {
+        "present-verb",
+        "past-verb",
+    }
+    assert results["Banyule"]["found"] is True
+    assert results["Aurec"]["found"] is True
+    assert results["Aurec"]["rules"][0]["source"] == "custom"
+    assert results["Unknown"]["found"] is False
+    assert results["Unknown"]["rules"] == []
+
+
+def test_pronunciation_learn_writes_the_learned_overlay(learned_gateway):
+    client, _, learned = learned_gateway
+    response = client.post(
+        "/v1/pronunciations/learn",
+        headers=AUTH,
+        json={"word": "Isi", "say": "izzy"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["source"] == "learned"
+    stored = json.loads(learned.read_text(encoding="utf-8"))
+    assert {"match": "Isi", "say": "izzy"} in stored["defaults"]["rules"]
+
+    lookup = client.post(
+        "/v1/pronunciations/lookup",
+        headers=AUTH,
+        json={"words": ["Isi"]},
+    ).json()["results"][0]
+    assert lookup["found"] is True
+    assert lookup["rules"][0]["source"] == "learned"
+
+
+def test_pronunciation_learn_can_add_a_sense(learned_gateway):
+    client, _, _ = learned_gateway
+    response = client.post(
+        "/v1/pronunciations/learn",
+        headers=AUTH,
+        json={"word": "read", "sense": "present-verb", "say": "reed"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["match"] == "read|present-verb"
+
+    lookup = client.post(
+        "/v1/pronunciations/lookup",
+        headers=AUTH,
+        json={"words": ["read"]},
+    ).json()["results"][0]
+    assert lookup["senses"][0] == {
+        "sense": "present-verb",
+        "say": "reed",
+        "source": "learned",
+    }
+
+
+def test_pronunciation_forget_removes_only_the_learned_rule(learned_gateway):
+    client, _, _ = learned_gateway
+    client.post(
+        "/v1/pronunciations/learn",
+        headers=AUTH,
+        json={"word": "Isi", "say": "izzy"},
+    )
+    response = client.post(
+        "/v1/pronunciations/forget",
+        headers=AUTH,
+        json={"word": "Isi"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["removed"] == 1
+
+    lookup = client.post(
+        "/v1/pronunciations/lookup",
+        headers=AUTH,
+        json={"words": ["Isi"]},
+    ).json()["results"][0]
+    assert lookup["found"] is False
+
+
+def test_pronunciation_learn_is_forbidden_when_disabled(readonly_lexicon_gateway):
+    client, _, _ = readonly_lexicon_gateway
+    response = client.post(
+        "/v1/pronunciations/learn",
+        headers=AUTH,
+        json={"word": "Isi", "say": "izzy"},
+    )
+
+    assert response.status_code == 403
+    assert "disabled" in response.json()["error"]["message"]
+
+
+def test_pronunciation_learn_rejects_brackets(learned_gateway):
+    client, _, _ = learned_gateway
+    response = client.post(
+        "/v1/pronunciations/learn",
+        headers=AUTH,
+        json={"word": "Bad[word]", "say": "x"},
+    )
+
+    assert response.status_code == 400
+    assert "brackets" in response.json()["error"]["message"]
+
+
+def test_pronunciation_lookup_requires_auth(learned_gateway):
+    client, _, _ = learned_gateway
+    response = client.post("/v1/pronunciations/lookup", json={"words": ["read"]})
+
+    assert response.status_code == 401

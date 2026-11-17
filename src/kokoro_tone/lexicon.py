@@ -12,6 +12,9 @@ cannot stop the gateway from starting.
 from __future__ import annotations
 
 import json
+import os
+import re
+import tempfile
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -435,11 +438,51 @@ def _stamp(path: str | None) -> tuple[int, int] | None:
     return (info.st_mtime_ns, info.st_size)
 
 
-class Lexicon:
-    """The shipped defaults plus the user's overlay, reloaded on change.
+def _rule_entry(rule: Rule, source: str) -> dict[str, object]:
+    """One rule in the lookup response, including its sense and cues."""
+    entry: dict[str, object] = {"match": rule.match, "say": rule.say, "source": source}
+    if "|" in rule.match:
+        entry["sense"] = rule.match.split("|", 1)[1]
+    when: dict[str, object] = {}
+    if rule.before:
+        when["before"] = sorted(rule.before)
+    if rule.after:
+        when["after"] = sorted(rule.after)
+    if rule.within is not None:
+        when["within"] = rule.within
+    if when:
+        entry["when"] = when
+    if rule.case_sensitive:
+        entry["case_sensitive"] = True
+    if not rule.whole_word:
+        entry["whole_word"] = False
+    return entry
 
-    The two files are composed in memory, so the overlay never has to repeat the
-    defaults and the defaults never have to know about a deployment.
+
+def _rule_key(entry: dict[str, object]) -> tuple[object, ...]:
+    when = entry.get("when")
+    cues: tuple[object, ...] = ()
+    if isinstance(when, dict):
+        cues = (
+            tuple(when.get("before", ())),
+            tuple(when.get("after", ())),
+            when.get("within"),
+        )
+    return (
+        entry.get("match"),
+        entry.get("say"),
+        cues,
+        entry.get("case_sensitive", False),
+        entry.get("whole_word", True),
+    )
+
+
+class Lexicon:
+    """The shipped defaults, the user overlay and the learned overlay.
+
+    Priority is request rules, then the user overlay, then the learned overlay,
+    then the shipped defaults. The learned file is the one the gateway writes;
+    the user overlay stays read-only and always wins over a learned rule.
     """
 
     def __init__(
@@ -447,32 +490,44 @@ class Lexicon:
         path: str,
         limits: Limits,
         overlay_path: str | None = None,
+        learned_path: str | None = None,
+        write_enabled: bool = False,
         telemetry: Telemetry | None = None,
     ) -> None:
         self.path = path
         self.overlay_path = overlay_path
+        self.learned_path = learned_path
+        self.write_enabled = write_enabled
         self.limits = limits
         self._telemetry = telemetry
         self._lock = threading.Lock()
-        self._stamp: tuple[tuple[int, int] | None, tuple[int, int] | None] | None = None
+        self._write_lock = threading.Lock()
+        self._stamp: tuple[tuple[int, int] | None, ...] | None = None
         self._data = EMPTY_LEXICON
+        self._layers: dict[str, LexiconData] = {}
 
     def current(self) -> LexiconData:
-        stamp = (_stamp(self.path), _stamp(self.overlay_path))
+        stamp = (_stamp(self.path), _stamp(self.overlay_path), _stamp(self.learned_path))
         with self._lock:
             if stamp == self._stamp:
                 return self._data
 
         # Read outside the lock: a slow disk must not block every request.
         base = load_lexicon(self.path, self.limits) if stamp[0] else EMPTY_LEXICON
-        overlay = (
+        custom = (
             load_lexicon(self.overlay_path, self.limits)
             if self.overlay_path and stamp[1]
             else EMPTY_LEXICON
         )
-        data = compose(base, overlay)
+        learned = (
+            load_lexicon(self.learned_path, self.limits)
+            if self.learned_path and stamp[2]
+            else EMPTY_LEXICON
+        )
+        data = compose(compose(base, learned), custom)
         with self._lock:
             self._data = data
+            self._layers = {"defaults": base, "learned": learned, "custom": custom}
             self._stamp = stamp
         if self._telemetry is not None:
             self._telemetry.lexicon_problems.set(len(data.problems))
@@ -485,6 +540,171 @@ class Lexicon:
             aliases=len(data.aliases),
             locale=data.defaults.locale,
             overlay="yes" if stamp[1] else "no",
+            learned="yes" if stamp[2] else "no",
             problems=len(data.problems),
         )
         return data
+
+    @property
+    def learned_rules(self) -> int:
+        """How many rules the learned overlay currently contributes."""
+        self.current()
+        layer = self._layers.get("learned")
+        return len(layer.defaults.rules) if layer is not None else 0
+
+    def lookup(self, word: str) -> dict[str, object]:
+        """Every deployment rule for one word, in priority order.
+
+        Marker rules carry their sense, so a caller can choose a heteronym
+        reading instead of guessing. Cue rules keep their context.
+        """
+        self.current()
+        text = word.strip()
+        if not text:
+            raise MarkupError("word must not be empty")
+        if "|" in text:
+            raise MarkupError("word must not contain |")
+        if len(text) > self.limits.pronunciation_chars:
+            raise MarkupError(f"word exceeds {self.limits.pronunciation_chars} characters")
+        head = text.casefold()
+        entries: list[dict[str, object]] = []
+        senses: list[dict[str, object]] = []
+        seen: set[tuple[object, ...]] = set()
+        seen_senses: set[str] = set()
+        for source in ("custom", "learned", "defaults"):
+            layer = self._layers.get(source)
+            if layer is None:
+                continue
+            for rule in layer.defaults.rules:
+                match = rule.match.casefold()
+                if match != head and not match.startswith(head + "|"):
+                    continue
+                entry = _rule_entry(rule, source)
+                key = _rule_key(entry)
+                if key in seen:
+                    continue
+                seen.add(key)
+                entries.append(entry)
+                sense = entry.get("sense")
+                if isinstance(sense, str) and sense not in seen_senses:
+                    seen_senses.add(sense)
+                    senses.append({"sense": sense, "say": rule.say, "source": source})
+        return {"word": text, "found": bool(entries), "senses": senses, "rules": entries}
+
+    def learn(self, word: str, say: str, sense: str | None = None) -> dict[str, object]:
+        """Add or replace one rule in the learned overlay."""
+        if not self.write_enabled:
+            raise PermissionError("pronunciation learning is disabled")
+        text = word.strip()
+        if not text:
+            raise MarkupError("word must not be empty")
+        if "|" in text:
+            raise MarkupError("word must not contain |")
+        sense = sense.strip() if sense is not None else None
+        if sense is not None and not re.fullmatch(r"[A-Za-z0-9_-]+", sense):
+            raise MarkupError("sense must be letters, digits, underscore or hyphen")
+        match = f"{text}|{sense}" if sense else text
+        rule = parse_rules([{"match": match, "say": say}], self.limits)[0]
+        with self._write_lock:
+            payload = self._read_learned()
+            defaults = payload.setdefault("defaults", {})
+            if not isinstance(defaults, dict):
+                defaults = {}
+                payload["defaults"] = defaults
+            rules = defaults.get("rules")
+            if not isinstance(rules, list):
+                rules = []
+            rules = [
+                item
+                for item in rules
+                if not (
+                    isinstance(item, dict)
+                    and str(item.get("match", "")).casefold() == rule.match.casefold()
+                )
+            ]
+            rules.append({"match": rule.match, "say": rule.say})
+            defaults["rules"] = rules
+            self._write_learned(payload)
+            self._stamp = None
+        event("pronunciation_learn", word=text, sense=sense or "", match=rule.match)
+        return {
+            "ok": True,
+            "word": text,
+            "match": rule.match,
+            "say": rule.say,
+            "sense": sense,
+            "source": "learned",
+        }
+
+    def forget(self, word: str, sense: str | None = None) -> dict[str, object]:
+        """Remove one rule from the learned overlay, leaving other layers alone."""
+        if not self.write_enabled:
+            raise PermissionError("pronunciation learning is disabled")
+        text = word.strip()
+        if not text:
+            raise MarkupError("word must not be empty")
+        if "|" in text:
+            raise MarkupError("word must not contain |")
+        sense = sense.strip() if sense is not None else None
+        if sense is not None and not re.fullmatch(r"[A-Za-z0-9_-]+", sense):
+            raise MarkupError("sense must be letters, digits, underscore or hyphen")
+        match = f"{text}|{sense}" if sense else text
+        removed = 0
+        with self._write_lock:
+            payload = self._read_learned()
+            defaults = payload.get("defaults")
+            rules = defaults.get("rules") if isinstance(defaults, dict) else None
+            if not isinstance(rules, list):
+                rules = []
+            kept = [
+                item
+                for item in rules
+                if not (
+                    isinstance(item, dict)
+                    and str(item.get("match", "")).casefold() == match.casefold()
+                )
+            ]
+            removed = len(rules) - len(kept)
+            if removed:
+                assert isinstance(defaults, dict)
+                defaults["rules"] = kept
+                self._write_learned(payload)
+                self._stamp = None
+        event("pronunciation_forget", word=text, sense=sense or "", removed=removed)
+        return {"ok": True, "word": text, "match": match, "removed": removed}
+
+    def _read_learned(self) -> dict[str, object]:
+        if not self.learned_path:
+            return {}
+        path = Path(self.learned_path)
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return {}
+        except (OSError, ValueError) as exc:
+            raise MarkupError(f"learned lexicon is not readable: {exc}") from exc
+        if not isinstance(raw, dict):
+            raise MarkupError("learned lexicon top level must be an object")
+        return raw
+
+    def _write_learned(self, payload: dict[str, object]) -> None:
+        if not self.learned_path:
+            raise OSError("learned lexicon path is not configured")
+        path = Path(self.learned_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, temporary = tempfile.mkstemp(dir=str(path.parent), prefix=".learned-", suffix=".json")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                json.dump(payload, handle, ensure_ascii=False, indent=2)
+                handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, path)
+            # The learned file is not a secret; make it readable to the host
+            # operator. The directory stays writable only by the service user.
+            os.chmod(path, 0o644)
+        finally:
+            try:
+                os.unlink(temporary)
+            except FileNotFoundError:
+                pass

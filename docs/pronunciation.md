@@ -234,18 +234,39 @@ The deployment file is a collection of sets plus server aliases:
 `protect`, `letters`, `locale`. `aliases` ships empty; an `id` entry sets the
 server default voice, and the request `voice` map sits on top of it.
 
-The shipped file is the defaults. A deployment can add an overlay
-(`PRONUNCIATION_OVERRIDES`, `custom.json` beside it); the gateway composes the
-two in memory. Overlay rules are tried before default rules, overlay acronyms
-and letters win, `protect` is the union, and an overlay `locale` wins. A missing
-overlay is normal. Request rules still sit on top of the composed result.
+The shipped file is the defaults. A deployment can add a user overlay
+(`PRONUNCIATION_OVERRIDES`, `custom.json` beside it) and a learned overlay
+(`PRONUNCIATION_LEARNED`, `learned/learned.json` beside it); the gateway
+composes the three in memory. Priority is user overlay, then learned overlay,
+then the shipped defaults, so a deliberate `custom.json` rule always wins.
+Overlay rules are tried before default rules, overlay acronyms and letters win,
+`protect` is the union, and an overlay `locale` wins. A missing overlay is
+normal. Request rules still sit on top of the composed result.
 
 The lookup for a turn is: request set for the token as written → deployment set
 for that token → request set for the resolved voice → deployment set for the
 resolved voice → request global (`*`) → deployment `defaults` → built-in. The
-"deployment" set is the shipped defaults with the user overlay already composed
-in. So `[voice:bm_lewis]` mid-script uses that voice's set, and an alias inherits
-the underlying voice's set.
+"deployment" set is the shipped defaults with the learned and user overlays
+already composed in. So `[voice:bm_lewis]` mid-script uses that voice's set, and
+an alias inherits the underlying voice's set.
+
+### The learned overlay and the pronunciation API
+
+The learned overlay is for readings a caller discovers at runtime. It is the
+only lexicon file the gateway writes. The API is available when
+`PRONUNCIATION_WRITE=true`:
+
+- `POST /v1/pronunciations/lookup` with `{"words": ["read", "Banyule"]}` returns
+  every deployment rule for each word, including the `senses` of a heteronym and
+  the `source` layer (`custom`, `learned` or `defaults`).
+- `POST /v1/pronunciations/learn` with `{"word": "Aurec", "say": "AW-rek"}` adds
+  a bare rule. Add `"sense": "present-verb"` to write `word|sense` instead.
+- `POST /v1/pronunciations/forget` with `{"word": "Aurec"}` removes only the
+  learned rule; it never touches the user overlay or the defaults.
+
+Writes are atomic and reload the lexicon on the next request. A missing learned
+file is normal; the first learn creates it. The learned file is not a secret and
+is written readable to the host operator.
 
 The file is verified at load: file-level problems ignore the file, entry-level
 problems skip that entry and keep the rest, and everything is logged to stderr.

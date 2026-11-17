@@ -268,6 +268,58 @@ def overlay_gateway(monkeypatch, tmp_path):
     server.shutdown()
 
 
+LEARNED_FIXTURE = {
+    "defaults": {
+        "rules": [
+            {"match": "read|present-verb", "say": "reed"},
+            {"match": "read|past-verb", "say": "red"},
+            {"match": "read", "say": "reed", "when": {"before": ["will"]}},
+            {"match": "read", "say": "red", "when": {"before": ["were"]}},
+            {"match": "Banyule", "say": "ban-yool"},
+        ]
+    }
+}
+
+
+@contextmanager
+def _learned_client(monkeypatch, tmp_path, *, write: bool):
+    base = tmp_path / "lexicon.json"
+    base.write_text(json.dumps(LEARNED_FIXTURE), encoding="utf-8")
+    overlay = tmp_path / "custom.json"
+    overlay.write_text(
+        json.dumps({"defaults": {"rules": [{"match": "Aurec", "say": "AW-rek"}]}}),
+        encoding="utf-8",
+    )
+    learned = tmp_path / "learned" / "learned.json"
+    server = _start_server()
+    try:
+        with _client(
+            monkeypatch,
+            server,
+            KOKORO_TONE_API_KEY="secret",
+            KOKORO_TONE_API_KEYS=None,
+            PRONUNCIATION_LEXICON=str(base),
+            PRONUNCIATION_OVERRIDES=str(overlay),
+            PRONUNCIATION_LEARNED=str(learned),
+            PRONUNCIATION_WRITE="true" if write else "false",
+        ) as client:
+            yield client, server, learned
+    finally:
+        server.shutdown()
+
+
+@pytest.fixture()
+def learned_gateway(monkeypatch, tmp_path):
+    with _learned_client(monkeypatch, tmp_path, write=True) as value:
+        yield value
+
+
+@pytest.fixture()
+def readonly_lexicon_gateway(monkeypatch, tmp_path):
+    with _learned_client(monkeypatch, tmp_path, write=False) as value:
+        yield value
+
+
 @pytest.fixture()
 def ambiguous_gateway(monkeypatch, tmp_path):
     path = tmp_path / "lexicon.json"

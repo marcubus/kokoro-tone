@@ -9,6 +9,11 @@ month and increments per release; tags are prefixed with `v`.
 
 ### Added
 
+- A runtime pronunciation API: `POST /v1/pronunciations/lookup` returns every
+  deployment rule for a word, including heteronym `senses` and the source
+  layer; `/learn` and `/forget` write a separate machine-owned learned overlay
+  when `PRONUNCIATION_WRITE=true`. Priority is user overlay, learned overlay,
+  then shipped defaults.
 - A standalone script compiler: `script.py` exposes `ScriptInput` →
   `Compiled`, and `python -m kokoro_tone.script_cli` (or `make script`) resolves
   pronunciation, heteronyms, acronyms and numbers without a server or the

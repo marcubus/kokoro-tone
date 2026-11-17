@@ -114,6 +114,8 @@ def create_app(config: Settings, *, metric_reader: MetricReader | None = None) -
             config.lexicon_path,
             config.limits,
             config.lexicon_overlay_path,
+            config.lexicon_learned_path,
+            config.lexicon_write,
             telemetry=telemetry,
         ),
         upstream=upstream.Upstream(config, telemetry=telemetry),

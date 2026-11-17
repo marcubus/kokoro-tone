@@ -18,10 +18,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field
 
 from . import __version__, audio, filters, levelling, pipeline, pronounce
 from .context import Context, get_context
 from .log import event
+from .parse import MarkupError
 from .request import MODELS, SpeechRequest
 from .upstream import UpstreamError
 
@@ -72,6 +74,21 @@ def require_auth(request: Request, ctx: Ctx) -> None:
 Auth = Annotated[None, Depends(require_auth)]
 
 
+class LookupRequest(BaseModel):
+    words: list[str] = Field(min_length=1, max_length=100)
+
+
+class LearnRequest(BaseModel):
+    word: str
+    say: str
+    sense: str | None = None
+
+
+class ForgetRequest(BaseModel):
+    word: str
+    sense: str | None = None
+
+
 @router.get("/health")
 def health(ctx: Ctx) -> JSONResponse:
     ok, detail = ctx.upstream.probe()
@@ -95,6 +112,8 @@ def health(ctx: Ctx) -> JSONResponse:
             "numbers": ctx.settings.normalise.numbers,
             "locale": ctx.settings.normalise.locale,
             "rules": len(data.defaults.rules),
+            "learned_rules": ctx.lexicon.learned_rules,
+            "write": ctx.settings.lexicon_write,
             "voice_sets": len(data.voices),
             "server_aliases": len(data.aliases),
         },
@@ -119,6 +138,38 @@ def voices(ctx: Ctx, _: Auth) -> object:
         return ctx.upstream.voices()
     except UpstreamError as exc:
         raise HTTPException(exc.status, exc.detail) from exc
+
+
+@router.post("/v1/pronunciations/lookup")
+def lookup_pronunciations(body: LookupRequest, ctx: Ctx, _: Auth) -> dict:
+    try:
+        return {"results": [ctx.lexicon.lookup(word) for word in body.words]}
+    except MarkupError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.post("/v1/pronunciations/learn")
+def learn_pronunciation(body: LearnRequest, ctx: Ctx, _: Auth) -> dict:
+    try:
+        return ctx.lexicon.learn(body.word, body.say, body.sense)
+    except MarkupError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(403, str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(500, f"could not write learned lexicon: {exc}") from exc
+
+
+@router.post("/v1/pronunciations/forget")
+def forget_pronunciation(body: ForgetRequest, ctx: Ctx, _: Auth) -> dict:
+    try:
+        return ctx.lexicon.forget(body.word, body.sense)
+    except MarkupError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(403, str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(500, f"could not write learned lexicon: {exc}") from exc
 
 
 def _record_speech(
