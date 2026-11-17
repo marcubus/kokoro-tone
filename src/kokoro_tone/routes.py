@@ -74,19 +74,41 @@ def require_auth(request: Request, ctx: Ctx) -> None:
 Auth = Annotated[None, Depends(require_auth)]
 
 
+def require_write_key(request: Request, ctx: Ctx) -> None:
+    """A second gate for the two endpoints that write to disk.
+
+    `PRONUNCIATION_WRITE_KEY` is optional. When set, the caller must send it in
+    `X-Pronunciation-Key`. It is separate from the gateway bearer so enabling
+    gateway auth cannot silently make the write key the read key.
+    """
+    expected = ctx.settings.lexicon_write_key
+    if not expected:
+        return
+    presented = request.headers.get("x-pronunciation-key", "").strip()
+    if not presented or not secrets.compare_digest(presented, expected):
+        raise HTTPException(
+            status_code=401,
+            detail="invalid or missing pronunciation write key",
+            headers={"WWW-Authenticate": "X-Pronunciation-Key"},
+        )
+
+
+WriteAuth = Annotated[None, Depends(require_write_key)]
+
+
 class LookupRequest(BaseModel):
-    words: list[str] = Field(min_length=1, max_length=100)
+    words: list[Annotated[str, Field(max_length=200)]] = Field(min_length=1, max_length=100)
 
 
 class LearnRequest(BaseModel):
-    word: str
-    say: str
-    sense: str | None = None
+    word: str = Field(min_length=1, max_length=200)
+    say: str = Field(min_length=1, max_length=200)
+    sense: str | None = Field(default=None, max_length=64)
 
 
 class ForgetRequest(BaseModel):
-    word: str
-    sense: str | None = None
+    word: str = Field(min_length=1, max_length=200)
+    sense: str | None = Field(default=None, max_length=64)
 
 
 @router.get("/health")
@@ -149,7 +171,7 @@ def lookup_pronunciations(body: LookupRequest, ctx: Ctx, _: Auth) -> dict:
 
 
 @router.post("/v1/pronunciations/learn")
-def learn_pronunciation(body: LearnRequest, ctx: Ctx, _: Auth) -> dict:
+def learn_pronunciation(body: LearnRequest, ctx: Ctx, _: Auth, __: WriteAuth) -> dict:
     try:
         return ctx.lexicon.learn(body.word, body.say, body.sense)
     except MarkupError as exc:
@@ -161,7 +183,7 @@ def learn_pronunciation(body: LearnRequest, ctx: Ctx, _: Auth) -> dict:
 
 
 @router.post("/v1/pronunciations/forget")
-def forget_pronunciation(body: ForgetRequest, ctx: Ctx, _: Auth) -> dict:
+def forget_pronunciation(body: ForgetRequest, ctx: Ctx, _: Auth, __: WriteAuth) -> dict:
     try:
         return ctx.lexicon.forget(body.word, body.sense)
     except MarkupError as exc:

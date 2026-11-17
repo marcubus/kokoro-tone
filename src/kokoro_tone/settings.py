@@ -42,6 +42,7 @@ class Settings:
     lexicon_overlay_path: str
     lexicon_learned_path: str
     lexicon_write: bool
+    lexicon_write_key: str
     log_level: str
     otel_endpoint: str
     otel_service_name: str
@@ -155,6 +156,9 @@ def load_settings() -> Settings:
             "PRONUNCIATION_LEARNED", "/etc/kokoro-tone/learned/learned.json"
         ),
         lexicon_write=env.read_bool("PRONUNCIATION_WRITE", False),
+        # Optional second secret for the write endpoints. Empty falls back to
+        # the gateway bearer, which is the only credential when auth is on.
+        lexicon_write_key=env.read_str("PRONUNCIATION_WRITE_KEY", ""),
         log_level=_log_level(),
         otel_endpoint=env.read_str("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "")
         or env.read_str("OTEL_EXPORTER_OTLP_ENDPOINT", ""),

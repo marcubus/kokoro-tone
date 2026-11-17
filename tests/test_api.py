@@ -998,7 +998,7 @@ def test_pronunciation_learn_rejects_brackets(learned_gateway):
     )
 
     assert response.status_code == 400
-    assert "brackets" in response.json()["error"]["message"]
+    assert "word may contain only" in response.json()["error"]["message"]
 
 
 def test_pronunciation_lookup_requires_auth(learned_gateway):
@@ -1006,3 +1006,176 @@ def test_pronunciation_lookup_requires_auth(learned_gateway):
     response = client.post("/v1/pronunciations/lookup", json={"words": ["read"]})
 
     assert response.status_code == 401
+
+
+# ---------------------------------------------------- pronunciation injection
+
+INJECTION_WORDS = [
+    "Bad[word]",
+    "Bad]word",
+    "a|b",
+    "line\nbreak",
+    "tab\there",
+    "<script>",
+    "{json}",
+    "back\\slash",
+    "path/../../etc/passwd",
+    "semi;colon",
+    "dollar$sign",
+    "back`tick`",
+    "null\x00byte",
+]
+
+INJECTION_SAYS = [
+    "[voice:af_heart]",
+    "a|b",
+    "line\nbreak",
+    "tab\there",
+    "<b>",
+    "{json}",
+    "back\\slash",
+    "semi;colon",
+    "dollar$sign",
+    "back`tick`",
+    "null\x00byte",
+]
+
+
+@pytest.mark.parametrize("word", INJECTION_WORDS)
+def test_pronunciation_learn_rejects_injection_words(learned_gateway, word):
+    client, _, learned = learned_gateway
+    response = client.post(
+        "/v1/pronunciations/learn",
+        headers=AUTH,
+        json={"word": word, "say": "safe"},
+    )
+
+    assert response.status_code == 400
+    assert not learned.exists() or learned.read_text(encoding="utf-8") == ""
+
+
+@pytest.mark.parametrize("say", INJECTION_SAYS)
+def test_pronunciation_learn_rejects_injection_says(learned_gateway, say):
+    client, _, learned = learned_gateway
+    response = client.post(
+        "/v1/pronunciations/learn",
+        headers=AUTH,
+        json={"word": "Safe", "say": say},
+    )
+
+    assert response.status_code == 400
+    assert not learned.exists() or learned.read_text(encoding="utf-8") == ""
+
+
+@pytest.mark.parametrize("word", INJECTION_WORDS)
+def test_pronunciation_lookup_rejects_injection_words(learned_gateway, word):
+    client, _, _ = learned_gateway
+    response = client.post(
+        "/v1/pronunciations/lookup",
+        headers=AUTH,
+        json={"words": [word]},
+    )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.parametrize("word", INJECTION_WORDS)
+def test_pronunciation_forget_rejects_injection_words(learned_gateway, word):
+    client, _, learned = learned_gateway
+    response = client.post(
+        "/v1/pronunciations/forget",
+        headers=AUTH,
+        json={"word": word},
+    )
+
+    assert response.status_code == 400
+    assert not learned.exists() or learned.read_text(encoding="utf-8") == ""
+
+
+def test_pronunciation_learn_rejects_oversized_fields(learned_gateway):
+    client, _, learned = learned_gateway
+    response = client.post(
+        "/v1/pronunciations/learn",
+        headers=AUTH,
+        json={"word": "a" * 201, "say": "safe"},
+    )
+
+    assert response.status_code == 400
+    assert not learned.exists() or learned.read_text(encoding="utf-8") == ""
+
+
+def test_pronunciation_learn_rejects_a_long_say(learned_gateway):
+    client, _, learned = learned_gateway
+    response = client.post(
+        "/v1/pronunciations/learn",
+        headers=AUTH,
+        json={"word": "Safe", "say": "a" * 201},
+    )
+
+    assert response.status_code == 400
+    assert not learned.exists() or learned.read_text(encoding="utf-8") == ""
+
+
+def test_pronunciation_learn_rejects_an_invalid_sense(learned_gateway):
+    client, _, learned = learned_gateway
+    response = client.post(
+        "/v1/pronunciations/learn",
+        headers=AUTH,
+        json={"word": "read", "sense": "bad sense", "say": "reed"},
+    )
+
+    assert response.status_code == 400
+    assert not learned.exists() or learned.read_text(encoding="utf-8") == ""
+
+
+def test_pronunciation_learn_requires_the_write_key_when_configured(keyed_learned_gateway):
+    client, _, learned = keyed_learned_gateway
+    body = {"word": "Isi", "say": "izzy"}
+
+    missing = client.post("/v1/pronunciations/learn", headers=AUTH, json=body)
+    assert missing.status_code == 401
+
+    wrong = client.post(
+        "/v1/pronunciations/learn",
+        headers={**AUTH, "X-Pronunciation-Key": "nope"},
+        json=body,
+    )
+    assert wrong.status_code == 401
+
+    assert not learned.exists() or learned.read_text(encoding="utf-8") == ""
+
+
+def test_pronunciation_learn_accepts_the_write_key(keyed_learned_gateway):
+    client, _, learned = keyed_learned_gateway
+    response = client.post(
+        "/v1/pronunciations/learn",
+        headers={**AUTH, "X-Pronunciation-Key": "write-secret"},
+        json={"word": "Isi", "say": "izzy"},
+    )
+
+    assert response.status_code == 200
+    assert json.loads(learned.read_text(encoding="utf-8"))["defaults"]["rules"] == [
+        {"match": "Isi", "say": "izzy"}
+    ]
+
+
+def test_pronunciation_forget_requires_the_write_key_when_configured(keyed_learned_gateway):
+    client, _, _ = keyed_learned_gateway
+    response = client.post(
+        "/v1/pronunciations/forget",
+        headers=AUTH,
+        json={"word": "Isi"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_pronunciation_lookup_does_not_require_the_write_key(keyed_learned_gateway):
+    client, _, _ = keyed_learned_gateway
+    response = client.post(
+        "/v1/pronunciations/lookup",
+        headers=AUTH,
+        json={"words": ["read"]},
+    )
+
+    assert response.status_code == 200

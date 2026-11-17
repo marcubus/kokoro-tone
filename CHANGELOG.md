@@ -14,6 +14,11 @@ month and increments per release; tags are prefixed with `v`.
   layer; `/learn` and `/forget` write a separate machine-owned learned overlay
   when `PRONUNCIATION_WRITE=true`. Priority is user overlay, learned overlay,
   then shipped defaults.
+- Write hardening for the pronunciation API: words and respellings accept only a
+  small character set, senses are short labels, the learned file may not be a
+  symlink, and writes are capped by `lexicon_rules` and `lexicon_bytes`.
+  `PRONUNCIATION_WRITE_KEY` adds an `X-Pronunciation-Key` gate on `/learn` and
+  `/forget`.
 - A standalone script compiler: `script.py` exposes `ScriptInput` →
   `Compiled`, and `python -m kokoro_tone.script_cli` (or `make script`) resolves
   pronunciation, heteronyms, acronyms and numbers without a server or the

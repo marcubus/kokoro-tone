@@ -258,7 +258,9 @@ curl -sS http://kokoro-tone:8000/v1/pronunciations/learn \
 
 `learn` writes to the learned overlay only when `PRONUNCIATION_WRITE=true`.
 Add `"sense":"present-verb"` to learn a heteronym reading. `forget` removes a
-learned rule and leaves the user overlay and the defaults alone.
+learned rule and leaves the user overlay and the defaults alone. Both write
+endpoints reject markup and control characters, and both require
+`X-Pronunciation-Key` when `PRONUNCIATION_WRITE_KEY` is set.
 
 ### Errors
 

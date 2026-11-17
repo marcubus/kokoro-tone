@@ -3,6 +3,7 @@
 from support import (  # noqa: F401
     ambiguous_gateway,
     gateway,
+    keyed_learned_gateway,
     learned_gateway,
     lexicon_gateway,
     metrics_gateway,

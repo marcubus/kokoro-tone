@@ -82,6 +82,7 @@ services:
       - PRONUNCIATION_OVERRIDES=${PRONUNCIATION_OVERRIDES:-/etc/kokoro-tone/custom.json}
       - PRONUNCIATION_LEARNED=${PRONUNCIATION_LEARNED:-/etc/kokoro-tone/learned/learned.json}
       - PRONUNCIATION_WRITE=${PRONUNCIATION_WRITE:-false}
+      - PRONUNCIATION_WRITE_KEY=${PRONUNCIATION_WRITE_KEY:-}
       - LOCALE=${LOCALE:-en-AU}
       - NORMALISE_DEFAULT=${NORMALISE_DEFAULT:-false}
       # Request bounds. Defaults mirror src/kokoro_tone/limits.py.

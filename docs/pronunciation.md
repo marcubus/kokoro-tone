@@ -268,6 +268,20 @@ Writes are atomic and reload the lexicon on the next request. A missing learned
 file is normal; the first learn creates it. The learned file is not a secret and
 is written readable to the host operator.
 
+The write endpoints treat their input as data, never as markup. A `word` may
+contain only letters, digits, spaces, apostrophes, hyphens, periods, ampersands,
+plus signs and hashes; a `say` may contain only letters, digits, spaces,
+apostrophes, hyphens, periods, commas and colons; a `sense` is letters, digits,
+underscore or hyphen, at most 64 characters. Brackets, pipes, control
+characters, path separators and quotes are rejected with a 400, so a request
+cannot inject markup into the lexicon or reach another file. The learned file
+must not be a symlink, and writes are refused once the file would exceed
+`lexicon_rules` or `lexicon_bytes`.
+
+When `PRONUNCIATION_WRITE_KEY` is set, `/learn` and `/forget` also require that
+secret in `X-Pronunciation-Key`. It is deliberately separate from the gateway
+bearer, so the write credential is never the same as the read credential.
+
 The file is verified at load: file-level problems ignore the file, entry-level
 problems skip that entry and keep the rest, and everything is logged to stderr.
 It is reloaded when its mtime or size changes, so a word can be fixed without a

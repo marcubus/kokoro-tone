@@ -113,3 +113,77 @@ def test_the_morning_glory_heteronyms_are_decided():
     assert "sep-uh-rayt" not in out
     assert "tare-ah-form" not in out
     assert "liv tool" not in out
+
+
+# ------------------------------------------------ the learned overlay limits
+
+
+def _learned_lexicon(tmp_path, **limits):
+    from dataclasses import replace
+
+    from kokoro_tone.lexicon import Lexicon
+
+    path = tmp_path / "learned" / "learned.json"
+    return Lexicon(
+        str(FILE),
+        replace(DEFAULT_LIMITS, **limits),
+        learned_path=str(path),
+        write_enabled=True,
+    ), path
+
+
+def test_learned_overlay_is_capped_at_the_rule_limit(tmp_path):
+    import pytest
+
+    from kokoro_tone.parse import MarkupError
+
+    lexicon_object, path = _learned_lexicon(tmp_path, lexicon_rules=2)
+    lexicon_object.learn("One", "one")
+    lexicon_object.learn("Two", "two")
+
+    with pytest.raises(MarkupError, match="exceed 2 rules"):
+        lexicon_object.learn("Three", "three")
+
+    stored = json.loads(path.read_text(encoding="utf-8"))
+    assert len(stored["defaults"]["rules"]) == 2
+
+
+def test_learned_overlay_is_capped_at_the_byte_limit(tmp_path):
+    import pytest
+
+    from kokoro_tone.parse import MarkupError
+
+    lexicon_object, _ = _learned_lexicon(tmp_path, lexicon_bytes=80)
+
+    with pytest.raises(MarkupError, match="exceed 80 bytes"):
+        lexicon_object.learn("Aurec", "AW-rek")
+
+
+def test_learned_overlay_refuses_a_symlink(tmp_path):
+    import pytest
+
+    from kokoro_tone.parse import MarkupError
+
+    lexicon_object, path = _learned_lexicon(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    target = tmp_path / "elsewhere.json"
+    target.write_text("{}", encoding="utf-8")
+    path.symlink_to(target)
+
+    with pytest.raises(MarkupError, match="symlink"):
+        lexicon_object.learn("Aurec", "AW-rek")
+    assert target.read_text(encoding="utf-8") == "{}"
+
+
+def test_learned_overlay_rejects_a_corrupt_file(tmp_path):
+    import pytest
+
+    from kokoro_tone.parse import MarkupError
+
+    lexicon_object, path = _learned_lexicon(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("not json", encoding="utf-8")
+
+    with pytest.raises(MarkupError, match="not readable"):
+        lexicon_object.learn("Aurec", "AW-rek")
+    assert path.read_text(encoding="utf-8") == "not json"

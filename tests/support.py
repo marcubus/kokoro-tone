@@ -282,7 +282,7 @@ LEARNED_FIXTURE = {
 
 
 @contextmanager
-def _learned_client(monkeypatch, tmp_path, *, write: bool):
+def _learned_client(monkeypatch, tmp_path, *, write: bool, write_key: str | None = None):
     base = tmp_path / "lexicon.json"
     base.write_text(json.dumps(LEARNED_FIXTURE), encoding="utf-8")
     overlay = tmp_path / "custom.json"
@@ -302,6 +302,7 @@ def _learned_client(monkeypatch, tmp_path, *, write: bool):
             PRONUNCIATION_OVERRIDES=str(overlay),
             PRONUNCIATION_LEARNED=str(learned),
             PRONUNCIATION_WRITE="true" if write else "false",
+            PRONUNCIATION_WRITE_KEY=write_key,
         ) as client:
             yield client, server, learned
     finally:
@@ -311,6 +312,12 @@ def _learned_client(monkeypatch, tmp_path, *, write: bool):
 @pytest.fixture()
 def learned_gateway(monkeypatch, tmp_path):
     with _learned_client(monkeypatch, tmp_path, write=True) as value:
+        yield value
+
+
+@pytest.fixture()
+def keyed_learned_gateway(monkeypatch, tmp_path):
+    with _learned_client(monkeypatch, tmp_path, write=True, write_key="write-secret") as value:
         yield value
 
 

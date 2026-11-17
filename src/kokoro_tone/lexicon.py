@@ -438,6 +438,56 @@ def _stamp(path: str | None) -> tuple[int, int] | None:
     return (info.st_mtime_ns, info.st_size)
 
 
+_WORD_PUNCTUATION = frozenset(" .'&+#-")
+_SAY_PUNCTUATION = frozenset(" .'-,:")
+
+
+def _validate_word(value: str, limits: Limits) -> str:
+    """A learned word is a name, not markup. Keep the set deliberately small."""
+    text = value.strip()
+    if not text:
+        raise MarkupError("word must not be empty")
+    if len(text) > limits.pronunciation_chars:
+        raise MarkupError(f"word exceeds {limits.pronunciation_chars} characters")
+    if "|" in text:
+        raise MarkupError("word must not contain |")
+    for char in text:
+        if not (char.isalnum() or char in _WORD_PUNCTUATION):
+            raise MarkupError(
+                "word may contain only letters, digits, spaces, apostrophes, "
+                "hyphens, periods, ampersands, plus signs and hashes"
+            )
+    return text
+
+
+def _validate_say(value: str, limits: Limits) -> str:
+    """A respelling is letters, digits and a few punctuation marks, nothing else."""
+    text = value.strip()
+    if not text:
+        raise MarkupError("say must not be empty")
+    if len(text) > limits.pronunciation_chars:
+        raise MarkupError(f"say exceeds {limits.pronunciation_chars} characters")
+    for char in text:
+        if not (char.isalnum() or char in _SAY_PUNCTUATION):
+            raise MarkupError(
+                "say may contain only letters, digits, spaces, apostrophes, "
+                "hyphens, periods, commas and colons"
+            )
+    return text
+
+
+def _validate_sense(value: str) -> str:
+    """A sense is a short label, never markup."""
+    text = value.strip()
+    if not text:
+        raise MarkupError("sense must not be empty")
+    if len(text) > 64:
+        raise MarkupError("sense exceeds 64 characters")
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", text):
+        raise MarkupError("sense must be letters, digits, underscore or hyphen")
+    return text
+
+
 def _rule_entry(rule: Rule, source: str) -> dict[str, object]:
     """One rule in the lookup response, including its sense and cues."""
     entry: dict[str, object] = {"match": rule.match, "say": rule.say, "source": source}
@@ -559,13 +609,7 @@ class Lexicon:
         reading instead of guessing. Cue rules keep their context.
         """
         self.current()
-        text = word.strip()
-        if not text:
-            raise MarkupError("word must not be empty")
-        if "|" in text:
-            raise MarkupError("word must not contain |")
-        if len(text) > self.limits.pronunciation_chars:
-            raise MarkupError(f"word exceeds {self.limits.pronunciation_chars} characters")
+        text = _validate_word(word, self.limits)
         head = text.casefold()
         entries: list[dict[str, object]] = []
         senses: list[dict[str, object]] = []
@@ -595,16 +639,11 @@ class Lexicon:
         """Add or replace one rule in the learned overlay."""
         if not self.write_enabled:
             raise PermissionError("pronunciation learning is disabled")
-        text = word.strip()
-        if not text:
-            raise MarkupError("word must not be empty")
-        if "|" in text:
-            raise MarkupError("word must not contain |")
-        sense = sense.strip() if sense is not None else None
-        if sense is not None and not re.fullmatch(r"[A-Za-z0-9_-]+", sense):
-            raise MarkupError("sense must be letters, digits, underscore or hyphen")
+        text = _validate_word(word, self.limits)
+        spoken = _validate_say(say, self.limits)
+        sense = _validate_sense(sense) if sense is not None else None
         match = f"{text}|{sense}" if sense else text
-        rule = parse_rules([{"match": match, "say": say}], self.limits)[0]
+        rule = parse_rules([{"match": match, "say": spoken}], self.limits)[0]
         with self._write_lock:
             payload = self._read_learned()
             defaults = payload.setdefault("defaults", {})
@@ -623,6 +662,8 @@ class Lexicon:
                 )
             ]
             rules.append({"match": rule.match, "say": rule.say})
+            if len(rules) > self.limits.lexicon_rules:
+                raise MarkupError(f"learned lexicon would exceed {self.limits.lexicon_rules} rules")
             defaults["rules"] = rules
             self._write_learned(payload)
             self._stamp = None
@@ -640,14 +681,8 @@ class Lexicon:
         """Remove one rule from the learned overlay, leaving other layers alone."""
         if not self.write_enabled:
             raise PermissionError("pronunciation learning is disabled")
-        text = word.strip()
-        if not text:
-            raise MarkupError("word must not be empty")
-        if "|" in text:
-            raise MarkupError("word must not contain |")
-        sense = sense.strip() if sense is not None else None
-        if sense is not None and not re.fullmatch(r"[A-Za-z0-9_-]+", sense):
-            raise MarkupError("sense must be letters, digits, underscore or hyphen")
+        text = _validate_word(word, self.limits)
+        sense = _validate_sense(sense) if sense is not None else None
         match = f"{text}|{sense}" if sense else text
         removed = 0
         with self._write_lock:
@@ -678,9 +713,17 @@ class Lexicon:
             return {}
         path = Path(self.learned_path)
         try:
-            raw = json.loads(path.read_text(encoding="utf-8"))
+            size = path.stat().st_size
         except FileNotFoundError:
             return {}
+        except OSError as exc:
+            raise MarkupError(f"learned lexicon is not readable: {exc}") from exc
+        if path.is_symlink():
+            raise MarkupError("learned lexicon must not be a symlink")
+        if size > self.limits.lexicon_bytes:
+            raise MarkupError(f"learned lexicon is {size} bytes, over {self.limits.lexicon_bytes}")
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
             raise MarkupError(f"learned lexicon is not readable: {exc}") from exc
         if not isinstance(raw, dict):
@@ -691,12 +734,14 @@ class Lexicon:
         if not self.learned_path:
             raise OSError("learned lexicon path is not configured")
         path = Path(self.learned_path)
+        text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+        if len(text.encode("utf-8")) > self.limits.lexicon_bytes:
+            raise MarkupError(f"learned lexicon would exceed {self.limits.lexicon_bytes} bytes")
         path.parent.mkdir(parents=True, exist_ok=True)
         fd, temporary = tempfile.mkstemp(dir=str(path.parent), prefix=".learned-", suffix=".json")
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                json.dump(payload, handle, ensure_ascii=False, indent=2)
-                handle.write("\n")
+                handle.write(text)
                 handle.flush()
                 os.fsync(handle.fileno())
             os.replace(temporary, path)
