@@ -7,6 +7,8 @@ month and increments per release; tags are prefixed with `v`.
 
 ## [Unreleased]
 
+## [2026.11.3] - 2026-11-17
+
 ### Added
 
 - A runtime pronunciation API: `POST /v1/pronunciations/lookup` returns every
