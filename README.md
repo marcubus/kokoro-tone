@@ -118,7 +118,8 @@ way every time. It runs without the engine and without HTTP.
 | Script markup | not a recognised tag set | `[voice:]`, `[emotion:]`, `[rate:]`, `[pause:]`, `[sense:]`, `[filter:]` | `tests/test_parse.py` |
 | Multi-turn `input` | the OpenAI endpoint takes a string only | an array of `{text, voice, instructions}` turns, rendered with gaps into one file | `tests/test_api.py` |
 | Alias maps | `voice_aliases` is server-side config, not an OpenAI request field | `voice` accepts a map, with an `id` entry setting the default | `tests/test_api.py` |
-| Standalone compiler | not applicable | `python -m kokoro_tone.script_cli`, no server or engine | `tests/test_script.py` |
+| Standalone compiler | not applicable | `python -m kokoro_tone.script_cli`, no server or engine; `--request` compiles a whole speech request, `--env-file` reads the deployment's limits | `tests/test_script.py`, `tests/test_script_cli.py` |
+| Dry-run compile | none | `POST /v1/script/compile` returns the resolved text, the `guesses` and their alternatives without touching the engine | `tests/test_api.py` |
 
 ### Audio layer - experimental
 
@@ -238,6 +239,38 @@ printf 'The bass player read HTML at 15%%.\n' \
 The output is the text the engine would receive, plus any heteronym the rules
 had to guess. `--ambiguity ignore` leaves those words alone; `--voice` selects a
 voice's rule set. It is the same code path the HTTP endpoint uses.
+
+A whole speech request compiles the same way, with the request's own voice,
+pronunciations, normalise object and ambiguity policy:
+
+```bash
+python -m kokoro_tone.script_cli --request request.json --env-file .env \
+  --lexicon lexicon/lexicon.json --overrides lexicon/custom.json \
+  --learned lexicon/learned/learned.json
+```
+
+`--request` is the pre-flight for a render: the JSON it prints carries
+`guesses`, the `word=sense` list the compiler assumed, and `ambiguities`, the
+same assumptions with their alternatives. An empty `guesses` means nothing was
+left to the rules. `--env-file` reads the deployment's `MAX_*`,
+`PRONUNCIATION_*`, `NORMALISE_*` and `LOCALE` keys, because the limits and
+lexicon paths are deployment configuration: the code default of 4096 input
+characters rejects a request the deployed gateway accepts at 60000.
+`--learned` is the machine-written overlay, which is why the same file the
+gateway mounts is the one to point at.
+
+The server exposes the same compile as a dry run, with no engine and no audio:
+
+```bash
+curl -sS http://kokoro-tone:8000/v1/script/compile \
+  -H 'Content-Type: application/json' \
+  -d '{"input":"The bass was loud."}'
+```
+
+It returns the resolved text, `guesses`, `ambiguities` and the normalisation
+layers in milliseconds, and `X-Kokoro-Tone-Guessed` carries the compact list. A
+caller checks it before paying for synthesis; the CLI is the same
+`compile_script` with no server at all.
 
 ### Passthrough - unmastered, fastest
 

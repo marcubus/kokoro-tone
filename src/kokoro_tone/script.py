@@ -87,30 +87,79 @@ class Compiled:
 
     def as_dict(self) -> dict[str, object]:
         """A JSON-ready view: the spoken text, each turn, and every guess."""
-        return {
-            "text": self.text,
-            "turns": [
-                {
-                    "text": turn.text,
-                    "voice": turn.voice,
-                    "emotion": turn.emotion,
-                    "rate": turn.rate,
-                    "filter": turn.filter,
-                    "gap_ms": turn.gap_ms,
-                    "lead_ms": turn.lead_ms,
-                }
-                for turn in self.turns
-            ],
-            "voice": self.voice,
-            "instructions": self.instructions,
-            "ambiguity": self.ambiguity,
-            "ambiguities": [item.as_dict() for item in self.found],
-            "passthrough": self.passthrough,
-            "chars": self.chars,
-        }
+        return view(
+            turns=self.turns,
+            voice=self.voice,
+            instructions=self.instructions,
+            ambiguity=self.ambiguity,
+            found=self.found,
+            passthrough=self.passthrough,
+            chars=self.chars,
+            normalise=layers(self.flags),
+        )
 
     def to_json(self, indent: int = 2) -> str:
         return json.dumps(self.as_dict(), indent=indent)
+
+
+def layers(flags: pronounce.Flags) -> str:
+    """The normalisation layers a request actually ran, for a view or a log line."""
+    on = [name for name in ("lexicon", "acronyms", "numbers") if getattr(flags, name)]
+    return "+".join(on) or "none"
+
+
+def view(
+    *,
+    turns: tuple[Turn, ...],
+    voice: str,
+    instructions: str | None,
+    ambiguity: str,
+    found: tuple[pronounce.Ambiguity, ...],
+    passthrough: bool,
+    chars: int,
+    normalise: str,
+) -> dict[str, object]:
+    """The JSON-ready view of a compiled script, shared by every caller.
+
+    `Compiled` (the library and the CLI) and `pipeline.Prepared` (the HTTP
+    surface) describe the same thing, so they must not describe it twice: a
+    field added here reaches both.
+    """
+    return {
+        "text": "\n".join(turn.text for turn in turns),
+        "turns": [
+            {
+                "text": turn.text,
+                "voice": turn.voice,
+                "emotion": turn.emotion,
+                "rate": turn.rate,
+                "filter": turn.filter,
+                "gap_ms": turn.gap_ms,
+                "lead_ms": turn.lead_ms,
+            }
+            for turn in turns
+        ],
+        "voice": voice,
+        "instructions": instructions,
+        "ambiguity": ambiguity,
+        # The compact answer first: what the compiler assumed, one `word=sense`
+        # per entry, in the same order and form as X-Kokoro-Tone-Guessed. An
+        # empty list means nothing was guessed.
+        "guesses": guesses(found, ambiguity),
+        # The same assumptions with their alternatives, so a caller can pick a
+        # different sense without a second lookup.
+        "ambiguities": [item.as_dict() for item in found],
+        "passthrough": passthrough,
+        "chars": chars,
+        "normalise": normalise,
+    }
+
+
+def guesses(found: tuple[pronounce.Ambiguity, ...], ambiguity: str) -> list[str]:
+    """The `word=sense` list a guess-mode compile assumed, deduplicated."""
+    if ambiguity != "guess":
+        return []
+    return list(dict.fromkeys(item.chosen for item in found))
 
 
 def _ambiguity(value: str | None) -> str:

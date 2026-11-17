@@ -7,6 +7,34 @@ month and increments per release; tags are prefixed with `v`.
 
 ## [Unreleased]
 
+### Added
+
+- `POST /v1/script/compile`: the render's own `pipeline.prepare` step, returned
+  as JSON with no engine and no audio. The body carries `text`, `turns`,
+  `guesses` (the `word=sense` list the compiler assumed, empty when nothing was
+  guessed), `ambiguities` (the same assumptions with their alternatives) and
+  `normalise` (the layers that ran). `X-Kokoro-Tone-Guessed` carries the compact
+  list, so a caller can refuse a request in milliseconds instead of paying for
+  a synthesis and reading the header afterwards.
+- `script_cli --request FILE` compiles a whole speech request (input, voice,
+  pronunciations, normalise, ambiguity) through the same request shape the HTTP
+  routes accept, and prints the same JSON the dry run returns.
+- `script_cli --env-file FILE` reads the deployment's `MAX_*`,
+  `PRONUNCIATION_*`, `NORMALISE_*` and `LOCALE` keys without overriding an
+  explicit environment. The limits are deployment configuration: the code
+  default of 4096 input characters rejects a request the deployed gateway
+  accepts at 60000, so an offline check without the env file disagreed with the
+  server.
+- `script_cli --learned FILE`, and the CLI now composes the learned overlay at
+  all. It previously built `Lexicon` without `learned_path`, so a reading the
+  gateway had learned was invisible offline.
+
+### Changed
+
+- `Compiled.as_dict()`, `Prepared.as_dict()` and the CLI share one `script.view`
+  builder, so a field added to the compiled view reaches the library, the CLI
+  and both HTTP routes at once.
+
 ## [2026.11.3] - 2026-11-17
 
 ### Added

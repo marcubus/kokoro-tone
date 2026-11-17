@@ -1192,3 +1192,72 @@ def test_pronunciation_lookup_does_not_require_the_write_key(keyed_learned_gatew
     )
 
     assert response.status_code == 200
+
+
+def test_compile_reports_the_guesses_without_calling_the_engine(ambiguous_gateway):
+    """The dry run is the render's own prepare step: same text, same guesses."""
+    client, server = ambiguous_gateway
+    response = client.post("/v1/script/compile", headers=AUTH, json={"input": "The bass was loud."})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["text"] == "The base was loud."
+    assert body["guesses"] == ["bass=music"]
+    assert body["ambiguities"][0]["word"] == "bass"
+    assert body["ambiguities"][0]["options"] == ["[sense:bass=music]", "[sense:bass=fish]"]
+    assert response.headers["x-kokoro-tone-guessed"] == "bass=music"
+    assert server.requests == []
+
+
+def test_compile_reports_no_guesses_when_the_rules_settle_every_word(ambiguous_gateway):
+    client, server = ambiguous_gateway
+    response = client.post(
+        "/v1/script/compile",
+        headers=AUTH,
+        json={"input": "He plays bass in the band."},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["guesses"] == []
+    assert "x-kokoro-tone-guessed" not in response.headers
+    assert server.requests == []
+
+
+def test_compile_ignore_mode_reports_nothing_and_leaves_the_text_alone(ambiguous_gateway):
+    client, _ = ambiguous_gateway
+    response = client.post(
+        "/v1/script/compile",
+        headers=AUTH,
+        json={"input": "The bass was loud.", "ambiguity": "ignore"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["text"] == "The bass was loud."
+    assert body["guesses"] == []
+
+
+def test_compile_rejects_an_unknown_sense_tag_before_any_render(ambiguous_gateway):
+    """The 18 Nov failure mode, caught in milliseconds instead of 12 minutes."""
+    client, server = ambiguous_gateway
+    response = client.post(
+        "/v1/script/compile",
+        headers=AUTH,
+        json={"input": "The [sense:bass=jazz] was loud."},
+    )
+
+    assert response.status_code == 400
+    assert "unknown sense tag" in response.json()["error"]["message"]
+    assert server.requests == []
+
+
+def test_compile_reports_the_normalisation_layers(ambiguous_gateway):
+    client, _ = ambiguous_gateway
+    response = client.post(
+        "/v1/script/compile",
+        headers=AUTH,
+        json={"input": "The bass was loud.", "normalise": {"lexicon": True}},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["normalise"] == "lexicon"

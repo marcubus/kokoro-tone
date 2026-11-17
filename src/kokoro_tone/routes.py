@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import __version__, audio, filters, levelling, pipeline, pronounce
+from . import __version__, audio, filters, levelling, pipeline, pronounce, script
 from .context import Context, get_context
 from .log import event
 from .parse import MarkupError
@@ -33,10 +33,8 @@ Ctx = Annotated[Context, Depends(get_context)]
 
 def _guessed(found: Sequence[pronounce.Ambiguity], mode: str) -> str | None:
     """The compact `word=sense` list, deduplicated in first-seen order."""
-    if mode != "guess" or not found:
-        return None
-    assumed = list(dict.fromkeys(item.chosen for item in found))
-    return ",".join(assumed)[:512]
+    assumed = script.guesses(tuple(found), mode)
+    return ",".join(assumed)[:512] or None
 
 
 def _mark_guessed(response: Response, found: Sequence[pronounce.Ambiguity], mode: str) -> Response:
@@ -49,8 +47,7 @@ def _mark_guessed(response: Response, found: Sequence[pronounce.Ambiguity], mode
 
 def _layers(flags: pronounce.Flags) -> str:
     """The normalisation layers a request actually ran, for the log line."""
-    on = [name for name in ("lexicon", "acronyms", "numbers") if getattr(flags, name)]
-    return "+".join(on) or "none"
+    return script.layers(flags)
 
 
 def require_auth(request: Request, ctx: Ctx) -> None:
@@ -192,6 +189,29 @@ def forget_pronunciation(body: ForgetRequest, ctx: Ctx, _: Auth, __: WriteAuth) 
         raise HTTPException(403, str(exc)) from exc
     except OSError as exc:
         raise HTTPException(500, f"could not write learned lexicon: {exc}") from exc
+
+
+@router.post("/v1/script/compile")
+def compile_only(body: SpeechRequest, ctx: Ctx, _: Auth) -> Response:
+    """Resolve a request into spoken text without touching the engine.
+
+    This runs the same `pipeline.prepare` the render runs, so the guesses and
+    the resolved text are exactly what a render would produce, in milliseconds
+    instead of minutes. A caller checks them before paying for synthesis; the
+    CLI (`python -m kokoro_tone.script_cli`) is the same compile with no server.
+    """
+    prepared = pipeline.prepare(body, ctx)
+    payload = prepared.as_dict()
+    event(
+        "compile",
+        status=200,
+        chars=prepared.chars,
+        turns=len(prepared.turns),
+        voice=prepared.voice,
+        normalise=_layers(prepared.flags),
+        guess=_guessed(prepared.found, prepared.ambiguity),
+    )
+    return _mark_guessed(JSONResponse(payload), prepared.found, prepared.ambiguity)
 
 
 def _record_speech(

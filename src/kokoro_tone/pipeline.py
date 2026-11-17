@@ -32,6 +32,19 @@ class Prepared:
     def chars(self) -> int:
         return sum(len(turn.text) for turn in self.turns)
 
+    def as_dict(self) -> dict[str, object]:
+        """The same JSON view the CLI emits, so a dry run and a render agree."""
+        return script.view(
+            turns=self.turns,
+            voice=self.voice,
+            instructions=self.instructions,
+            ambiguity=self.ambiguity,
+            found=self.found,
+            passthrough=self.passthrough,
+            chars=self.chars,
+            normalise=script.layers(self.flags),
+        )
+
 
 @dataclass(frozen=True)
 class Rendered:
