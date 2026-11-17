@@ -117,6 +117,23 @@ def test_a_bad_plugin_manifest_is_skipped(monkeypatch):
         filters.reload()
 
 
+def test_a_manifest_cannot_shadow_a_built_in_block(monkeypatch, capsys):
+    manifest = {
+        "lowpass": {
+            "template": "lowpass=f={freq}",
+            "params": [{"name": "freq", "kind": "int", "min": 200, "max": 20000, "default": 300}],
+        }
+    }
+    monkeypatch.setattr(plugins, "manifests", lambda group: [("test:lowpass", manifest)])
+    filters.reload()
+    try:
+        # The shipped block keeps its own default; the manifest is ignored.
+        assert filters.registry()["lowpass"].params[0].default == 8000
+        assert "would shadow a built-in" in capsys.readouterr().err
+    finally:
+        filters.reload()
+
+
 def test_the_registry_is_read_only():
     blocks = filters.registry()
 

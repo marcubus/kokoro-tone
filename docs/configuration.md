@@ -45,6 +45,8 @@ event=lexicon rules=462 voices=0 aliases=0 locale=en-AU overlay=no problems=0
 event=speech status=200 passthrough=yes stream=audio chars=16 turns=1 voice=bm_lewis fmt=mp3 normalise=lexicon+acronyms+numbers ms=1132
 event=speech status=200 passthrough=no stream=audio chars=26 turns=1 voice=bm_lewis fmt=mp3 normalise=lexicon+acronyms+numbers guess=bass=music upstream_ms=1424 render_ms=79 bytes=60044
 event=error path=/v1/audio/speech status=400 detail="ambiguity must be 'guess', 'ignore' or 'error'"
+event=pronunciation_learn chars=5 sense= rules=12
+event=pronunciation_forget chars=5 sense= removed=1
 ```
 
 | Field | Meaning |
@@ -55,9 +57,11 @@ event=error path=/v1/audio/speech status=400 detail="ambiguity must be 'guess', 
 | `guess` | the same `word=sense` list the response header carries |
 | `upstream_ms` | time in the engine; the rest is `render_ms` (ffmpeg + master) |
 | `bytes` | the encoded response |
+| `chars`, `sense`, `rules`, `removed` | a lexicon write: the word's length, its sense label, the resulting rule count and how many rules `forget` removed |
 
 **The text itself is never logged.** A field is a count, a name, a duration or a
-status - the script belongs to the caller, not the operator. `event=lexicon`
+status - the script belongs to the caller, not the operator. That includes the
+lexicon write events: they carry the word's length, not the word. `event=lexicon`
 appears at startup and on every hot reload, so a bad overlay is visible without
 sending a request.
 
@@ -97,6 +101,9 @@ collector configuration and alert examples.
 | `VOICE_LEVELLING` | `true` | static per-voice casting gain; `false` leaves the engine's raw level |
 | `PRONUNCIATION_LEXICON` | `/etc/kokoro-tone/lexicon.json` | the shipped rules, per-voice sets and aliases |
 | `PRONUNCIATION_OVERRIDES` | `/etc/kokoro-tone/custom.json` | optional user overlay, composed in memory over the defaults |
+| `PRONUNCIATION_LEARNED` | `/etc/kokoro-tone/learned/learned.json` | machine-written overlay; the only lexicon file the gateway writes |
+| `PRONUNCIATION_WRITE` | `false` | enable `POST /v1/pronunciations/learn` and `/forget` |
+| `PRONUNCIATION_WRITE_KEY` | unset | optional `X-Pronunciation-Key` gate on the write endpoints; unset means the gateway bearer is the only credential |
 | `LOCALE` | `en-AU` | `en-AU`, `en-GB` or `en-US` |
 | `NORMALISE_DEFAULT` | `false` | what an absent `normalise` field means |
 | `KOKORO_TONE_FILTER_MANIFESTS` | unset | a JSON file or directory of `[filter:]` block manifests; see [`plugins.md`](plugins.md) |

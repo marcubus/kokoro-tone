@@ -818,6 +818,19 @@ def test_an_unknown_filter_block_is_rejected_before_the_engine(gateway):
     assert server.requests == []
 
 
+def test_a_bad_filter_on_a_later_turn_fails_before_the_engine(gateway):
+    client, server = gateway
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        json={"input": "[filter:high_shelf gain=3] One.\n[filter:nope] Two."},
+    )
+
+    assert response.status_code == 400
+    assert "unknown filter block" in response.json()["error"]["message"]
+    assert server.requests == []
+
+
 def test_a_literal_pipe_in_prose_is_not_a_marker(ambiguous_gateway):
     """Only a tag desugars to a marker; `a|b` in prose is just text."""
     client, server = ambiguous_gateway

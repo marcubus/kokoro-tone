@@ -47,6 +47,28 @@ def test_voice_levelling_is_on_by_default_and_can_be_disabled(monkeypatch):
     assert settings.load_settings().voice_levelling is True
 
 
+def test_write_enabled_without_a_credential_warns(monkeypatch, capsys):
+    monkeypatch.setenv("PRONUNCIATION_WRITE", "true")
+    monkeypatch.delenv("KOKORO_TONE_API_KEY", raising=False)
+    monkeypatch.delenv("KOKORO_TONE_API_KEYS", raising=False)
+    monkeypatch.delenv("PRONUNCIATION_WRITE_KEY", raising=False)
+
+    settings.load_settings()
+
+    assert "write endpoints are unauthenticated" in capsys.readouterr().err
+
+
+def test_write_enabled_with_a_credential_does_not_warn(monkeypatch, capsys):
+    monkeypatch.setenv("PRONUNCIATION_WRITE", "true")
+    monkeypatch.setenv("KOKORO_TONE_API_KEY", "secret")
+    monkeypatch.delenv("KOKORO_TONE_API_KEYS", raising=False)
+    monkeypatch.delenv("PRONUNCIATION_WRITE_KEY", raising=False)
+
+    settings.load_settings()
+
+    assert "unauthenticated" not in capsys.readouterr().err
+
+
 def test_metrics_are_disabled_by_default(monkeypatch):
     for name in (
         "OTEL_EXPORTER_OTLP_ENDPOINT",

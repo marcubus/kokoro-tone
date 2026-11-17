@@ -238,6 +238,12 @@ def registry() -> Mapping[str, Block]:
             warning(f"filter plugin {origin!r}: manifest must be an object; ignored")
             continue
         for name, raw in payload.items():
+            if str(name) in _BASE:
+                warning(
+                    f"filter plugin {origin!r}: block {str(name)!r} would shadow a "
+                    "built-in block; ignored"
+                )
+                continue
             try:
                 merged[str(name)] = parse_block(str(name), raw)
             except FilterError as exc:

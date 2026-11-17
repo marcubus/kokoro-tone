@@ -524,6 +524,7 @@ def _rule_key(entry: dict[str, object]) -> tuple[object, ...]:
         cues,
         entry.get("case_sensitive", False),
         entry.get("whole_word", True),
+        entry.get("voice"),
     )
 
 
@@ -603,10 +604,12 @@ class Lexicon:
         return len(layer.defaults.rules) if layer is not None else 0
 
     def lookup(self, word: str) -> dict[str, object]:
-        """Every deployment rule for one word, in priority order.
+        """Every deployment rule for one word, layer by layer.
 
-        Marker rules carry their sense, so a caller can choose a heteronym
-        reading instead of guessing. Cue rules keep their context.
+        The layers are custom, learned, then shipped defaults. Marker rules
+        carry their sense, so a caller can choose a heteronym reading instead
+        of guessing. Cue rules keep their context, and a rule from a per-voice
+        set carries the `voice` it belongs to.
         """
         self.current()
         text = _validate_word(word, self.limits)
@@ -614,25 +617,42 @@ class Lexicon:
         entries: list[dict[str, object]] = []
         senses: list[dict[str, object]] = []
         seen: set[tuple[object, ...]] = set()
-        seen_senses: set[str] = set()
+        seen_senses: set[tuple[str, str]] = set()
         for source in ("custom", "learned", "defaults"):
             layer = self._layers.get(source)
             if layer is None:
                 continue
-            for rule in layer.defaults.rules:
-                match = rule.match.casefold()
-                if match != head and not match.startswith(head + "|"):
-                    continue
-                entry = _rule_entry(rule, source)
-                key = _rule_key(entry)
-                if key in seen:
-                    continue
-                seen.add(key)
-                entries.append(entry)
-                sense = entry.get("sense")
-                if isinstance(sense, str) and sense not in seen_senses:
-                    seen_senses.add(sense)
-                    senses.append({"sense": sense, "say": rule.say, "source": source})
+            # A per-voice set overrides `defaults` for that voice, so both are
+            # reported: a caller needs to know a reading is voice-specific.
+            sets: list[tuple[str | None, RuleSet]] = [(None, layer.defaults)]
+            sets.extend(sorted(layer.voices.items()))
+            for voice, ruleset in sets:
+                for rule in ruleset.rules:
+                    match = rule.match.casefold()
+                    if match != head and not match.startswith(head + "|"):
+                        continue
+                    entry = _rule_entry(rule, source)
+                    if voice is not None:
+                        entry["voice"] = voice
+                    key = _rule_key(entry)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    entries.append(entry)
+                    sense = entry.get("sense")
+                    if isinstance(sense, str):
+                        sense_key = (sense, voice or "")
+                        if sense_key in seen_senses:
+                            continue
+                        seen_senses.add(sense_key)
+                        sense_entry: dict[str, object] = {
+                            "sense": sense,
+                            "say": rule.say,
+                            "source": source,
+                        }
+                        if voice is not None:
+                            sense_entry["voice"] = voice
+                        senses.append(sense_entry)
         return {"word": text, "found": bool(entries), "senses": senses, "rules": entries}
 
     def learn(self, word: str, say: str, sense: str | None = None) -> dict[str, object]:
@@ -666,8 +686,9 @@ class Lexicon:
                 raise MarkupError(f"learned lexicon would exceed {self.limits.lexicon_rules} rules")
             defaults["rules"] = rules
             self._write_learned(payload)
-            self._stamp = None
-        event("pronunciation_learn", word=text, sense=sense or "", match=rule.match)
+            self._invalidate()
+        # Counts and the sense label only: the word is the caller's text.
+        event("pronunciation_learn", chars=len(text), sense=sense or "", rules=len(rules))
         return {
             "ok": True,
             "word": text,
@@ -704,9 +725,19 @@ class Lexicon:
                 assert isinstance(defaults, dict)
                 defaults["rules"] = kept
                 self._write_learned(payload)
-                self._stamp = None
-        event("pronunciation_forget", word=text, sense=sense or "", removed=removed)
+                self._invalidate()
+        event("pronunciation_forget", chars=len(text), sense=sense or "", removed=removed)
         return {"ok": True, "word": text, "match": match, "removed": removed}
+
+    def _invalidate(self) -> None:
+        """Force the next `current()` to reload after a write.
+
+        `_stamp` is read under `_lock` in `current()`, so it is cleared under
+        the same lock; the write lock is the outer one and is never taken by a
+        reader, so the order cannot deadlock.
+        """
+        with self._lock:
+            self._stamp = None
 
     def _read_learned(self) -> dict[str, object]:
         if not self.learned_path:

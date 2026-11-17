@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 
-from . import audio, levelling, parse, pronounce, request, script
+from . import audio, filters, levelling, parse, pronounce, request, script
 from .context import Context
 from .errors import RequestError
 from .parse import Turn
@@ -78,6 +78,17 @@ def prepare(body: SpeechRequest, ctx: Context) -> Prepared:
         lexicon_data=ctx.lexicon.current(),
         settings=ctx.settings,
     )
+
+    # The script layer carries `[filter:]` as written because the audio layer
+    # owns the registry. Validate every turn here, before the first synthesis,
+    # so a bad block on turn two does not pay for turn one.
+    for turn in compiled.turns:
+        if not turn.filter:
+            continue
+        try:
+            filters.render_spec(turn.filter)
+        except filters.FilterError as exc:
+            raise RequestError(str(exc)) from exc
 
     return Prepared(
         turns=compiled.turns,

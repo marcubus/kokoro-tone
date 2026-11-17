@@ -175,6 +175,30 @@ def test_learned_overlay_refuses_a_symlink(tmp_path):
     assert target.read_text(encoding="utf-8") == "{}"
 
 
+def test_lookup_reports_a_per_voice_rule(tmp_path):
+    path = tmp_path / "lexicon.json"
+    path.write_text(
+        json.dumps(
+            {
+                "defaults": {"rules": [{"match": "read|present-verb", "say": "reed"}]},
+                "voices": {
+                    "bm_lewis": {"rules": [{"match": "read|past-verb", "say": "red"}]},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    found = lexicon.Lexicon(str(path), DEFAULT_LIMITS).lookup("read")
+
+    assert found["found"] is True
+    assert [entry.get("voice") for entry in found["rules"]] == [None, "bm_lewis"]
+    assert found["senses"] == [
+        {"sense": "present-verb", "say": "reed", "source": "defaults"},
+        {"sense": "past-verb", "say": "red", "source": "defaults", "voice": "bm_lewis"},
+    ]
+
+
 def test_learned_overlay_rejects_a_corrupt_file(tmp_path):
     import pytest
 

@@ -11,7 +11,9 @@ endpoint; the gateway itself has no `/metrics` route.
 no `/metrics` route; the collector owns the Prometheus endpoint.*
 
 Container metrics stay with cAdvisor. Logs stay as logfmt in Loki. Metrics are
-aggregate operator signals, never a copy of the script.
+aggregate operator signals, never a copy of the script. Lexicon writes emit
+`event=pronunciation_learn` and `event=pronunciation_forget` with counts and the
+sense label, never the word itself.
 
 ## Configuration
 

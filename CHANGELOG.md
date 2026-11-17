@@ -99,6 +99,9 @@ month and increments per release; tags are prefixed with `v`.
 
 ### Documentation
 
+- `docs/configuration.md` now lists `PRONUNCIATION_LEARNED`,
+  `PRONUNCIATION_WRITE` and `PRONUNCIATION_WRITE_KEY`, and documents the lexicon
+  write log events.
 - Added four Excalidraw diagrams - request lifecycle, audio pipeline,
   pronunciation resolution and observability pipelines - embedded in the docs,
   with the source files and a registry under [`docs/diagrams/`](docs/diagrams/README.md).
@@ -116,6 +119,19 @@ month and increments per release; tags are prefixed with `v`.
 
 ### Fixed
 
+- A bad `[filter:]` on a later turn is now rejected in `pipeline.prepare`,
+  before the first synthesis, instead of after earlier turns had already been
+  rendered. The request is still a `400`.
+- A filter manifest can no longer shadow a built-in block. A name that collides
+  with a shipped block is ignored with a warning, so a deployment cannot
+  silently change what `[filter:lowpass]` means.
+- `/v1/pronunciations/lookup` now reports rules from per-voice sets, tagged with
+  the `voice` they apply to, instead of only the `defaults` rules.
+- The lexicon write events (`pronunciation_learn`, `pronunciation_forget`) log
+  the word's length, the sense label and rule counts, never the word itself.
+- `load_settings` warns when `PRONUNCIATION_WRITE=true` with neither a gateway
+  key nor `PRONUNCIATION_WRITE_KEY`, since the write endpoints would then be
+  unauthenticated.
 - Decided the Morning Glory heteronyms that were being guessed wrong: `record`
   after a noun cue such as `finance` is the noun, `separate` after a number or
   determiner is the adjective, and `live` before a noun is the adjective.

@@ -37,8 +37,11 @@ Then:
 ```
 
 Files load last, so a local manifest overrides an installed plugin with the same
-block name. The gateway caches the registry for the process; restart it after an
-edit. The CLI is a fresh process, so it picks the file up immediately.
+block name. A manifest cannot replace a built-in block: a name that collides
+with `low_shelf`, `high_shelf`, `lowpass`, `highpass`, `compressor`, `saturate`
+or `gain` is ignored with a warning, so a deployment cannot silently change what
+a shipped tag means. The gateway caches the registry for the process; restart it
+after an edit. The CLI is a fresh process, so it picks the file up immediately.
 
 ## 2. An installed distribution
 
@@ -74,7 +77,7 @@ Python package.
 | Field | Required | Meaning |
 |---|---|---|
 | `template` | yes | A constant ffmpeg filter expression. `{name}` placeholders refer to declared params. |
-| `params` | yes (may be empty) | A list of parameter objects. |
+| `params` | no (defaults to empty) | A list of parameter objects. |
 | `summary` | no | One line shown by `--list-filters`. |
 
 A parameter:

@@ -128,7 +128,7 @@ def _otel_protocol() -> None:
 
 def load_settings() -> Settings:
     _otel_protocol()
-    return Settings(
+    loaded = Settings(
         upstream_base_url=env.read_str("UPSTREAM_BASE_URL", "http://kokoro:8880/v1").rstrip("/"),
         # One secret in .env: an explicit UPSTREAM_API_KEY wins (OpenRouter
         # fallback), otherwise the engine key is reused.
@@ -167,3 +167,12 @@ def load_settings() -> Settings:
         otel_export_timeout_ms=_otel_timeout(),
         otel_disabled=env.read_bool("OTEL_SDK_DISABLED", False),
     )
+    # The write endpoints are the only routes that touch the filesystem. With no
+    # gateway key and no write key they are open to anyone who can reach the
+    # port, so say so rather than leaving it to be discovered.
+    if loaded.lexicon_write and not loaded.gateway_keys and not loaded.lexicon_write_key:
+        warning(
+            "PRONUNCIATION_WRITE=true with no KOKORO_TONE_API_KEY(S) and no "
+            "PRONUNCIATION_WRITE_KEY: the pronunciation write endpoints are unauthenticated"
+        )
+    return loaded

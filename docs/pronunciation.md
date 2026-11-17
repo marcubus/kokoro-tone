@@ -258,7 +258,8 @@ only lexicon file the gateway writes. The API is available when
 
 - `POST /v1/pronunciations/lookup` with `{"words": ["read", "Banyule"]}` returns
   every deployment rule for each word, including the `senses` of a heteronym and
-  the `source` layer (`custom`, `learned` or `defaults`).
+  the `source` layer (`custom`, `learned` or `defaults`). A rule that belongs to
+  a per-voice set carries the `voice` it applies to.
 - `POST /v1/pronunciations/learn` with `{"word": "Aurec", "say": "AW-rek"}` adds
   a bare rule. Add `"sense": "present-verb"` to write `word|sense` instead.
 - `POST /v1/pronunciations/forget` with `{"word": "Aurec"}` removes only the

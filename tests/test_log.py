@@ -84,6 +84,21 @@ def test_a_rejected_request_is_logged_with_its_reason(gateway, capsys):
     assert "ambiguity must be" in line
 
 
+def test_a_lexicon_write_logs_the_length_not_the_word(learned_gateway, capsys):
+    client, _, _ = learned_gateway
+    client.post(
+        "/v1/pronunciations/learn",
+        headers=AUTH,
+        json={"word": "Aurec", "say": "AW-rek"},
+    )
+
+    line = [
+        item for item in capsys.readouterr().err.splitlines() if "event=pronunciation_learn" in item
+    ][-1]
+    assert "Aurec" not in line
+    assert "chars=5" in line
+
+
 def test_a_lexicon_load_is_logged(tmp_path, capsys):
     from kokoro_tone import lexicon
     from kokoro_tone.limits import DEFAULT_LIMITS
