@@ -7,6 +7,14 @@ month and increments per release; tags are prefixed with `v`.
 
 ## [Unreleased]
 
+### Fixed
+
+- `separate` no longer gets a hyphenated respelling that Kokoro reads with a
+  stress on every syllable and the wrong vowel. The adjective passes through as
+  `separate` (the engine reads `sˈɛpəɹət`), and the verb respells as `separayt`
+  (`sˈɛpəɹˌAt`). This covers both the `[sense:separate=…]` tags and the bare
+  context rules.
+
 ## [2026.11.4] - 2026-11-17
 
 ### Added

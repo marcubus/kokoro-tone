@@ -255,11 +255,11 @@
       },
       {
         "match": "separate|verb",
-        "say": "sep-uh-rayt"
+        "say": "separayt"
       },
       {
         "match": "separate|adj",
-        "say": "sep-uh-rut"
+        "say": "separate"
       },
       {
         "match": "produce|verb",
@@ -1952,7 +1952,7 @@
       },
       {
         "match": "separate",
-        "say": "sep-uh-rayt",
+        "say": "separayt",
         "when": {
           "before": [
             "to",
@@ -1976,7 +1976,7 @@
       },
       {
         "match": "separate",
-        "say": "sep-uh-rut",
+        "say": "separate",
         "when": {
           "before": [
             "is",
@@ -2000,7 +2000,7 @@
       },
       {
         "match": "separate",
-        "say": "sep-uh-rut",
+        "say": "separate",
         "when": {
           "before": [
             "a",
@@ -2024,7 +2024,7 @@
       },
       {
         "match": "separate",
-        "say": "sep-uh-rut",
+        "say": "separate",
         "when": {
           "before": [
             "ten",

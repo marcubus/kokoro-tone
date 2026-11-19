@@ -99,7 +99,7 @@ a reliable signal, a bare word is voiced from its context rules:
 | `record` | `the` before | noun, `rek-awd` |
 | `record` | `finance` before | noun, `rek-awd` |
 | `record` | `to` before | verb, `rih-kawd` |
-| `separate` | a number or determiner before | adjective, `sep-uh-rut` |
+| `separate` | a number or determiner before | adjective, passed through as `separate` |
 | `live` | a determiner before | adjective, `lyve` |
 | `bass` | `band`, `music` after | music, `base` |
 | `bass` | `fish`, `swam` after | fish, `bas` |

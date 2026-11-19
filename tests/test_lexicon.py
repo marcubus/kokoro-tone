@@ -7,9 +7,10 @@ so a bad edit fails here before it reaches a request.
 import json
 import pathlib
 
-from kokoro_tone import lexicon, pronounce
+from kokoro_tone import lexicon, pronounce, script
 from kokoro_tone.limits import DEFAULT_LIMITS
 from kokoro_tone.normalise import NormaliseSettings
+from kokoro_tone.settings import load_settings
 
 LEXICON = pathlib.Path(__file__).resolve().parent.parent / "lexicon"
 FILE = LEXICON / "lexicon.json"
@@ -106,13 +107,34 @@ def test_the_morning_glory_heteronyms_are_decided():
     )
     out = rewriter.apply(text).lower()
     assert "rek-awd" in out
-    assert "sep-uh-rut" in out
+    assert "eleven separate vulnerabilities" in out
     assert "ter-uh-form" in out
     assert "lyve tool" in out
     assert "rih-kawd" not in out
+    assert "sep-uh-rut" not in out
     assert "sep-uh-rayt" not in out
     assert "tare-ah-form" not in out
     assert "liv tool" not in out
+
+
+def test_separate_respellings_leave_the_engine_its_own_stress():
+    """`sep-uh-rut` phonemises as sˈɛpˈʌɹˈʌt: a stress on every syllable and the
+    wrong vowel. The adjective is left as the plain word, which the engine reads
+    as sˈɛpəɹət; only the verb needs a respelling, and `separayt` gives the
+    engine sˈɛpəɹˌAt."""
+    settings = load_settings()
+    text = (
+        "The card carries no [sense:separate=adj] minimum. We need to [sense:separate=verb] them."
+    )
+    compiled = script.compile_script(
+        script.ScriptInput(input=text, normalise=True),
+        lexicon_data=data(),
+        settings=settings,
+    )
+    out = compiled.text
+    assert out == "The card carries no separate minimum. We need to separayt them."
+    assert "sep-uh-rut" not in out
+    assert "sep-uh-rayt" not in out
 
 
 # ------------------------------------------------ the learned overlay limits
