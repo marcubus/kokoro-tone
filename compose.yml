@@ -71,6 +71,11 @@ services:
       # Client bearer(s). Empty disables auth; use only on a trusted LAN.
       - KOKORO_TONE_API_KEY=${KOKORO_TONE_API_KEY:-}
       - KOKORO_TONE_API_KEYS=${KOKORO_TONE_API_KEYS:-}
+      # Admin bearer(s): may call every operation, listed in the policy or not.
+      - KOKORO_TONE_ADMIN_KEY=${KOKORO_TONE_ADMIN_KEY:-}
+      - KOKORO_TONE_ADMIN_KEYS=${KOKORO_TONE_ADMIN_KEYS:-}
+      # Default-role allowlist. Missing means the built-in policy.
+      - KOKORO_TONE_RBAC=${KOKORO_TONE_RBAC:-/etc/kokoro-tone/rbac.toml}
       # Voice used when the request does not name one.
       - DEFAULT_VOICE=${DEFAULT_VOICE:-af_heart}
       # Mastering target in LUFS, clamped to -30..-12.
@@ -82,7 +87,6 @@ services:
       - PRONUNCIATION_OVERRIDES=${PRONUNCIATION_OVERRIDES:-/etc/kokoro-tone/custom.json}
       - PRONUNCIATION_LEARNED=${PRONUNCIATION_LEARNED:-/etc/kokoro-tone/learned/learned.json}
       - PRONUNCIATION_WRITE=${PRONUNCIATION_WRITE:-false}
-      - PRONUNCIATION_WRITE_KEY=${PRONUNCIATION_WRITE_KEY:-}
       - LOCALE=${LOCALE:-en-AU}
       - NORMALISE_DEFAULT=${NORMALISE_DEFAULT:-false}
       # Request bounds. Defaults mirror src/kokoro_tone/limits.py.

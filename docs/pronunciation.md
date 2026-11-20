@@ -279,9 +279,12 @@ cannot inject markup into the lexicon or reach another file. The learned file
 must not be a symlink, and writes are refused once the file would exceed
 `lexicon_rules` or `lexicon_bytes`.
 
-When `PRONUNCIATION_WRITE_KEY` is set, `/learn` and `/forget` also require that
-secret in `X-Pronunciation-Key`. It is deliberately separate from the gateway
-bearer, so the write credential is never the same as the read credential.
+The write routes are ordinary operation ids (`createPronunciation`,
+`deletePronunciation`) and are granted by the role allowlist; see
+[Configuration](configuration.md#roles-and-the-allowlist). The separate
+`X-Pronunciation-Key` gate is gone, because a second secret could not say which
+operations it unlocked. `PRONUNCIATION_WRITE=true` still decides whether a
+write is allowed to reach the file at all.
 
 The file is verified at load: file-level problems ignore the file, entry-level
 problems skip that entry and keep the rest, and everything is logged to stderr.

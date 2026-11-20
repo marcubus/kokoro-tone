@@ -171,3 +171,12 @@ respelling is not reliable.
 
 The host-specific defaults (voice, normalise-by-default, protect list) live in
 `compose.override.yml` next to the compose file.
+
+## The RBAC example
+
+`rbac.example.toml` is not part of the lexicon. It lives here because this
+directory is the read-only `/etc/kokoro-tone` mount, and it is generated from
+`DEFAULT_ALLOW` in `src/kokoro_tone/access.py`; `tests/test_access.py` fails if
+the two differ. Copy it to `rbac.toml` to give a `default` key a narrower set of
+operations than the built-in policy. See
+[Configuration](../docs/configuration.md#roles-and-the-allowlist).

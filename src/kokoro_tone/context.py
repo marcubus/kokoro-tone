@@ -13,6 +13,7 @@ from typing import cast
 
 from fastapi import Request
 
+from .access import Access
 from .lexicon import Lexicon
 from .settings import Settings
 from .telemetry import Telemetry
@@ -22,6 +23,7 @@ from .upstream import Upstream
 @dataclass(frozen=True)
 class Context:
     settings: Settings
+    access: Access
     lexicon: Lexicon
     upstream: Upstream
     telemetry: Telemetry

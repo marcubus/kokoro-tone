@@ -120,6 +120,7 @@ way every time. It runs without the engine and without HTTP.
 | Alias maps | `voice_aliases` is server-side config, not an OpenAI request field | `voice` accepts a map, with an `id` entry setting the default | `tests/test_api.py` |
 | Standalone compiler | not applicable | `python -m kokoro_tone.script_cli`, no server or engine; `--request` compiles a whole speech request, `--env-file` reads the deployment's limits | `tests/test_script.py`, `tests/test_script_cli.py` |
 | Dry-run compile | none | `POST /v1/script/compile` returns the resolved text, the `guesses` and their alternatives without touching the engine | `tests/test_api.py` |
+| Roles and an allowlist | one bearer list, every key equal | `default` and `admin` keys meet a TOML allowlist keyed by OpenAPI `operationId`; a denied slug is a 403 naming `insufficient_scope` | `tests/test_access.py` |
 
 ### Audio layer - experimental
 

@@ -51,7 +51,8 @@ def test_write_enabled_without_a_credential_warns(monkeypatch, capsys):
     monkeypatch.setenv("PRONUNCIATION_WRITE", "true")
     monkeypatch.delenv("KOKORO_TONE_API_KEY", raising=False)
     monkeypatch.delenv("KOKORO_TONE_API_KEYS", raising=False)
-    monkeypatch.delenv("PRONUNCIATION_WRITE_KEY", raising=False)
+    monkeypatch.delenv("KOKORO_TONE_ADMIN_KEY", raising=False)
+    monkeypatch.delenv("KOKORO_TONE_ADMIN_KEYS", raising=False)
 
     settings.load_settings()
 
@@ -62,7 +63,8 @@ def test_write_enabled_with_a_credential_does_not_warn(monkeypatch, capsys):
     monkeypatch.setenv("PRONUNCIATION_WRITE", "true")
     monkeypatch.setenv("KOKORO_TONE_API_KEY", "secret")
     monkeypatch.delenv("KOKORO_TONE_API_KEYS", raising=False)
-    monkeypatch.delenv("PRONUNCIATION_WRITE_KEY", raising=False)
+    monkeypatch.delenv("KOKORO_TONE_ADMIN_KEY", raising=False)
+    monkeypatch.delenv("KOKORO_TONE_ADMIN_KEYS", raising=False)
 
     settings.load_settings()
 

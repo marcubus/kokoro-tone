@@ -19,7 +19,7 @@ which parts each one leans on.
 | **Drive it from an existing OpenAI client** | `model: "kokoro-v1_0"`, `voice: "alloy"` | OpenAI model/voice aliases, OpenAI error envelope, SSE | OpenAI voice-name mapping in the engine |
 | **Turn a researched script into an episode** | plain prose plus `normalise: true` and a `pronunciations` map | digits to words, acronyms spelled out, homophones and heteronyms mapped, per-voice rules | plain `/v1/audio/speech` |
 | **Catch a word the script left ambiguous** | nothing to send | a guess, rendered, with `X-Kokoro-Tone-Guessed` naming each assumption; `ambiguity: "error"` for a hard stop | plain `/v1/audio/speech` |
-| **Put a bounded service on a LAN** | any of the above | env-tunable rate/pitch/pause/turn/alias/body caps, bearer token list, no model passthrough | `API_KEYS` bearer, `GET /health`, OTLP metrics |
+| **Put a bounded service on a LAN** | any of the above | env-tunable rate/pitch/pause/turn/alias/body caps, `default`/`admin` bearer lists with an operation allowlist, no model passthrough | `API_KEYS` bearer, `GET /health`, OTLP metrics |
 
 ### The Kokoro-FastAPI subset this uses
 
@@ -259,8 +259,9 @@ curl -sS http://kokoro-tone:8000/v1/pronunciations/learn \
 `learn` writes to the learned overlay only when `PRONUNCIATION_WRITE=true`.
 Add `"sense":"present-verb"` to learn a heteronym reading. `forget` removes a
 learned rule and leaves the user overlay and the defaults alone. Both write
-endpoints reject markup and control characters, and both require
-`X-Pronunciation-Key` when `PRONUNCIATION_WRITE_KEY` is set.
+endpoints reject markup and control characters. They are authorised by the
+caller's role like every other route; see
+[Configuration](configuration.md#roles-and-the-allowlist).
 
 ### Errors
 

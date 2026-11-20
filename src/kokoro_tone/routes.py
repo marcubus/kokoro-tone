@@ -11,7 +11,6 @@ from __future__ import annotations
 import base64
 import json
 import math
-import secrets
 import time
 from collections.abc import Callable, Iterator, Sequence
 from typing import Annotated
@@ -21,6 +20,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import __version__, audio, filters, levelling, pipeline, pronounce, script
+from .access import PUBLIC_SLUGS, ROLE_ADMIN, Role
 from .context import Context, get_context
 from .log import event
 from .parse import MarkupError
@@ -50,47 +50,73 @@ def _layers(flags: pronounce.Flags) -> str:
     return script.layers(flags)
 
 
-def require_auth(request: Request, ctx: Ctx) -> None:
-    if not ctx.settings.gateway_keys:
-        return
+class InsufficientScope(HTTPException):
+    """A recognised key on a slug its role may not call (ADR-0016)."""
+
+    code = "insufficient_scope"
+
+    def __init__(self) -> None:
+        super().__init__(
+            status_code=403,
+            detail="insufficient scope",
+            headers={"WWW-Authenticate": 'Bearer error="insufficient_scope"'},
+        )
+
+
+def _slug(request: Request) -> str:
+    """The matched route's operation id, which is the authorisation slug.
+
+    No id means no match: the empty slug is in no allowlist, so a default key
+    fails closed rather than falling back to a function name.
+    """
+    route = request.scope.get("route")
+    return str(getattr(route, "operation_id", None) or "")
+
+
+def require_auth(request: Request, ctx: Ctx) -> Role:
+    """Authenticate to a role, then authorise the slug. In that order.
+
+    With no key configured everything is allowed, exactly as before: turning
+    auth on is adding a key, not editing the policy. A public slug needs no
+    credential, which keeps `/health` working for the container healthcheck.
+    """
+    access = ctx.access
+    slug = _slug(request)
+    if not access.enabled or slug in PUBLIC_SLUGS:
+        return ROLE_ADMIN
+
     scheme, _, presented = request.headers.get("authorization", "").partition(" ")
     presented = presented.strip()
-    matched = False
+    role = None
     if scheme.lower() == "bearer" and presented:
-        # No early exit: response timing must not reveal which token matched.
-        for key in ctx.settings.gateway_keys:
-            matched |= secrets.compare_digest(presented, key)
-    if not matched:
+        # No early exit in `Access.match`: timing must not reveal which token
+        # matched, on either list.
+        role = access.match(presented)
+    if role is None:
+        event(
+            "auth",
+            result="unauthenticated",
+            path=request.url.path,
+            slug=slug or "unmatched",
+        )
         raise HTTPException(
             status_code=401,
             detail="invalid or missing bearer token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-
-Auth = Annotated[None, Depends(require_auth)]
-
-
-def require_write_key(request: Request, ctx: Ctx) -> None:
-    """A second gate for the two endpoints that write to disk.
-
-    `PRONUNCIATION_WRITE_KEY` is optional. When set, the caller must send it in
-    `X-Pronunciation-Key`. It is separate from the gateway bearer so enabling
-    gateway auth cannot silently make the write key the read key.
-    """
-    expected = ctx.settings.lexicon_write_key
-    if not expected:
-        return
-    presented = request.headers.get("x-pronunciation-key", "").strip()
-    if not presented or not secrets.compare_digest(presented, expected):
-        raise HTTPException(
-            status_code=401,
-            detail="invalid or missing pronunciation write key",
-            headers={"WWW-Authenticate": "X-Pronunciation-Key"},
+    if not access.allows(role, slug):
+        event(
+            "auth",
+            result="forbidden",
+            path=request.url.path,
+            slug=slug or "unmatched",
+            role=role,
         )
+        raise InsufficientScope()
+    return role
 
 
-WriteAuth = Annotated[None, Depends(require_write_key)]
+Auth = Annotated[Role, Depends(require_auth)]
 
 
 class LookupRequest(BaseModel):
@@ -108,7 +134,7 @@ class ForgetRequest(BaseModel):
     sense: str | None = Field(default=None, max_length=64)
 
 
-@router.get("/health")
+@router.get("/health", operation_id="getHealth")
 def health(ctx: Ctx) -> JSONResponse:
     ok, detail = ctx.upstream.probe()
     data = ctx.lexicon.current()
@@ -123,6 +149,12 @@ def health(ctx: Ctx) -> JSONResponse:
         "voice_levelling": {
             "enabled": ctx.settings.voice_levelling,
             "voices": len(levelling.VOICE_GAIN_DB),
+        },
+        "access": {
+            "enabled": ctx.access.enabled,
+            "policy": "file" if ctx.access.policy.source else "builtin",
+            "admin_keys": bool(ctx.access.admin_keys),
+            "default_keys": bool(ctx.access.default_keys),
         },
         "normalise": {
             "default": ctx.settings.normalise.default_on,
@@ -140,7 +172,7 @@ def health(ctx: Ctx) -> JSONResponse:
     return JSONResponse(payload, status_code=200 if ok else 503)
 
 
-@router.get("/v1/models")
+@router.get("/v1/models", operation_id="listModels")
 def models(_: Auth) -> dict:
     return {
         "object": "list",
@@ -151,7 +183,7 @@ def models(_: Auth) -> dict:
     }
 
 
-@router.get("/v1/audio/voices")
+@router.get("/v1/audio/voices", operation_id="listVoices")
 def voices(ctx: Ctx, _: Auth) -> object:
     try:
         return ctx.upstream.voices()
@@ -159,7 +191,7 @@ def voices(ctx: Ctx, _: Auth) -> object:
         raise HTTPException(exc.status, exc.detail) from exc
 
 
-@router.post("/v1/pronunciations/lookup")
+@router.post("/v1/pronunciations/lookup", operation_id="listPronunciations")
 def lookup_pronunciations(body: LookupRequest, ctx: Ctx, _: Auth) -> dict:
     try:
         return {"results": [ctx.lexicon.lookup(word) for word in body.words]}
@@ -167,8 +199,8 @@ def lookup_pronunciations(body: LookupRequest, ctx: Ctx, _: Auth) -> dict:
         raise HTTPException(400, str(exc)) from exc
 
 
-@router.post("/v1/pronunciations/learn")
-def learn_pronunciation(body: LearnRequest, ctx: Ctx, _: Auth, __: WriteAuth) -> dict:
+@router.post("/v1/pronunciations/learn", operation_id="createPronunciation")
+def learn_pronunciation(body: LearnRequest, ctx: Ctx, _: Auth) -> dict:
     try:
         return ctx.lexicon.learn(body.word, body.say, body.sense)
     except MarkupError as exc:
@@ -179,8 +211,8 @@ def learn_pronunciation(body: LearnRequest, ctx: Ctx, _: Auth, __: WriteAuth) ->
         raise HTTPException(500, f"could not write learned lexicon: {exc}") from exc
 
 
-@router.post("/v1/pronunciations/forget")
-def forget_pronunciation(body: ForgetRequest, ctx: Ctx, _: Auth, __: WriteAuth) -> dict:
+@router.post("/v1/pronunciations/forget", operation_id="deletePronunciation")
+def forget_pronunciation(body: ForgetRequest, ctx: Ctx, _: Auth) -> dict:
     try:
         return ctx.lexicon.forget(body.word, body.sense)
     except MarkupError as exc:
@@ -191,7 +223,7 @@ def forget_pronunciation(body: ForgetRequest, ctx: Ctx, _: Auth, __: WriteAuth) 
         raise HTTPException(500, f"could not write learned lexicon: {exc}") from exc
 
 
-@router.post("/v1/script/compile")
+@router.post("/v1/script/compile", operation_id="compileScript")
 def compile_only(body: SpeechRequest, ctx: Ctx, _: Auth) -> Response:
     """Resolve a request into spoken text without touching the engine.
 
@@ -231,7 +263,7 @@ def _record_speech(
     ctx.telemetry.speech_chars.record(chars, {"kokoro_tone.passthrough": passthrough})
 
 
-@router.post("/v1/audio/speech")
+@router.post("/v1/audio/speech", operation_id="createSpeech")
 def speech(body: SpeechRequest, request: Request, ctx: Ctx, _: Auth) -> Response:
     prepared = pipeline.prepare(body, ctx)
     started = time.perf_counter()

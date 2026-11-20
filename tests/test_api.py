@@ -1141,59 +1141,6 @@ def test_pronunciation_learn_rejects_an_invalid_sense(learned_gateway):
     assert not learned.exists() or learned.read_text(encoding="utf-8") == ""
 
 
-def test_pronunciation_learn_requires_the_write_key_when_configured(keyed_learned_gateway):
-    client, _, learned = keyed_learned_gateway
-    body = {"word": "Isi", "say": "izzy"}
-
-    missing = client.post("/v1/pronunciations/learn", headers=AUTH, json=body)
-    assert missing.status_code == 401
-
-    wrong = client.post(
-        "/v1/pronunciations/learn",
-        headers={**AUTH, "X-Pronunciation-Key": "nope"},
-        json=body,
-    )
-    assert wrong.status_code == 401
-
-    assert not learned.exists() or learned.read_text(encoding="utf-8") == ""
-
-
-def test_pronunciation_learn_accepts_the_write_key(keyed_learned_gateway):
-    client, _, learned = keyed_learned_gateway
-    response = client.post(
-        "/v1/pronunciations/learn",
-        headers={**AUTH, "X-Pronunciation-Key": "write-secret"},
-        json={"word": "Isi", "say": "izzy"},
-    )
-
-    assert response.status_code == 200
-    assert json.loads(learned.read_text(encoding="utf-8"))["defaults"]["rules"] == [
-        {"match": "Isi", "say": "izzy"}
-    ]
-
-
-def test_pronunciation_forget_requires_the_write_key_when_configured(keyed_learned_gateway):
-    client, _, _ = keyed_learned_gateway
-    response = client.post(
-        "/v1/pronunciations/forget",
-        headers=AUTH,
-        json={"word": "Isi"},
-    )
-
-    assert response.status_code == 401
-
-
-def test_pronunciation_lookup_does_not_require_the_write_key(keyed_learned_gateway):
-    client, _, _ = keyed_learned_gateway
-    response = client.post(
-        "/v1/pronunciations/lookup",
-        headers=AUTH,
-        json={"words": ["read"]},
-    )
-
-    assert response.status_code == 200
-
-
 def test_compile_reports_the_guesses_without_calling_the_engine(ambiguous_gateway):
     """The dry run is the render's own prepare step: same text, same guesses."""
     client, server = ambiguous_gateway

@@ -111,6 +111,9 @@ def build_app(monkeypatch, server, *, metric_reader=None, **env: object):
         "OTEL_SDK_DISABLED",
     ):
         monkeypatch.delenv(name, raising=False)
+    # Keep the suite hermetic: a developer's /etc/kokoro-tone/rbac.toml must not
+    # change what a test asserts. A test that wants a policy passes the path.
+    monkeypatch.setenv("KOKORO_TONE_RBAC", "/nonexistent/kokoro-tone/rbac.toml")
     for name, value in env.items():
         if value is None:
             monkeypatch.delenv(name, raising=False)
@@ -282,7 +285,7 @@ LEARNED_FIXTURE = {
 
 
 @contextmanager
-def _learned_client(monkeypatch, tmp_path, *, write: bool, write_key: str | None = None):
+def _learned_client(monkeypatch, tmp_path, *, write: bool):
     base = tmp_path / "lexicon.json"
     base.write_text(json.dumps(LEARNED_FIXTURE), encoding="utf-8")
     overlay = tmp_path / "custom.json"
@@ -302,7 +305,6 @@ def _learned_client(monkeypatch, tmp_path, *, write: bool, write_key: str | None
             PRONUNCIATION_OVERRIDES=str(overlay),
             PRONUNCIATION_LEARNED=str(learned),
             PRONUNCIATION_WRITE="true" if write else "false",
-            PRONUNCIATION_WRITE_KEY=write_key,
         ) as client:
             yield client, server, learned
     finally:
@@ -316,14 +318,66 @@ def learned_gateway(monkeypatch, tmp_path):
 
 
 @pytest.fixture()
-def keyed_learned_gateway(monkeypatch, tmp_path):
-    with _learned_client(monkeypatch, tmp_path, write=True, write_key="write-secret") as value:
+def readonly_lexicon_gateway(monkeypatch, tmp_path):
+    with _learned_client(monkeypatch, tmp_path, write=False) as value:
+        yield value
+
+
+# A policy that names exactly one operation, so "granted" and "denied" are
+# unambiguous for a default key while an admin key still reaches everything.
+RBAC_RESTRICTED = """
+version = 1
+
+[default]
+allow = ["listModels"]
+"""
+
+
+@contextmanager
+def _rbac_client(
+    monkeypatch, tmp_path, *, policy: str | None, api_key: str | None, admin_key: str | None
+):
+    path = tmp_path / "rbac.toml"
+    if policy is not None:
+        path.write_text(policy, encoding="utf-8")
+    server = _start_server()
+    try:
+        with _client(
+            monkeypatch,
+            server,
+            KOKORO_TONE_API_KEY=api_key,
+            KOKORO_TONE_API_KEYS=None,
+            KOKORO_TONE_ADMIN_KEY=admin_key,
+            KOKORO_TONE_ADMIN_KEYS=None,
+            KOKORO_TONE_RBAC=str(path),
+        ) as client:
+            yield client, server
+    finally:
+        server.shutdown()
+
+
+@pytest.fixture()
+def restricted_gateway(monkeypatch, tmp_path):
+    with _rbac_client(
+        monkeypatch,
+        tmp_path,
+        policy=RBAC_RESTRICTED,
+        api_key="default-secret",
+        admin_key="admin-secret",
+    ) as value:
         yield value
 
 
 @pytest.fixture()
-def readonly_lexicon_gateway(monkeypatch, tmp_path):
-    with _learned_client(monkeypatch, tmp_path, write=False) as value:
+def open_gateway(monkeypatch, tmp_path):
+    """A policy file with no keys configured: the policy is inert, as before."""
+    with _rbac_client(
+        monkeypatch,
+        tmp_path,
+        policy=RBAC_RESTRICTED,
+        api_key=None,
+        admin_key=None,
+    ) as value:
         yield value
 
 

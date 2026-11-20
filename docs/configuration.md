@@ -47,6 +47,7 @@ event=speech status=200 passthrough=no stream=audio chars=26 turns=1 voice=bm_le
 event=error path=/v1/audio/speech status=400 detail="ambiguity must be 'guess', 'ignore' or 'error'"
 event=pronunciation_learn chars=5 sense= rules=12
 event=pronunciation_forget chars=5 sense= removed=1
+event=auth result=forbidden path=/v1/audio/voices slug=listVoices role=default
 ```
 
 | Field | Meaning |
@@ -58,6 +59,7 @@ event=pronunciation_forget chars=5 sense= removed=1
 | `upstream_ms` | time in the engine; the rest is `render_ms` (ffmpeg + master) |
 | `bytes` | the encoded response |
 | `chars`, `sense`, `rules`, `removed` | a lexicon write: the word's length, its sense label, the resulting rule count and how many rules `forget` removed |
+| `result`, `slug`, `role` | an authentication or authorisation failure: `unauthenticated`/`forbidden`, the operation id, and the role that was recognised. The token is never logged, not even a prefix |
 
 **The text itself is never logged.** A field is a count, a name, a duration or a
 status - the script belongs to the caller, not the operator. That includes the
@@ -83,8 +85,11 @@ collector configuration and alert examples.
 | Variable | Default | Purpose |
 |---|---|---|
 | `KOKORO_FASTAPI_API_KEY` | - | bearer the gateway sends to the engine; becomes the engine's `API_KEYS` |
-| `KOKORO_TONE_API_KEY` | - | bearer required by the gateway; empty disables auth |
-| `KOKORO_TONE_API_KEYS` | - | comma-separated tokens, merged with the singular key |
+| `KOKORO_TONE_API_KEY` | - | `default` bearer; empty (with the admin lists) disables auth |
+| `KOKORO_TONE_API_KEYS` | - | comma-separated `default` tokens, merged with the singular key |
+| `KOKORO_TONE_ADMIN_KEY` | - | `admin` bearer; may call every operation |
+| `KOKORO_TONE_ADMIN_KEYS` | - | comma-separated `admin` tokens, merged with the singular key |
+| `KOKORO_TONE_RBAC` | `/etc/kokoro-tone/rbac.toml` | TOML allowlist for the `default` role; a missing file uses the built-in policy |
 | `UPSTREAM_BASE_URL` | `http://kokoro:8880/v1` | engine seam |
 | `UPSTREAM_API_KEY` | - | explicit engine key; empty reuses `KOKORO_FASTAPI_API_KEY` |
 | `UPSTREAM_MODEL` | `kokoro` | engine mapping key; `hexgrad/kokoro-82m` for OpenRouter |
@@ -103,18 +108,94 @@ collector configuration and alert examples.
 | `PRONUNCIATION_OVERRIDES` | `/etc/kokoro-tone/custom.json` | optional user overlay, composed in memory over the defaults |
 | `PRONUNCIATION_LEARNED` | `/etc/kokoro-tone/learned/learned.json` | machine-written overlay; the only lexicon file the gateway writes |
 | `PRONUNCIATION_WRITE` | `false` | enable `POST /v1/pronunciations/learn` and `/forget` |
-| `PRONUNCIATION_WRITE_KEY` | unset | optional `X-Pronunciation-Key` gate on the write endpoints; unset means the gateway bearer is the only credential |
 | `LOCALE` | `en-AU` | `en-AU`, `en-GB` or `en-US` |
 | `NORMALISE_DEFAULT` | `false` | what an absent `normalise` field means |
 | `KOKORO_TONE_FILTER_MANIFESTS` | unset | a JSON file or directory of `[filter:]` block manifests; see [`plugins.md`](plugins.md) |
 
 The `MIN_*`/`MAX_*` request bounds are in [Bounds and limits](#bounds-and-limits).
 
+### Roles and the allowlist
+
+There are two roles and no more. A token in `KOKORO_TONE_API_KEY(S)` is
+`default`; a token in `KOKORO_TONE_ADMIN_KEY(S)` is `admin`. The admin list is
+checked first, so a token present in both is an admin.
+
+Authentication and authorisation are separate steps. Every route carries an
+OpenAPI `operationId`, and that id - not the path - is the permission the policy
+grants:
+
+| Operation id | Route | Default key |
+|---|---|---|
+| `createSpeech` | `POST /v1/audio/speech` | yes |
+| `listModels` | `GET /v1/models` | yes |
+| `listVoices` | `GET /v1/audio/voices` | yes |
+| `listPronunciations` | `POST /v1/pronunciations/lookup` | yes |
+| `createPronunciation` | `POST /v1/pronunciations/learn` | yes |
+| `deletePronunciation` | `POST /v1/pronunciations/forget` | yes |
+| `compileScript` | `POST /v1/script/compile` | yes |
+| `getHealth` | `GET /health` | public |
+
+`getHealth`, `openapi`, `swagger_ui_html` and `redoc_html` are public by
+contract: the container healthcheck and the documentation must work without a
+credential. That set lives in code, not in the policy file.
+
+A default key may call only the ids named in `[default].allow`; an admin key may
+call every id, including one no list names. A route added in a later release is
+therefore admin-only for a default key until the file names it. The shipped
+example is generated from the built-in defaults and mounted at
+`/etc/kokoro-tone/rbac.example.toml`:
+
+```toml
+version = 1
+
+[default]
+allow = [
+  "compileScript",
+  "createPronunciation",
+  "createSpeech",
+  "deletePronunciation",
+  "getHealth",
+  "listModels",
+  "listPronunciations",
+  "listVoices",
+]
+```
+
+Copy it to `rbac.toml` to opt into a narrower policy. **With no file, the
+built-in policy grants every operation that exists today**, so an upgrade that
+adds keys but no file changes nothing. With no keys at all the policy is inert
+and every route is open, exactly as before; the gateway logs one warning if a
+file exists in that state.
+
+An unknown `version`, an unknown table or key, or an unknown operation id stops
+the process at startup with the file and the offending value named. The policy
+file and the code version must be deployed together; rolling the configuration
+forward is not supported.
+
+Errors keep the OpenAI envelope:
+
+- Every authentication failure is the same `401 authentication_error` /
+  `invalid_api_key` with `WWW-Authenticate: Bearer`, whether the token was
+  absent, malformed, unknown or from another deployment. The reason is logged
+  with the path and slug, never the token.
+- A recognised key on an id its role may not call is `403 permission_error` /
+  `insufficient_scope` with `WWW-Authenticate: Bearer error="insufficient_scope"`.
+  Authentication is checked first, so a default key on a denied slug is 403 and
+  never 401.
+
+`PRONUNCIATION_WRITE_KEY` and the `X-Pronunciation-Key` header are retired:
+writes are granted by operation id like every other route. `PRONUNCIATION_WRITE`
+still decides whether the write routes may write at all.
+
 ### Token rotation
 
 1. Append the new token: `KOKORO_TONE_API_KEYS=old,new`, restart the gateway.
 2. Move clients to the new token.
 3. Drop the old one, restart again.
+
+Rotate an admin key the same way with `KOKORO_TONE_ADMIN_KEYS=old,new`. An admin
+key can rewrite what every listener hears, so treat it as a different class of
+credential from a render key.
 
 Engine side: add the new key to `KOKORO_FASTAPI_API_KEY`, restart the gateway,
 then remove the old key from the engine and restart it.

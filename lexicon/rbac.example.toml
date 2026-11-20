@@ -1,0 +1,17 @@
+# Generated from src/kokoro_tone/access.py: DEFAULT_ALLOW.
+# Copy to /etc/kokoro-tone/rbac.toml and remove the ids a default key
+# should not call. An admin key may call every operation, listed or not.
+
+version = 1
+
+[default]
+allow = [
+  "compileScript",
+  "createPronunciation",
+  "createSpeech",
+  "deletePronunciation",
+  "getHealth",
+  "listModels",
+  "listPronunciations",
+  "listVoices",
+]

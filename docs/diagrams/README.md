@@ -56,3 +56,5 @@ The caption states the takeaway, not just the title.
 | Audio pipeline | Pipeline | `audio-pipeline.excalidraw` | `docs/audio.md` § Tone chain and mastering |
 | Pronunciation resolution | Flow / precedence | `pronunciation-resolution.excalidraw` | `docs/pronunciation.md` intro |
 | Observability pipelines | Data flow | `observability-pipelines.excalidraw` | `docs/observability.md` intro |
+| RBAC resolution | Flow / decision | `rbac-resolution.excalidraw` | `docs/adr/0016-two-roles-and-an-allowlist-file.md` § Decision |
+| Approval lifecycle | Flow / state | `approval-lifecycle.excalidraw` | `docs/adr/0017-two-stage-approval.md` § Decision |

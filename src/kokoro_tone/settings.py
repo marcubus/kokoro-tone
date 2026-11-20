@@ -33,6 +33,8 @@ class Settings:
     upstream_api_key: str
     upstream_model: str
     gateway_keys: tuple[str, ...]
+    admin_keys: tuple[str, ...]
+    rbac_path: str
     default_voice: str
     loudness_lufs: float
     voice_levelling: bool
@@ -42,7 +44,6 @@ class Settings:
     lexicon_overlay_path: str
     lexicon_learned_path: str
     lexicon_write: bool
-    lexicon_write_key: str
     log_level: str
     otel_endpoint: str
     otel_service_name: str
@@ -139,6 +140,14 @@ def load_settings() -> Settings:
             env.read_str("KOKORO_TONE_API_KEYS", ""),
             env.read_str("KOKORO_TONE_API_KEY", ""),
         ),
+        # Admin keys are checked first, so a token in both lists is an admin.
+        admin_keys=_token_list(
+            env.read_str("KOKORO_TONE_ADMIN_KEYS", ""),
+            env.read_str("KOKORO_TONE_ADMIN_KEY", ""),
+        ),
+        # The allowlist is a file, deployed like the lexicon. A missing file is
+        # normal: the built-in policy grants every operation that exists today.
+        rbac_path=env.read_str("KOKORO_TONE_RBAC", "/etc/kokoro-tone/rbac.toml"),
         default_voice=env.read_str("DEFAULT_VOICE", "af_heart"),
         loudness_lufs=_loudness(),
         voice_levelling=env.read_bool("VOICE_LEVELLING", True),
@@ -156,9 +165,6 @@ def load_settings() -> Settings:
             "PRONUNCIATION_LEARNED", "/etc/kokoro-tone/learned/learned.json"
         ),
         lexicon_write=env.read_bool("PRONUNCIATION_WRITE", False),
-        # Optional second secret for the write endpoints. Empty falls back to
-        # the gateway bearer, which is the only credential when auth is on.
-        lexicon_write_key=env.read_str("PRONUNCIATION_WRITE_KEY", ""),
         log_level=_log_level(),
         otel_endpoint=env.read_str("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "")
         or env.read_str("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
@@ -168,11 +174,11 @@ def load_settings() -> Settings:
         otel_disabled=env.read_bool("OTEL_SDK_DISABLED", False),
     )
     # The write endpoints are the only routes that touch the filesystem. With no
-    # gateway key and no write key they are open to anyone who can reach the
-    # port, so say so rather than leaving it to be discovered.
-    if loaded.lexicon_write and not loaded.gateway_keys and not loaded.lexicon_write_key:
+    # key configured they are open to anyone who can reach the port, so say so
+    # rather than leaving it to be discovered.
+    if loaded.lexicon_write and not loaded.gateway_keys and not loaded.admin_keys:
         warning(
             "PRONUNCIATION_WRITE=true with no KOKORO_TONE_API_KEY(S) and no "
-            "PRONUNCIATION_WRITE_KEY: the pronunciation write endpoints are unauthenticated"
+            "KOKORO_TONE_ADMIN_KEY(S): the pronunciation write endpoints are unauthenticated"
         )
     return loaded

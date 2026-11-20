@@ -7,6 +7,64 @@ month and increments per release; tags are prefixed with `v`.
 
 ## [Unreleased]
 
+### Added
+
+- **Two roles and a TOML allowlist (ADR-0016).** `KOKORO_TONE_ADMIN_KEY(S)` is
+  the new `admin` role; `KOKORO_TONE_API_KEY(S)` remains `default`. Every route
+  carries an OpenAPI `operationId`, and that id is the permission unit. A
+  default key may call only the ids in `[default].allow`; an admin key may call
+  every operation, including one no list names. The policy lives at
+  `KOKORO_TONE_RBAC` (default `/etc/kokoro-tone/rbac.toml`);
+  `lexicon/rbac.example.toml` is generated from the built-in defaults. A
+  missing file uses the built-in policy, which grants every operation that
+  exists today, so an upgrade with keys and no file changes no behaviour. An
+  unknown `version`, table or operation id stops the process at startup.
+- **A denied operation is a scoped 403.** A recognised key on a slug its role
+  may not call returns `permission_error` / `insufficient_scope` with
+  `WWW-Authenticate: Bearer error="insufficient_scope"`. Authentication is
+  checked first, so a default key on a denied slug is 403, never 401. Every
+  authentication failure remains the same uniform 401, and the reason is logged
+  with the path and slug only.
+- `GET /health` reports an `access` block: whether auth is enabled, whether the
+  policy came from a file or the built-in defaults, and whether each key list is
+  populated. No key material is reported.
+
+### Breaking (ADR-0016)
+
+- **`PRONUNCIATION_WRITE_KEY` and the `X-Pronunciation-Key` header are
+  removed.** A second secret proved possession without saying which operations
+  it unlocked, so it could not express "may propose but not approve". The write
+  routes are now granted by operation id like every other route:
+  `createPronunciation` for learn, `deletePronunciation` for forget.
+  `PRONUNCIATION_WRITE` still decides whether a write may happen at all.
+- **A new operation id is admin-only for a default key** until a policy file
+  names it. The built-in policy is an explicit list, so adding a route does not
+  silently widen what an episode renderer may call.
+
+### Breaking (planned, not yet shipped - ADR-0017/0018)
+
+Recorded here so the break is not discovered at upgrade time. Nothing below is
+in this tree yet.
+
+- **The pronunciation API becomes a REST resource and the verb routes are
+  removed without aliases.** `POST /v1/pronunciations/lookup` becomes
+  `GET /v1/pronunciations?word=<word>` (repeatable); `POST
+  /v1/pronunciations/learn` becomes `POST /v1/pronunciations`; `POST
+  /v1/pronunciations/forget` becomes `DELETE /v1/pronunciations/{id}`; `POST
+  /v1/script/compile` becomes `POST /v1/audio/speech?dry_run=1`. The old paths
+  answer `404`. The operation ids already exist and do not change with the
+  paths.
+- **Create now answers `201` when it applies and `202` when it is queued.** The
+  default (`PRONUNCIATION_APPROVAL=force`) applies immediately, so the status
+  changes from `200` to `201` even for an unchanged deployment.
+- **List responses move to one envelope:** `{"object": "list", "data": [...]}`,
+  replacing `{"results": [...]}`.
+- **The OpenAPI document becomes the contract**, and operation ids become the
+  authorisation slugs. A renamed operation is now an API break and a policy
+  change.
+- The base OpenAI surface (`createSpeech`, `listModels`) is unchanged; only the
+  non-base pronunciation routes break.
+
 ### Fixed
 
 - `separate` no longer gets a hyphenated respelling that Kokoro reads with a

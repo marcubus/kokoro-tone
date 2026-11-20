@@ -13,6 +13,7 @@ The package is flat; each module owns one seam.
 | `limits.py` | request bounds and their environment overrides |
 | `log.py` | the logfmt event line and its `logging` backend |
 | `errors.py` | the OpenAI error envelope and `RequestError` |
+| `access.py` | the two roles, the TOML allowlist, operation ids as slugs (ADR-0016) |
 | `middleware.py` | the body-size limit and the HTTP metrics middleware |
 | `telemetry.py` | the OpenTelemetry meter, instruments, views and OTLP exporter |
 | `upstream.py` | the `Upstream` client: health probe, voices, PCM synthesis and passthrough streaming |
@@ -22,7 +23,7 @@ The package is flat; each module owns one seam.
 | `script_cli.py` | the standalone compiler CLI (`python -m kokoro_tone.script_cli`) |
 | `filters.py` | declarative ffmpeg blocks, their schema and the `[filter:]` builder |
 | `plugins.py` | JSON and entry-point discovery for declarative filter manifests |
-| `context.py` | `Context` and the FastAPI dependency that supplies it |
+| `context.py` | `Context` and the FastAPI dependency that supplies it, including the resolved `Access` |
 | `pipeline.py` | `prepare` and `render`: the order of operations, without FastAPI |
 | `routes.py` | the HTTP routes, passthrough streaming and SSE envelope |
 | `lexicon.py` | the deployment lexicon, its schema and reload |

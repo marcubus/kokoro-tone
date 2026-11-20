@@ -11,7 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from opentelemetry.sdk.metrics.export import MetricReader
 
-from . import __version__, upstream
+from . import __version__, access, upstream
 from .context import Context
 from .errors import AmbiguityError, RequestError, error_body
 from .lexicon import Lexicon
@@ -38,6 +38,8 @@ def _record_error(request: Request, error_type: str) -> None:
 def _http_error_type(status: int, detail: str) -> str:
     if status == 401:
         return "auth"
+    if status == 403:
+        return "authorization"
     if status == 400:
         return "invalid_request"
     if status == 413:
@@ -50,7 +52,9 @@ def _http_error_type(status: int, detail: str) -> str:
 
 
 async def http_error_handler(request: Request, exc: HTTPException) -> JSONResponse:
-    body = error_body(str(exc.detail), exc.status_code)
+    # A 403 that carries a scope names it; every other failure keeps the
+    # envelope's default code.
+    body = error_body(str(exc.detail), exc.status_code, code=getattr(exc, "code", None))
     _record_error(request, _http_error_type(exc.status_code, str(exc.detail)))
     event(
         "error",
@@ -104,12 +108,20 @@ async def unhandled_error_handler(request: Request, exc: Exception) -> JSONRespo
 def create_app(config: Settings, *, metric_reader: MetricReader | None = None) -> FastAPI:
     """Build one app from one configuration. No module-level state is read."""
     configure(config.log_level)
+    # A bad policy file must stop the process before any request can be served,
+    # so resolve it before telemetry or the router exist.
+    policy = access.load_access(
+        admin_keys=config.admin_keys,
+        default_keys=config.gateway_keys,
+        rbac_path=config.rbac_path,
+    )
     telemetry = build_telemetry(config, metric_reader=metric_reader)
     telemetry.set_info(config)
 
     app = FastAPI(title="kokoro-tone", version=__version__, lifespan=lifespan)
     app.state.ctx = Context(
         settings=config,
+        access=policy,
         lexicon=Lexicon(
             config.lexicon_path,
             config.limits,
