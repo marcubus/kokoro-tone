@@ -253,21 +253,90 @@ an alias inherits the underlying voice's set.
 ### The learned overlay and the pronunciation API
 
 The learned overlay is for readings a caller discovers at runtime. It is the
-only lexicon file the gateway writes. The API is available when
-`PRONUNCIATION_WRITE=true`:
+only lexicon file the gateway writes. In `force` mode (the default) the API is
+available when `PRONUNCIATION_WRITE=true`; in `review` mode a proposal is
+queued and an admin key decides (ADR-0017).
 
-- `POST /v1/pronunciations/lookup` with `{"words": ["read", "Banyule"]}` returns
-  every deployment rule for each word, including the `senses` of a heteronym and
-  the `source` layer (`custom`, `learned` or `defaults`). A rule that belongs to
-  a per-voice set carries the `voice` it applies to.
-- `POST /v1/pronunciations/learn` with `{"word": "Aurec", "say": "AW-rek"}` adds
-  a bare rule. Add `"sense": "present-verb"` to write `word|sense` instead.
-- `POST /v1/pronunciations/forget` with `{"word": "Aurec"}` removes only the
-  learned rule; it never touches the user overlay or the defaults.
+The pronunciation resource is nouns, not verbs, and the operation id is the
+permission:
+
+| Operation | Route | Who |
+|---|---|---|
+| `listPronunciations` | `GET /v1/pronunciations` | any key |
+| `createPronunciation` | `POST /v1/pronunciations` | any key |
+| `updatePronunciation` | `PATCH /v1/pronunciations/{id}` | admin |
+| `deletePronunciation` | `DELETE /v1/pronunciations/{id}` | admin |
+| `retrievePronunciationAudio` | `GET /v1/pronunciations/{id}/audio` | admin |
+
+- `GET /v1/pronunciations?word=read&word=Banyule` returns every deployment rule
+  for those words across layers, each row naming its `source` (`custom`,
+  `learned` or `defaults`), its `id`, and the word's `senses`. A per-voice rule
+  carries its `voice`.
+- `GET /v1/pronunciations?status=pending` is the proposal queue, oldest first,
+  with `limit` and `after` for paging. With no filter it lists every proposal.
+- `POST /v1/pronunciations` with `{"word": "Aurec", "say": "AW-rek"}` applies a
+  bare rule and answers `201` in `force` mode, or records a proposal and answers
+  `202` in `review`. Add `"sense": "present-verb"` to write `word|sense`
+  instead, and `"context"` for the sentence the audition renders.
+- `PATCH /v1/pronunciations/{id}` with `{"status": "approved"}` applies a
+  proposal; `{"status": "rejected", "reason": "..."}` refuses it and keeps the
+  row, so the same suggestion is not made again in ignorance.
+- `DELETE /v1/pronunciations/{id}` removes a proposal row, or deletes one
+  learned rule. A shipped default or a `custom.json` rule is `409
+  immutable_rule`; an unknown id is `404`.
+- `GET /v1/pronunciations/{id}/audio?variant=as-is|proposed` renders the
+  proposal's own context sentence with and without the reading. Approving from
+  spelling is what produced the uppercase stress markers, so the decision is
+  made on two takes of the same sentence.
+
+A list is `{"object": "list", "data": [...]}`; a single row is
+`{"object": "pronunciation", ...}` or `{"object": "proposal", ...}`. State
+conflicts are `409` with a code: `invalid_transition` for an already decided
+row, `not_pending` when a decision arrives in `force` mode, `immutable_rule` for
+a shipped or user rule.
+
+#### What the queue promises, and what it does not
+
+- **A pending row never decides itself.** There is no timeout, no auto-approval
+  and no background task; ADR-0017 rejected approve-by-timeout because it turns
+  inattention into policy. An undecided row stays pending indefinitely, and the
+  engine keeps its own reading while it does.
+- **Pending work is never pruned.** At `MAX_PROPOSALS` (1024) the oldest
+  *decided* rows are dropped first; if the *pending* rows alone exceed the cap,
+  `POST /v1/pronunciations` answers `400` instead of discarding a proposal
+  nobody has judged. The cap is checked on write, so a file that grew past it is
+  still readable and listable.
+- **Deleting a proposal is not undoing it.** `DELETE /v1/pronunciations/{id}`
+  removes the row; a rule an approval already applied lives in `learned.json`
+  and is deleted by its own `learned-…` id from `GET
+  /v1/pronunciations?word=` (that route is the only place the id appears).
+- **An approval is two writes, not a transaction.** The rule is applied first,
+  the decision recorded second, so a crash between them leaves an applied rule
+  with a still-pending row; re-approving is safe because the overlay replaces by
+  `match`. A decided row is immutable - a second decision is `409
+  invalid_transition`, which also covers two reviewers racing the same row.
+- **The store is one file, one process.** `proposals.json` is loaded on every
+  call and written atomically under a process lock. There is no index and no
+  cross-process coordination, so two gateway processes sharing the path can lose
+  a write. It is a single-service store by design.
+- **Visibility is pull-only.** Reading the queue is the only way to see it;
+  `/health` publishes `normalise.pending_proposals`, and nothing pushes,
+  notifies or alerts on a growing queue. Watching that count is an operator
+  habit, not a guarantee.
+- **Corruption is loud.** A malformed file, an unknown version or a non-list
+  `proposals` key is a `500` naming the file, never a silently empty queue.
+
+In `review` mode an uppercase run in `say` (`MEL-bun`, `NISSUH`) is a `400`: it
+is a proposer's stress guess, and the guess is the thing under review. In
+`force` mode the same value is logged as a warning and applied, because the
+caller is the operator.
 
 Writes are atomic and reload the lexicon on the next request. A missing learned
-file is normal; the first learn creates it. The learned file is not a secret and
-is written readable to the host operator.
+file is normal; the first applied rule creates it. The learned file is not a
+secret and is written readable to the host operator. The proposal store
+(`PRONUNCIATION_PROPOSALS`, `proposals.json` beside `learned.json`) has the same
+atomic write, byte cap and symlink refusal, and a corrupt queue is a `500` that
+names the file rather than a silent empty list.
 
 The write endpoints treat their input as data, never as markup. A `word` may
 contain only letters, digits, spaces, apostrophes, hyphens, periods, ampersands,
@@ -279,12 +348,10 @@ cannot inject markup into the lexicon or reach another file. The learned file
 must not be a symlink, and writes are refused once the file would exceed
 `lexicon_rules` or `lexicon_bytes`.
 
-The write routes are ordinary operation ids (`createPronunciation`,
-`deletePronunciation`) and are granted by the role allowlist; see
-[Configuration](configuration.md#roles-and-the-allowlist). The separate
-`X-Pronunciation-Key` gate is gone, because a second secret could not say which
-operations it unlocked. `PRONUNCIATION_WRITE=true` still decides whether a
-write is allowed to reach the file at all.
+The routes are ordinary operation ids and are granted by the role allowlist; see
+[Configuration](configuration.md#roles-and-the-allowlist). `PRONUNCIATION_WRITE`
+still decides whether a force-mode write is allowed to reach the file at all,
+and `PRONUNCIATION_APPROVAL=review` needs an admin key to start.
 
 The file is verified at load: file-level problems ignore the file, entry-level
 problems skip that entry and keep the rest, and everything is logged to stderr.

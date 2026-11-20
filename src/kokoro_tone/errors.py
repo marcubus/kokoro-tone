@@ -32,6 +32,7 @@ _ERROR_TYPES = {
     401: "authentication_error",
     403: "permission_error",
     404: "invalid_request_error",
+    409: "invalid_request_error",
     413: "invalid_request_error",
     422: "invalid_request_error",
     429: "rate_limit_error",

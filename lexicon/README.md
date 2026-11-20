@@ -78,8 +78,9 @@ crosses a sentence boundary.
 (`PRONUNCIATION_OVERRIDES`) beside it; the gateway composes the two **in
 memory** when it loads them. A third file, `learned/learned.json`
 (`PRONUNCIATION_LEARNED`), is written by the pronunciation API when
-`PRONUNCIATION_WRITE=true`. Priority is user overlay, then learned overlay, then
-the shipped defaults:
+`PRONUNCIATION_WRITE=true`, or when an admin approves a proposal in review mode
+(ADR-0017). Priority is user overlay, then learned overlay, then the shipped
+defaults:
 
 | Key | Composition |
 |---|---|
@@ -97,6 +98,12 @@ deployment's private names. A missing overlay is normal. Per-request
 `custom.example.json` is the empty shape to copy. `custom.json` is gitignored:
 it is the user's file, not the project's. `learned/` is gitignored too; it is
 machine-written and can be removed to forget everything the gateway learned.
+
+`learned/proposals.json` (`PRONUNCIATION_PROPOSALS`) is the review queue from
+ADR-0017, not a lexicon file: it holds the rows a pipeline proposed and the
+decisions made on them. A pending row changes nothing a request can hear; an
+approved row is copied into `learned.json` and only then applies. Removing the
+proposal file empties the history, not the lexicon.
 
 ## Verification
 

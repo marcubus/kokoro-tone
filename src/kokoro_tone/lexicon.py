@@ -23,6 +23,7 @@ from . import normalise
 from .limits import Limits
 from .log import event, warning
 from .parse import MarkupError, sanitise_text, validate_voice
+from .proposals import rule_id
 from .telemetry import Telemetry
 
 _SET_KEYS = frozenset({"rules", "acronyms", "protect", "letters", "locale"})
@@ -442,7 +443,7 @@ _WORD_PUNCTUATION = frozenset(" .'&+#-")
 _SAY_PUNCTUATION = frozenset(" .'-,:")
 
 
-def _validate_word(value: str, limits: Limits) -> str:
+def validate_word(value: str, limits: Limits) -> str:
     """A learned word is a name, not markup. Keep the set deliberately small."""
     text = value.strip()
     if not text:
@@ -460,7 +461,7 @@ def _validate_word(value: str, limits: Limits) -> str:
     return text
 
 
-def _validate_say(value: str, limits: Limits) -> str:
+def validate_say(value: str, limits: Limits) -> str:
     """A respelling is letters, digits and a few punctuation marks, nothing else."""
     text = value.strip()
     if not text:
@@ -476,7 +477,7 @@ def _validate_say(value: str, limits: Limits) -> str:
     return text
 
 
-def _validate_sense(value: str) -> str:
+def validate_sense(value: str) -> str:
     """A sense is a short label, never markup."""
     text = value.strip()
     if not text:
@@ -544,11 +545,16 @@ class Lexicon:
         learned_path: str | None = None,
         write_enabled: bool = False,
         telemetry: Telemetry | None = None,
+        apply_enabled: bool | None = None,
     ) -> None:
         self.path = path
         self.overlay_path = overlay_path
         self.learned_path = learned_path
+        # `write_enabled` is the force-mode path: a caller writes policy now.
+        # `apply_enabled` is the admin path (approval, deletion), which is on in
+        # review mode even when direct writes are off.
         self.write_enabled = write_enabled
+        self.apply_enabled = write_enabled if apply_enabled is None else apply_enabled
         self.limits = limits
         self._telemetry = telemetry
         self._lock = threading.Lock()
@@ -612,7 +618,7 @@ class Lexicon:
         set carries the `voice` it belongs to.
         """
         self.current()
-        text = _validate_word(word, self.limits)
+        text = validate_word(word, self.limits)
         head = text.casefold()
         entries: list[dict[str, object]] = []
         senses: list[dict[str, object]] = []
@@ -632,6 +638,7 @@ class Lexicon:
                     if match != head and not match.startswith(head + "|"):
                         continue
                     entry = _rule_entry(rule, source)
+                    entry["id"] = rule_id(source, rule.match, rule.say)
                     if voice is not None:
                         entry["voice"] = voice
                     key = _rule_key(entry)
@@ -656,12 +663,26 @@ class Lexicon:
         return {"word": text, "found": bool(entries), "senses": senses, "rules": entries}
 
     def learn(self, word: str, say: str, sense: str | None = None) -> dict[str, object]:
-        """Add or replace one rule in the learned overlay."""
+        """Add or replace one rule in the learned overlay (force mode)."""
         if not self.write_enabled:
             raise PermissionError("pronunciation learning is disabled")
-        text = _validate_word(word, self.limits)
-        spoken = _validate_say(say, self.limits)
-        sense = _validate_sense(sense) if sense is not None else None
+        return self._apply(word, say, sense)
+
+    def apply_approved(self, word: str, say: str, sense: str | None = None) -> dict[str, object]:
+        """Apply an admin-approved proposal.
+
+        The admin decision is the gate, so this is allowed in review mode even
+        when direct writes are disabled. Re-applying the same rule is
+        idempotent: `_apply` replaces by match rather than appending.
+        """
+        if not self.apply_enabled:
+            raise PermissionError("pronunciation writes are disabled")
+        return self._apply(word, say, sense)
+
+    def _apply(self, word: str, say: str, sense: str | None) -> dict[str, object]:
+        text = validate_word(word, self.limits)
+        spoken = validate_say(say, self.limits)
+        sense = validate_sense(sense) if sense is not None else None
         match = f"{text}|{sense}" if sense else text
         rule = parse_rules([{"match": match, "say": spoken}], self.limits)[0]
         with self._write_lock:
@@ -696,14 +717,68 @@ class Lexicon:
             "say": rule.say,
             "sense": sense,
             "source": "learned",
+            "id": rule_id("learned", rule.match, rule.say),
         }
+
+    def rule_by_id(self, handle: str) -> tuple[str, str | None, Rule] | None:
+        """Resolve a listed rule id to `(source, voice, rule)`."""
+        self.current()
+        for source in ("custom", "learned", "defaults"):
+            layer = self._layers.get(source)
+            if layer is None:
+                continue
+            sets: list[tuple[str | None, RuleSet]] = [(None, layer.defaults)]
+            sets.extend(sorted(layer.voices.items()))
+            for voice, ruleset in sets:
+                for rule in ruleset.rules:
+                    if rule_id(source, rule.match, rule.say) == handle:
+                        return source, voice, rule
+        return None
+
+    def delete_rule(self, handle: str) -> str | None:
+        """Delete one learned rule by id.
+
+        Returns `None` for an unknown id, `immutable` for a rule in the shipped
+        defaults or the user overlay, and `deleted` when a learned rule went.
+        A per-voice learned rule is immutable too: `learn` only ever writes the
+        default set, so such a row was placed by hand.
+        """
+        found = self.rule_by_id(handle)
+        if found is None:
+            return None
+        source, voice, rule = found
+        if source != "learned" or voice is not None:
+            return "immutable"
+        if not self.apply_enabled:
+            raise PermissionError("pronunciation writes are disabled")
+        with self._write_lock:
+            payload = self._read_learned()
+            defaults = payload.get("defaults")
+            rules = defaults.get("rules") if isinstance(defaults, dict) else None
+            if not isinstance(rules, list):
+                rules = []
+            kept = [
+                item
+                for item in rules
+                if not (
+                    isinstance(item, dict)
+                    and str(item.get("match", "")).casefold() == rule.match.casefold()
+                )
+            ]
+            if len(kept) != len(rules):
+                assert isinstance(defaults, dict)
+                defaults["rules"] = kept
+                self._write_learned(payload)
+                self._invalidate()
+        event("pronunciation_forget", chars=len(rule.match), sense="", removed=1)
+        return "deleted"
 
     def forget(self, word: str, sense: str | None = None) -> dict[str, object]:
         """Remove one rule from the learned overlay, leaving other layers alone."""
-        if not self.write_enabled:
+        if not self.apply_enabled:
             raise PermissionError("pronunciation learning is disabled")
-        text = _validate_word(word, self.limits)
-        sense = _validate_sense(sense) if sense is not None else None
+        text = validate_word(word, self.limits)
+        sense = validate_sense(sense) if sense is not None else None
         match = f"{text}|{sense}" if sense else text
         removed = 0
         with self._write_lock:

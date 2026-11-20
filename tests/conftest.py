@@ -11,5 +11,6 @@ from support import (  # noqa: F401
     overlay_gateway,
     readonly_lexicon_gateway,
     restricted_gateway,
+    review_gateway,
     unlevelled_gateway,
 )

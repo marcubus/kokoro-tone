@@ -42,7 +42,17 @@ OPERATIONS = frozenset(
         "listModels",
         "listPronunciations",
         "listVoices",
+        "retrievePronunciationAudio",
+        "updatePronunciation",
     }
+)
+
+# ADR-0017: a proposal exists so that a different key makes the decision. The
+# deciding operations are therefore never in the built-in default policy, and an
+# allowlist cannot grant them either: `Access.allows` is bypassed only by the
+# admin role, but a file that names an admin-only slug is rejected at load.
+ADMIN_ONLY_SLUGS = frozenset(
+    {"deletePronunciation", "retrievePronunciationAudio", "updatePronunciation"}
 )
 
 # Public is a property of the contract, not a deployment choice: the compose
@@ -51,24 +61,11 @@ PUBLIC_SLUGS = frozenset({"getHealth", "openapi", "swagger_ui_html", "redoc_html
 
 KNOWN_SLUGS = OPERATIONS | PUBLIC_SLUGS
 
-# The built-in policy, used when no file exists. It names every operation the
-# service exposes today, so an upgrade that adds keys but no `rbac.toml` does
-# not take a route away from an existing caller. A route added later is NOT
-# added here automatically; it is admin-only until an allowlist names it.
-DEFAULT_ALLOW: tuple[str, ...] = tuple(
-    sorted(
-        {
-            "compileScript",
-            "createPronunciation",
-            "createSpeech",
-            "deletePronunciation",
-            "getHealth",
-            "listModels",
-            "listPronunciations",
-            "listVoices",
-        }
-    )
-)
+# The built-in policy, used when no file exists. It names every operation a
+# default key may call, so an upgrade that adds keys but no `rbac.toml` does not
+# take a route away from an existing caller. A route added later is NOT added
+# here automatically; it is admin-only until an allowlist names it.
+DEFAULT_ALLOW: tuple[str, ...] = tuple(sorted(OPERATIONS - ADMIN_ONLY_SLUGS))
 
 
 class PolicyError(RuntimeError):
@@ -133,6 +130,12 @@ def load_policy(path: str) -> Policy:
     unknown = [slug for slug in allow if slug not in KNOWN_SLUGS]
     if unknown:
         raise PolicyError(f"{path}: unknown operation id {unknown[0]!r} in [default].allow")
+    admin_only = [slug for slug in allow if slug in ADMIN_ONLY_SLUGS]
+    if admin_only:
+        raise PolicyError(
+            f"{path}: {admin_only[0]!r} is an admin-only operation and cannot be granted "
+            "to a default key"
+        )
 
     return Policy(frozenset(allow), str(candidate))
 
@@ -143,6 +146,8 @@ def template() -> str:
         "# Generated from src/kokoro_tone/access.py: DEFAULT_ALLOW.",
         "# Copy to /etc/kokoro-tone/rbac.toml and remove the ids a default key",
         "# should not call. An admin key may call every operation, listed or not.",
+        "# The deciding operations (update/delete/audio) are admin-only and must",
+        "# not be listed here.",
         "",
         "version = 1",
         "",
@@ -183,6 +188,8 @@ class Access:
     def allows(self, role: Role, slug: str) -> bool:
         if slug in PUBLIC_SLUGS:
             return True
+        if slug in ADMIN_ONLY_SLUGS:
+            return role == ROLE_ADMIN
         if role == ROLE_ADMIN:
             return True
         return slug in self.policy.allow

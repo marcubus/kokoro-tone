@@ -11,8 +11,8 @@ expensive to reverse, the options that lost, and what the choice costs.
 | [0014](0014-opentelemetry-metrics.md) | OpenTelemetry metrics through a collector | accepted (implemented) |
 | [0015](0015-script-layer-is-the-product.md) | The script layer is the product; tone is an experimental lab | accepted |
 | [0016](0016-two-roles-and-an-allowlist-file.md) | Two roles and an allowlist file, not a permission system | accepted (implemented) |
-| [0017](0017-two-stage-approval.md) | Two-stage approval: a proposal becomes policy only after an admin decides | proposed |
-| [0018](0018-openapi-contract-and-rest-pronunciations.md) | The OpenAPI document is the contract, and the pronunciation surface becomes a REST resource | proposed |
+| [0017](0017-two-stage-approval.md) | Two-stage approval: a proposal becomes policy only after an admin decides | accepted (implemented) |
+| [0018](0018-openapi-contract-and-rest-pronunciations.md) | The OpenAPI document is the contract, and the pronunciation surface becomes a REST resource | partially implemented |
 
 ## Why the numbers start at 0009
 

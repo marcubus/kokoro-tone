@@ -114,7 +114,8 @@ way every time. It runs without the engine and without HTTP.
 | Ambiguity policy | not applicable | `guess` (default), `ignore`, or `error` with the pasteable tags; the header names what was assumed | `tests/test_api.py` |
 | Number and acronym normalisation | none | Australian cardinals, decimals, percent, ranges and letter-spelled acronyms, all opt-in | `tests/test_normalise.py` |
 | Deployment lexicon | server-side config only | JSON sets, per-voice rules, overlays, aliases and hot reload | `tests/test_lexicon.py` |
-| Runtime lexicon API | none | lookup a word's rules and heteronym senses, learn a reading, forget a learned rule | `tests/test_api.py` |
+| Runtime lexicon API | none | a REST resource for rules and proposals: list by layer, create, approve or reject, delete by id | `tests/test_api.py`, `tests/test_approval.py` |
+| Two-stage pronunciation approval | none | `review` mode queues a proposal as a UUIDv7 row; only an admin key can approve it, and the audition renders the sentence both ways | `tests/test_approval.py` |
 | Script markup | not a recognised tag set | `[voice:]`, `[emotion:]`, `[rate:]`, `[pause:]`, `[sense:]`, `[filter:]` | `tests/test_parse.py` |
 | Multi-turn `input` | the OpenAI endpoint takes a string only | an array of `{text, voice, instructions}` turns, rendered with gaps into one file | `tests/test_api.py` |
 | Alias maps | `voice_aliases` is server-side config, not an OpenAI request field | `voice` accepts a map, with an `id` entry setting the default | `tests/test_api.py` |

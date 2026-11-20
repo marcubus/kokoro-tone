@@ -4,7 +4,7 @@ import json
 import pytest
 
 from kokoro_tone import levelling
-from support import AUTH, MP3, PCM
+from support import ADMIN, AUTH, MP3, PCM
 
 
 def _sse_events(body: str) -> list[tuple[str, dict]]:
@@ -899,101 +899,96 @@ def test_a_request_rule_wins_over_the_overlay(overlay_gateway):
 # ---------------------------------------------------------------- pronunciation API
 
 
-def test_pronunciation_lookup_returns_heteronym_senses(learned_gateway):
+def test_pronunciation_list_returns_rules_by_layer(learned_gateway):
     client, _, _ = learned_gateway
-    response = client.post(
-        "/v1/pronunciations/lookup",
+    response = client.get(
+        "/v1/pronunciations",
         headers=AUTH,
-        json={"words": ["read", "Banyule", "Aurec", "Unknown"]},
+        params={"word": ["read", "Banyule", "Aurec", "Unknown"]},
     )
 
     assert response.status_code == 200
-    results = {item["word"]: item for item in response.json()["results"]}
-    assert results["read"]["found"] is True
-    assert {item["sense"] for item in results["read"]["senses"]} == {
-        "present-verb",
-        "past-verb",
-    }
-    assert results["Banyule"]["found"] is True
-    assert results["Aurec"]["found"] is True
-    assert results["Aurec"]["rules"][0]["source"] == "custom"
-    assert results["Unknown"]["found"] is False
-    assert results["Unknown"]["rules"] == []
+    body = response.json()
+    assert body["object"] == "list"
+    rows = body["data"]
+    assert all(row["object"] == "pronunciation" for row in rows)
+    assert {row["source"] for row in rows} == {"defaults", "custom"}
+
+    read = [row for row in rows if row["match"].startswith("read")]
+    assert {row.get("sense") for row in read} == {"present-verb", "past-verb", None}
+    assert {item["sense"] for item in read[0]["senses"]} == {"present-verb", "past-verb"}
+    assert [row for row in rows if row["match"] == "Aurec"][0]["source"] == "custom"
+    assert not [row for row in rows if row["match"] == "Unknown"]
+    assert all(row["id"] for row in rows)
 
 
-def test_pronunciation_learn_writes_the_learned_overlay(learned_gateway):
+def test_pronunciation_create_applies_in_force_mode(learned_gateway):
     client, _, learned = learned_gateway
     response = client.post(
-        "/v1/pronunciations/learn",
+        "/v1/pronunciations",
         headers=AUTH,
         json={"word": "Isi", "say": "izzy"},
     )
 
-    assert response.status_code == 200
-    assert response.json()["source"] == "learned"
+    assert response.status_code == 201
+    body = response.json()
+    assert body["object"] == "pronunciation"
+    assert body["status"] == "applied"
+    assert body["source"] == "learned"
     stored = json.loads(learned.read_text(encoding="utf-8"))
     assert {"match": "Isi", "say": "izzy"} in stored["defaults"]["rules"]
 
-    lookup = client.post(
-        "/v1/pronunciations/lookup",
-        headers=AUTH,
-        json={"words": ["Isi"]},
-    ).json()["results"][0]
-    assert lookup["found"] is True
-    assert lookup["rules"][0]["source"] == "learned"
+    listed = client.get("/v1/pronunciations", headers=AUTH, params={"word": "Isi"}).json()
+    assert listed["data"][0]["source"] == "learned"
+    assert listed["data"][0]["id"] == body["id"]
 
 
-def test_pronunciation_learn_can_add_a_sense(learned_gateway):
+def test_pronunciation_create_can_add_a_sense(learned_gateway):
     client, _, _ = learned_gateway
     response = client.post(
-        "/v1/pronunciations/learn",
+        "/v1/pronunciations",
         headers=AUTH,
         json={"word": "read", "sense": "present-verb", "say": "reed"},
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert response.json()["match"] == "read|present-verb"
 
-    lookup = client.post(
-        "/v1/pronunciations/lookup",
-        headers=AUTH,
-        json={"words": ["read"]},
-    ).json()["results"][0]
-    assert lookup["senses"][0] == {
-        "sense": "present-verb",
-        "say": "reed",
-        "source": "learned",
-    }
+    listed = client.get("/v1/pronunciations", headers=AUTH, params={"word": "read"}).json()
+    assert [row["say"] for row in listed["data"] if row["source"] == "learned"] == ["reed"]
 
 
-def test_pronunciation_forget_removes_only_the_learned_rule(learned_gateway):
+def test_pronunciation_delete_removes_only_the_learned_rule(learned_gateway):
     client, _, _ = learned_gateway
-    client.post(
-        "/v1/pronunciations/learn",
+    created = client.post(
+        "/v1/pronunciations",
         headers=AUTH,
         json={"word": "Isi", "say": "izzy"},
-    )
-    response = client.post(
-        "/v1/pronunciations/forget",
-        headers=AUTH,
-        json={"word": "Isi"},
-    )
+    ).json()
+    response = client.delete(f"/v1/pronunciations/{created['id']}", headers=ADMIN)
 
     assert response.status_code == 200
-    assert response.json()["removed"] == 1
+    assert response.json()["deleted"] is True
 
-    lookup = client.post(
-        "/v1/pronunciations/lookup",
-        headers=AUTH,
-        json={"words": ["Isi"]},
-    ).json()["results"][0]
-    assert lookup["found"] is False
+    listed = client.get("/v1/pronunciations", headers=AUTH, params={"word": "Isi"}).json()
+    assert listed["data"] == []
 
 
-def test_pronunciation_learn_is_forbidden_when_disabled(readonly_lexicon_gateway):
+def test_deleting_a_shipped_rule_is_a_state_conflict(learned_gateway):
+    client, _, _ = learned_gateway
+    listed = client.get("/v1/pronunciations", headers=AUTH, params={"word": "Banyule"}).json()
+    shipped = [row for row in listed["data"] if row["source"] == "defaults"][0]
+
+    response = client.delete(f"/v1/pronunciations/{shipped['id']}", headers=ADMIN)
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "immutable_rule"
+
+
+def test_pronunciation_create_is_forbidden_when_writes_are_disabled(readonly_lexicon_gateway):
     client, _, _ = readonly_lexicon_gateway
     response = client.post(
-        "/v1/pronunciations/learn",
+        "/v1/pronunciations",
         headers=AUTH,
         json={"word": "Isi", "say": "izzy"},
     )
@@ -1002,10 +997,10 @@ def test_pronunciation_learn_is_forbidden_when_disabled(readonly_lexicon_gateway
     assert "disabled" in response.json()["error"]["message"]
 
 
-def test_pronunciation_learn_rejects_brackets(learned_gateway):
+def test_pronunciation_create_rejects_brackets(learned_gateway):
     client, _, _ = learned_gateway
     response = client.post(
-        "/v1/pronunciations/learn",
+        "/v1/pronunciations",
         headers=AUTH,
         json={"word": "Bad[word]", "say": "x"},
     )
@@ -1014,11 +1009,25 @@ def test_pronunciation_learn_rejects_brackets(learned_gateway):
     assert "word may contain only" in response.json()["error"]["message"]
 
 
-def test_pronunciation_lookup_requires_auth(learned_gateway):
+def test_pronunciation_list_requires_auth(learned_gateway):
     client, _, _ = learned_gateway
-    response = client.post("/v1/pronunciations/lookup", json={"words": ["read"]})
+    response = client.get("/v1/pronunciations", params={"word": "read"})
 
     assert response.status_code == 401
+
+
+def test_a_default_key_may_not_delete(learned_gateway):
+    client, _, _ = learned_gateway
+    created = client.post(
+        "/v1/pronunciations",
+        headers=AUTH,
+        json={"word": "Isi", "say": "izzy"},
+    ).json()
+
+    response = client.delete(f"/v1/pronunciations/{created['id']}", headers=AUTH)
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "insufficient_scope"
 
 
 # ---------------------------------------------------- pronunciation injection
@@ -1055,10 +1064,10 @@ INJECTION_SAYS = [
 
 
 @pytest.mark.parametrize("word", INJECTION_WORDS)
-def test_pronunciation_learn_rejects_injection_words(learned_gateway, word):
+def test_pronunciation_create_rejects_injection_words(learned_gateway, word):
     client, _, learned = learned_gateway
     response = client.post(
-        "/v1/pronunciations/learn",
+        "/v1/pronunciations",
         headers=AUTH,
         json={"word": word, "say": "safe"},
     )
@@ -1068,10 +1077,10 @@ def test_pronunciation_learn_rejects_injection_words(learned_gateway, word):
 
 
 @pytest.mark.parametrize("say", INJECTION_SAYS)
-def test_pronunciation_learn_rejects_injection_says(learned_gateway, say):
+def test_pronunciation_create_rejects_injection_says(learned_gateway, say):
     client, _, learned = learned_gateway
     response = client.post(
-        "/v1/pronunciations/learn",
+        "/v1/pronunciations",
         headers=AUTH,
         json={"word": "Safe", "say": say},
     )
@@ -1081,34 +1090,25 @@ def test_pronunciation_learn_rejects_injection_says(learned_gateway, say):
 
 
 @pytest.mark.parametrize("word", INJECTION_WORDS)
-def test_pronunciation_lookup_rejects_injection_words(learned_gateway, word):
+def test_pronunciation_list_rejects_injection_words(learned_gateway, word):
     client, _, _ = learned_gateway
-    response = client.post(
-        "/v1/pronunciations/lookup",
-        headers=AUTH,
-        json={"words": [word]},
-    )
+    response = client.get("/v1/pronunciations", headers=AUTH, params={"word": word})
 
     assert response.status_code == 400
 
 
-@pytest.mark.parametrize("word", INJECTION_WORDS)
-def test_pronunciation_forget_rejects_injection_words(learned_gateway, word):
+def test_pronunciation_delete_rejects_an_unknown_id(learned_gateway):
     client, _, learned = learned_gateway
-    response = client.post(
-        "/v1/pronunciations/forget",
-        headers=AUTH,
-        json={"word": word},
-    )
+    response = client.delete("/v1/pronunciations/not-an-id", headers=ADMIN)
 
-    assert response.status_code == 400
+    assert response.status_code == 404
     assert not learned.exists() or learned.read_text(encoding="utf-8") == ""
 
 
-def test_pronunciation_learn_rejects_oversized_fields(learned_gateway):
+def test_pronunciation_create_rejects_oversized_fields(learned_gateway):
     client, _, learned = learned_gateway
     response = client.post(
-        "/v1/pronunciations/learn",
+        "/v1/pronunciations",
         headers=AUTH,
         json={"word": "a" * 201, "say": "safe"},
     )
@@ -1117,10 +1117,10 @@ def test_pronunciation_learn_rejects_oversized_fields(learned_gateway):
     assert not learned.exists() or learned.read_text(encoding="utf-8") == ""
 
 
-def test_pronunciation_learn_rejects_a_long_say(learned_gateway):
+def test_pronunciation_create_rejects_a_long_say(learned_gateway):
     client, _, learned = learned_gateway
     response = client.post(
-        "/v1/pronunciations/learn",
+        "/v1/pronunciations",
         headers=AUTH,
         json={"word": "Safe", "say": "a" * 201},
     )
@@ -1129,16 +1129,37 @@ def test_pronunciation_learn_rejects_a_long_say(learned_gateway):
     assert not learned.exists() or learned.read_text(encoding="utf-8") == ""
 
 
-def test_pronunciation_learn_rejects_an_invalid_sense(learned_gateway):
+def test_pronunciation_create_rejects_an_invalid_sense(learned_gateway):
     client, _, learned = learned_gateway
     response = client.post(
-        "/v1/pronunciations/learn",
+        "/v1/pronunciations",
         headers=AUTH,
         json={"word": "read", "sense": "bad sense", "say": "reed"},
     )
 
     assert response.status_code == 400
     assert not learned.exists() or learned.read_text(encoding="utf-8") == ""
+
+
+def test_the_retired_verb_routes_are_gone(learned_gateway):
+    """ADR-0018 rule 8: no verb route survives as an alias.
+
+    The router answers 405 where the old path now collides with a resource id
+    (`/v1/pronunciations/{id}`), which is still "no such operation" - what must
+    not happen is the old handler running.
+    """
+    client, _, learned = learned_gateway
+    for path in (
+        "/v1/pronunciations/learn",
+        "/v1/pronunciations/lookup",
+        "/v1/pronunciations/forget",
+    ):
+        response = client.post(path, headers=AUTH, json={"word": "Isi", "say": "izzy"})
+        assert response.status_code in (404, 405), path
+    assert not learned.exists()
+
+
+# ------------------------------------------------------------------- dry run
 
 
 def test_compile_reports_the_guesses_without_calling_the_engine(ambiguous_gateway):

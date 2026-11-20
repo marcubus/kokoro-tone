@@ -15,6 +15,7 @@ from fastapi import Request
 
 from .access import Access
 from .lexicon import Lexicon
+from .proposals import ProposalStore
 from .settings import Settings
 from .telemetry import Telemetry
 from .upstream import Upstream
@@ -25,6 +26,7 @@ class Context:
     settings: Settings
     access: Access
     lexicon: Lexicon
+    proposals: ProposalStore
     upstream: Upstream
     telemetry: Telemetry
 

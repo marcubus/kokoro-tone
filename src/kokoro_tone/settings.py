@@ -44,6 +44,8 @@ class Settings:
     lexicon_overlay_path: str
     lexicon_learned_path: str
     lexicon_write: bool
+    approval: str
+    proposals_path: str
     log_level: str
     otel_endpoint: str
     otel_service_name: str
@@ -80,6 +82,21 @@ def _loudness() -> float:
 
 
 _LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
+
+APPROVAL_FORCE = "force"
+APPROVAL_REVIEW = "review"
+APPROVAL_MODES = (APPROVAL_FORCE, APPROVAL_REVIEW)
+
+
+class SettingsError(RuntimeError):
+    """A configuration that must stop the process (ADR-0017 rule 9)."""
+
+
+def _approval() -> str:
+    raw = env.read_str("PRONUNCIATION_APPROVAL", APPROVAL_FORCE).lower()
+    if raw not in APPROVAL_MODES:
+        raise SettingsError(f"PRONUNCIATION_APPROVAL={raw!r} is not one of {list(APPROVAL_MODES)}")
+    return raw
 
 
 def _log_level() -> str:
@@ -165,6 +182,14 @@ def load_settings() -> Settings:
             "PRONUNCIATION_LEARNED", "/etc/kokoro-tone/learned/learned.json"
         ),
         lexicon_write=env.read_bool("PRONUNCIATION_WRITE", False),
+        # ADR-0017: `force` writes on POST; `review` records a proposal and an
+        # admin key decides. A typo must not silently change which one is in
+        # force, so an unknown value stops the process rather than defaulting.
+        approval=_approval(),
+        # The proposal store, beside the learned overlay it eventually feeds.
+        proposals_path=env.read_str(
+            "PRONUNCIATION_PROPOSALS", "/etc/kokoro-tone/learned/proposals.json"
+        ),
         log_level=_log_level(),
         otel_endpoint=env.read_str("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "")
         or env.read_str("OTEL_EXPORTER_OTLP_ENDPOINT", ""),

@@ -1,11 +1,12 @@
 # Two-stage approval: a proposal becomes policy only after an admin decides
 
-**Status:** proposed
+**Status:** accepted (implemented)
 **Date:** 2026-11-19
 **Author:** marcus
 **Deciders:** marcus
 **Refs:** ADR-0016, ADR-0018, [`../pronunciation.md`](../pronunciation.md),
 [`../../src/kokoro_tone/routes.py`](../../src/kokoro_tone/routes.py),
+[`../../src/kokoro_tone/proposals.py`](../../src/kokoro_tone/proposals.py),
 [`../../lexicon/learned/learned.json`](../../lexicon/learned/learned.json)
 
 ## Context
@@ -128,10 +129,22 @@ two keys for no gain. The mode is opt-in and documented.
 - The learned overlay's existing 18 uppercase respellings are not touched by this
   record. They are already policy; purging them is a data change, not an
   architectural one.
+- A pending row has no expiry, so an unread queue stops the deployment learning
+  new names rather than admitting an unreviewed one. The pending count is the
+  only signal, and nothing alerts on it yet - the safe failure is still a
+  failure, and watching the count is an operator habit rather than a guarantee.
+- The queue never trades undecided work for space. At the row cap the oldest
+  decided rows go first; if the pending rows alone fill it, a new proposal is
+  refused with a `400`. History is lossy only where a decision already exists.
+- Deleting a proposal row is not undoing it. An approved proposal has copied its
+  rule into `learned.json`, and that rule is a separate thing with a separate
+  id; the row and the rule are deleted by different calls, because "forget the
+  suggestion" and "forget the policy" are not the same request.
 
 ## Verification
 
-Not implemented. When it lands, these hold:
+Implemented in `src/kokoro_tone/proposals.py`, `lexicon.py` and `routes.py`, with
+`tests/test_approval.py` as the proof. These hold:
 
 - `PRONUNCIATION_APPROVAL` unset: `POST /v1/pronunciations` writes the overlay,
   answers `201`, and the next render uses the new reading.

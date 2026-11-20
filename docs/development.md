@@ -26,7 +26,8 @@ The package is flat; each module owns one seam.
 | `context.py` | `Context` and the FastAPI dependency that supplies it, including the resolved `Access` |
 | `pipeline.py` | `prepare` and `render`: the order of operations, without FastAPI |
 | `routes.py` | the HTTP routes, passthrough streaming and SSE envelope |
-| `lexicon.py` | the deployment lexicon, its schema and reload |
+| `lexicon.py` | the deployment lexicon, its schema, reload and rule ids |
+| `proposals.py` | the proposal store, UUIDv7 ids and the uppercase-run check (ADR-0017) |
 | `pronounce.py` | rule precedence, the scanner and the built-in layers |
 | `parse.py`, `prosody.py`, `normalise.py`, `audio.py` | markup, presets, normalisation, ffmpeg |
 | `main.py` | `create_app`: the composition root, lifespan, middleware, error handlers, router |

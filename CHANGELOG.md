@@ -16,8 +16,8 @@ month and increments per release; tags are prefixed with `v`.
   every operation, including one no list names. The policy lives at
   `KOKORO_TONE_RBAC` (default `/etc/kokoro-tone/rbac.toml`);
   `lexicon/rbac.example.toml` is generated from the built-in defaults. A
-  missing file uses the built-in policy, which grants every operation that
-  exists today, so an upgrade with keys and no file changes no behaviour. An
+  missing file uses the built-in policy, which grants every operation a default
+  key may call, so an upgrade with keys and no file changes no behaviour. An
   unknown `version`, table or operation id stops the process at startup.
 - **A denied operation is a scoped 403.** A recognised key on a slug its role
   may not call returns `permission_error` / `insufficient_scope` with
@@ -28,6 +28,22 @@ month and increments per release; tags are prefixed with `v`.
 - `GET /health` reports an `access` block: whether auth is enabled, whether the
   policy came from a file or the built-in defaults, and whether each key list is
   populated. No key material is reported.
+- **Two-stage pronunciation approval (ADR-0017).** `PRONUNCIATION_APPROVAL`
+  chooses `force` (default, today's behaviour) or `review`. In `review`, `POST
+  /v1/pronunciations` records a proposal with a UUIDv7 id and answers `202`;
+  nothing enters the learned overlay until an admin key approves it with
+  `PATCH /v1/pronunciations/{id}`. A rejection keeps the row and its reason.
+  `GET /v1/pronunciations/{id}/audio?variant=as-is|proposed` renders the
+  proposal's own context sentence twice, so the decision is made on sound.
+  An uppercase run in `say` is a `400` in review and a logged warning in force.
+  `review` with no admin key refuses to start; an unknown mode stops the
+  process. The proposal store is a second JSON file beside `learned.json`
+  (`PRONUNCIATION_PROPOSALS`), with its own atomic write, byte cap and symlink
+  refusal.
+- **The deciding operations are admin-only in code.** `updatePronunciation`,
+  `deletePronunciation` and `retrievePronunciationAudio` are never in the
+  built-in default policy, and a policy file that names one is rejected at
+  startup. A default key may propose; it may not decide.
 
 ### Breaking (ADR-0016)
 
@@ -35,35 +51,33 @@ month and increments per release; tags are prefixed with `v`.
   removed.** A second secret proved possession without saying which operations
   it unlocked, so it could not express "may propose but not approve". The write
   routes are now granted by operation id like every other route:
-  `createPronunciation` for learn, `deletePronunciation` for forget.
-  `PRONUNCIATION_WRITE` still decides whether a write may happen at all.
+  `createPronunciation` to propose or apply, `deletePronunciation` to delete.
+  `PRONUNCIATION_WRITE` still decides whether a force-mode write may happen at
+  all. `deletePronunciation` is now admin-only (ADR-0017), so a default key that
+  could forget a word before the change no longer can.
 - **A new operation id is admin-only for a default key** until a policy file
   names it. The built-in policy is an explicit list, so adding a route does not
   silently widen what an episode renderer may call.
+### Breaking (ADR-0018, pronunciation resource only)
 
-### Breaking (planned, not yet shipped - ADR-0017/0018)
-
-Recorded here so the break is not discovered at upgrade time. Nothing below is
-in this tree yet.
-
-- **The pronunciation API becomes a REST resource and the verb routes are
-  removed without aliases.** `POST /v1/pronunciations/lookup` becomes
-  `GET /v1/pronunciations?word=<word>` (repeatable); `POST
-  /v1/pronunciations/learn` becomes `POST /v1/pronunciations`; `POST
-  /v1/pronunciations/forget` becomes `DELETE /v1/pronunciations/{id}`; `POST
-  /v1/script/compile` becomes `POST /v1/audio/speech?dry_run=1`. The old paths
-  answer `404`. The operation ids already exist and do not change with the
-  paths.
-- **Create now answers `201` when it applies and `202` when it is queued.** The
-  default (`PRONUNCIATION_APPROVAL=force`) applies immediately, so the status
-  changes from `200` to `201` even for an unchanged deployment.
+- **The pronunciation verb routes are removed without aliases.**
+  `POST /v1/pronunciations/lookup` becomes `GET
+  /v1/pronunciations?word=<word>` (repeatable); `POST
+  /v1/pronunciations/learn` becomes `POST /v1/pronunciations` (which answers
+  `201` applied or `202` queued); `POST /v1/pronunciations/forget` becomes
+  `DELETE /v1/pronunciations/{id}`, and the id comes from the create response or
+  the list. The old paths no longer run the old handlers.
 - **List responses move to one envelope:** `{"object": "list", "data": [...]}`,
-  replacing `{"results": [...]}`.
-- **The OpenAPI document becomes the contract**, and operation ids become the
-  authorisation slugs. A renamed operation is now an API break and a policy
-  change.
-- The base OpenAI surface (`createSpeech`, `listModels`) is unchanged; only the
-  non-base pronunciation routes break.
+  replacing `{"results": [...]}`. A single row is `{"object":
+  "pronunciation", ...}` or `{"object": "proposal", ...}`.
+- **State conflicts are `409` with a code**, not a generic failure:
+  `invalid_transition`, `not_pending`, `immutable_rule`.
+- The base OpenAI surface (`createSpeech`, `listModels`) is unchanged.
+
+### Breaking (planned, not yet shipped - ADR-0018 remainder)
+
+- `POST /v1/script/compile` is still present; it becomes `POST
+  /v1/audio/speech?dry_run=1` when the dry-run move lands.
 
 ### Fixed
 

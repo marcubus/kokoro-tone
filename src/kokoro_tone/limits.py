@@ -62,6 +62,14 @@ class Limits:
     number_words: int = 64
     voice_sets: int = 32
 
+    # The proposal store (ADR-0017). It is a second file beside the learned
+    # overlay, so it gets the same shape of bound: a row cap, a byte cap and a
+    # context sentence cap. `context` is a sentence the audition renders, so it
+    # is longer than a `say` but still bounded.
+    proposals: int = 1_024
+    proposals_bytes: int = 262_144
+    context_chars: int = 500
+
 
 DEFAULT_LIMITS = Limits()
 
@@ -85,6 +93,9 @@ def load_limits() -> Limits:
         turn_gap_ms=read_int("TURN_GAP_MS", DEFAULT_LIMITS.turn_gap_ms),
         speed_min=read_float("MIN_SPEED", DEFAULT_LIMITS.speed_min),
         speed_max=read_float("MAX_SPEED", DEFAULT_LIMITS.speed_max),
+        proposals=read_int("MAX_PROPOSALS", DEFAULT_LIMITS.proposals),
+        proposals_bytes=read_int("MAX_PROPOSALS_BYTES", DEFAULT_LIMITS.proposals_bytes),
+        context_chars=read_int("MAX_CONTEXT_CHARS", DEFAULT_LIMITS.context_chars),
     )
     return _repair(limits)
 

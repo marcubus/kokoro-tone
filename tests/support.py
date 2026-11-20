@@ -25,6 +25,7 @@ def _tone(seconds: float, frequency: float = 220.0) -> bytes:
 PCM = _tone(1.5)
 MP3 = b"ID3fakemp3"
 AUTH = {"Authorization": "Bearer secret"}
+ADMIN = {"Authorization": "Bearer admin-secret"}
 
 
 class Upstream(BaseHTTPRequestHandler):
@@ -285,7 +286,13 @@ LEARNED_FIXTURE = {
 
 
 @contextmanager
-def _learned_client(monkeypatch, tmp_path, *, write: bool):
+def _learned_client(
+    monkeypatch,
+    tmp_path,
+    *,
+    write: bool,
+    approval: str = "force",
+):
     base = tmp_path / "lexicon.json"
     base.write_text(json.dumps(LEARNED_FIXTURE), encoding="utf-8")
     overlay = tmp_path / "custom.json"
@@ -294,6 +301,7 @@ def _learned_client(monkeypatch, tmp_path, *, write: bool):
         encoding="utf-8",
     )
     learned = tmp_path / "learned" / "learned.json"
+    proposals_path = tmp_path / "learned" / "proposals.json"
     server = _start_server()
     try:
         with _client(
@@ -301,10 +309,14 @@ def _learned_client(monkeypatch, tmp_path, *, write: bool):
             server,
             KOKORO_TONE_API_KEY="secret",
             KOKORO_TONE_API_KEYS=None,
+            KOKORO_TONE_ADMIN_KEY="admin-secret",
+            KOKORO_TONE_ADMIN_KEYS=None,
             PRONUNCIATION_LEXICON=str(base),
             PRONUNCIATION_OVERRIDES=str(overlay),
             PRONUNCIATION_LEARNED=str(learned),
+            PRONUNCIATION_PROPOSALS=str(proposals_path),
             PRONUNCIATION_WRITE="true" if write else "false",
+            PRONUNCIATION_APPROVAL=approval,
         ) as client:
             yield client, server, learned
     finally:
@@ -320,6 +332,13 @@ def learned_gateway(monkeypatch, tmp_path):
 @pytest.fixture()
 def readonly_lexicon_gateway(monkeypatch, tmp_path):
     with _learned_client(monkeypatch, tmp_path, write=False) as value:
+        yield value
+
+
+@pytest.fixture()
+def review_gateway(monkeypatch, tmp_path):
+    """ADR-0017 review mode: a default key proposes, an admin key decides."""
+    with _learned_client(monkeypatch, tmp_path, write=False, approval="review") as value:
         yield value
 
 

@@ -87,6 +87,8 @@ services:
       - PRONUNCIATION_OVERRIDES=${PRONUNCIATION_OVERRIDES:-/etc/kokoro-tone/custom.json}
       - PRONUNCIATION_LEARNED=${PRONUNCIATION_LEARNED:-/etc/kokoro-tone/learned/learned.json}
       - PRONUNCIATION_WRITE=${PRONUNCIATION_WRITE:-false}
+      - PRONUNCIATION_APPROVAL=${PRONUNCIATION_APPROVAL:-force}
+      - PRONUNCIATION_PROPOSALS=${PRONUNCIATION_PROPOSALS:-/etc/kokoro-tone/learned/proposals.json}
       - LOCALE=${LOCALE:-en-AU}
       - NORMALISE_DEFAULT=${NORMALISE_DEFAULT:-false}
       # Request bounds. Defaults mirror src/kokoro_tone/limits.py.
@@ -122,9 +124,9 @@ services:
     # only", which is not an error.
     volumes:
       - ./lexicon:/etc/kokoro-tone:ro
-      # The learned overlay is the only writable lexicon file. Create the
-      # directory and make it writable by the service user (uid 10001) before
-      # enabling PRONUNCIATION_WRITE.
+      # The learned overlay and the proposal queue are the only writable
+      # lexicon files. Create the directory and make it writable by the service
+      # user (uid 10001) before enabling PRONUNCIATION_WRITE or review mode.
       - ./lexicon/learned:/etc/kokoro-tone/learned:rw
 
     # Uncomment to attach the gateway to the shared metrics network.

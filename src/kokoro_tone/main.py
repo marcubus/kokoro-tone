@@ -17,8 +17,9 @@ from .errors import AmbiguityError, RequestError, error_body
 from .lexicon import Lexicon
 from .log import configure, event, exception
 from .middleware import BodyLimitMiddleware, TelemetryMiddleware
+from .proposals import ProposalStore
 from .routes import router
-from .settings import Settings, load_settings
+from .settings import APPROVAL_REVIEW, Settings, SettingsError, load_settings
 from .telemetry import build_telemetry
 
 
@@ -108,6 +109,13 @@ async def unhandled_error_handler(request: Request, exc: Exception) -> JSONRespo
 def create_app(config: Settings, *, metric_reader: MetricReader | None = None) -> FastAPI:
     """Build one app from one configuration. No module-level state is read."""
     configure(config.log_level)
+    # A review queue nobody can drain is a service that silently stops
+    # learning (ADR-0017 rule 9), so refuse to start rather than log it.
+    if config.approval == APPROVAL_REVIEW and not config.admin_keys:
+        raise SettingsError(
+            "PRONUNCIATION_APPROVAL=review requires KOKORO_TONE_ADMIN_KEY or "
+            "KOKORO_TONE_ADMIN_KEYS: a proposal needs an admin decision to apply"
+        )
     # A bad policy file must stop the process before any request can be served,
     # so resolve it before telemetry or the router exist.
     policy = access.load_access(
@@ -129,7 +137,9 @@ def create_app(config: Settings, *, metric_reader: MetricReader | None = None) -
             config.lexicon_learned_path,
             config.lexicon_write,
             telemetry=telemetry,
+            apply_enabled=config.lexicon_write or config.approval == APPROVAL_REVIEW,
         ),
+        proposals=ProposalStore(config.proposals_path, config.limits),
         upstream=upstream.Upstream(config, telemetry=telemetry),
         telemetry=telemetry,
     )

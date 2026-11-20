@@ -13,18 +13,20 @@ import json
 import math
 import time
 from collections.abc import Callable, Iterator, Sequence
-from typing import Annotated
+from typing import Annotated, Literal, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import __version__, audio, filters, levelling, pipeline, pronounce, script
+from . import __version__, audio, filters, levelling, pipeline, pronounce, proposals, script
 from .access import PUBLIC_SLUGS, ROLE_ADMIN, Role
 from .context import Context, get_context
-from .log import event
+from .lexicon import validate_say, validate_sense, validate_word
+from .log import event, warning
 from .parse import MarkupError
 from .request import MODELS, SpeechRequest
+from .settings import APPROVAL_REVIEW
 from .upstream import UpstreamError
 
 router = APIRouter()
@@ -61,6 +63,14 @@ class InsufficientScope(HTTPException):
             detail="insufficient scope",
             headers={"WWW-Authenticate": 'Bearer error="insufficient_scope"'},
         )
+
+
+class StateConflict(HTTPException):
+    """A 409 whose code names the state, not the permission (ADR-0017 rule 8)."""
+
+    def __init__(self, code: str, detail: str) -> None:
+        self.code = code
+        super().__init__(status_code=409, detail=detail)
 
 
 def _slug(request: Request) -> str:
@@ -119,25 +129,31 @@ def require_auth(request: Request, ctx: Ctx) -> Role:
 Auth = Annotated[Role, Depends(require_auth)]
 
 
-class LookupRequest(BaseModel):
-    words: list[Annotated[str, Field(max_length=200)]] = Field(min_length=1, max_length=100)
-
-
-class LearnRequest(BaseModel):
+class CreatePronunciationRequest(BaseModel):
     word: str = Field(min_length=1, max_length=200)
     say: str = Field(min_length=1, max_length=200)
     sense: str | None = Field(default=None, max_length=64)
+    # The sentence the audition renders with and without the proposal.
+    context: str | None = Field(default=None, max_length=500)
 
 
-class ForgetRequest(BaseModel):
-    word: str = Field(min_length=1, max_length=200)
-    sense: str | None = Field(default=None, max_length=64)
+class DecideRequest(BaseModel):
+    status: Literal["approved", "rejected"]
+    reason: str | None = Field(default=None, max_length=500)
+
+
+def _store_error(exc: proposals.StoreError) -> HTTPException:
+    return HTTPException(500, f"proposal store: {exc}")
 
 
 @router.get("/health", operation_id="getHealth")
 def health(ctx: Ctx) -> JSONResponse:
     ok, detail = ctx.upstream.probe()
     data = ctx.lexicon.current()
+    try:
+        counts = ctx.proposals.counts()
+    except proposals.StoreError:
+        counts = {}
     payload = {
         "status": "ok" if ok else "degraded",
         "detail": detail,
@@ -165,6 +181,8 @@ def health(ctx: Ctx) -> JSONResponse:
             "rules": len(data.defaults.rules),
             "learned_rules": ctx.lexicon.learned_rules,
             "write": ctx.settings.lexicon_write,
+            "approval": ctx.settings.approval,
+            "pending_proposals": counts.get(proposals.PENDING, 0),
             "voice_sets": len(data.voices),
             "server_aliases": len(data.aliases),
         },
@@ -191,36 +209,249 @@ def voices(ctx: Ctx, _: Auth) -> object:
         raise HTTPException(exc.status, exc.detail) from exc
 
 
-@router.post("/v1/pronunciations/lookup", operation_id="listPronunciations")
-def lookup_pronunciations(body: LookupRequest, ctx: Ctx, _: Auth) -> dict:
+@router.get("/v1/pronunciations", operation_id="listPronunciations")
+def list_pronunciations(
+    ctx: Ctx,
+    _: Auth,
+    word: Annotated[list[str] | None, Query()] = None,
+    status: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=proposals.MAX_PAGE)] = proposals.DEFAULT_PAGE,
+    after: Annotated[str | None, Query()] = None,
+) -> dict:
+    """One resource, two readings: rules for a word, or rows from the queue.
+
+    `?word=` (repeatable, at most 100) returns every deployment rule for those
+    words across layers, each row naming its `source`, its `id` and the word's
+    `senses`. A rule id is derived from layer + match + say, not stored.
+
+    Without `?word=`, this lists proposals oldest first: the work queue. Passing
+    `?status=pending` is the undecided view; with no status filter the decided
+    rows are included too, because the decision history is part of the resource.
+    `limit` is clamped to 50 by default and 200 at most, and `after` is an
+    exclusive id cursor, so paging is stable while rows are added.
+
+    Nothing is applied by reading this endpoint, and a pending row never expires
+    or applies itself (ADR-0017 rejects approve-by-timeout). A queue that is
+    simply never read stays pending forever - safe, but silent; `/health`
+    publishes `pending_proposals` and nothing alerts on it.
+    """
+    if word:
+        if len(word) > 100:
+            raise HTTPException(400, "at most 100 words per request")
+        data: list[dict[str, object]] = []
+        for item in word:
+            try:
+                found = ctx.lexicon.lookup(item)
+            except MarkupError as exc:
+                raise HTTPException(400, str(exc)) from exc
+            for entry in cast(list[dict[str, object]], found["rules"]):
+                data.append(
+                    {
+                        "object": "pronunciation",
+                        "status": "applied",
+                        "senses": found["senses"],
+                        **entry,
+                    }
+                )
+        return {"object": "list", "data": data}
+    if status is not None and status not in proposals.STATUSES:
+        raise HTTPException(400, f"status must be one of {sorted(proposals.STATUSES)}")
     try:
-        return {"results": [ctx.lexicon.lookup(word) for word in body.words]}
+        rows = ctx.proposals.list(status=status, limit=limit, after=after)
+    except proposals.StoreError as exc:
+        raise _store_error(exc) from exc
+    return {
+        "object": "list",
+        "data": [{"object": "proposal", **row.as_dict()} for row in rows],
+    }
+
+
+@router.post("/v1/pronunciations", operation_id="createPronunciation", status_code=201)
+def create_pronunciation(body: CreatePronunciationRequest, ctx: Ctx, role: Auth) -> JSONResponse:
+    """Propose a reading, or apply it. The status says which happened.
+
+    `force` mode applies the rule to the learned overlay and answers `201`.
+    `review` mode appends a pending row and answers `202`; the rule is not in
+    effect and the engine keeps its own reading. The row is durable before the
+    `202` is sent.
+
+    An uppercase run in `say` is a `400` in review - a stress guess is the thing
+    under review - and a logged warning in force. The review queue has a row
+    cap: when the *pending* rows alone would exceed `MAX_PROPOSALS`, this answers
+    `400` rather than discarding undecided work. Decided rows are trimmed to make
+    room first.
+    """
+    limits = ctx.settings.limits
+    try:
+        word = validate_word(body.word, limits)
+        say = validate_say(body.say, limits)
+        sense = validate_sense(body.sense) if body.sense else None
     except MarkupError as exc:
         raise HTTPException(400, str(exc)) from exc
 
+    if proposals.has_uppercase_run(say):
+        if ctx.settings.approval == APPROVAL_REVIEW:
+            # An uppercase run is a proposer's stress guess, and in review the
+            # guess is the thing under review, not a thing to queue.
+            raise HTTPException(
+                400,
+                "say must be lowercase: an uppercase run is a stress guess, not a respelling",
+            )
+        warning("pronunciation: uppercase stress markers in a force-mode say")
 
-@router.post("/v1/pronunciations/learn", operation_id="createPronunciation")
-def learn_pronunciation(body: LearnRequest, ctx: Ctx, _: Auth) -> dict:
+    if ctx.settings.approval == APPROVAL_REVIEW:
+        try:
+            proposal = ctx.proposals.propose(
+                word=word, say=say, sense=sense, context=body.context, role=role
+            )
+        except MarkupError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        except proposals.StoreError as exc:
+            raise _store_error(exc) from exc
+        return JSONResponse({"object": "proposal", **proposal.as_dict()}, status_code=202)
+
     try:
-        return ctx.lexicon.learn(body.word, body.say, body.sense)
+        applied = ctx.lexicon.learn(word, say, sense)
     except MarkupError as exc:
         raise HTTPException(400, str(exc)) from exc
     except PermissionError as exc:
         raise HTTPException(403, str(exc)) from exc
     except OSError as exc:
         raise HTTPException(500, f"could not write learned lexicon: {exc}") from exc
+    return JSONResponse(
+        {"object": "pronunciation", "status": "applied", **applied}, status_code=201
+    )
 
 
-@router.post("/v1/pronunciations/forget", operation_id="deletePronunciation")
-def forget_pronunciation(body: ForgetRequest, ctx: Ctx, _: Auth) -> dict:
+@router.patch("/v1/pronunciations/{pron_id}", operation_id="updatePronunciation")
+def update_pronunciation(pron_id: str, body: DecideRequest, ctx: Ctx, role: Auth) -> dict:
+    """Approve or reject one proposal. Admin only, and only in review mode.
+
+    An approval writes the rule to the learned overlay, then records the
+    decision; those are two writes, not a transaction, so a crash between them
+    leaves an applied rule whose row is still pending. Re-approving is safe
+    because the overlay replaces by `match`. A decided row is immutable:
+    a second decision, or a decision in `force` mode, is a `409`, and an id that
+    names a shipped or user rule rather than a proposal is `409 immutable_rule`.
+    """
+    if ctx.settings.approval != APPROVAL_REVIEW:
+        raise StateConflict("not_pending", "approval mode is force: there is nothing pending")
     try:
-        return ctx.lexicon.forget(body.word, body.sense)
+        proposal = ctx.proposals.get(pron_id)
+        known_rule = None if proposal is not None else ctx.lexicon.rule_by_id(pron_id)
+    except proposals.StoreError as exc:
+        raise _store_error(exc) from exc
+    if proposal is None:
+        if known_rule is not None:
+            raise StateConflict("immutable_rule", "this id names a rule, not a proposal")
+        raise HTTPException(404, "proposal not found")
+    if proposal.status != proposals.PENDING:
+        raise StateConflict("invalid_transition", f"proposal is already {proposal.status}")
+
+    applied = False
+    if body.status == proposals.APPROVED:
+        try:
+            ctx.lexicon.apply_approved(proposal.word, proposal.say, proposal.sense)
+        except MarkupError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from exc
+        except OSError as exc:
+            raise HTTPException(500, f"could not write learned lexicon: {exc}") from exc
+        applied = True
+
+    try:
+        updated = ctx.proposals.decide(
+            pron_id, status=body.status, role=role, reason=body.reason, applied=applied
+        )
+    except proposals.StoreConflict as exc:
+        raise StateConflict("invalid_transition", str(exc)) from exc
+    except proposals.StoreError as exc:
+        raise _store_error(exc) from exc
+    return {"object": "proposal", **updated.as_dict()}
+
+
+@router.delete("/v1/pronunciations/{pron_id}", operation_id="deletePronunciation")
+def delete_pronunciation(pron_id: str, ctx: Ctx, _: Auth) -> dict:
+    """Remove a proposal row, or delete one learned rule by id. Admin only.
+
+    The two cases are separate on purpose. Deleting a proposal removes the row
+    and its history; it does **not** remove a rule an earlier approval applied -
+    that rule lives in `learned.json` and is deleted by its own `learned-…` id
+    from `GET /v1/pronunciations?word=`. Deleting a shipped default or a
+    `custom.json` rule is `409 immutable_rule`; an unknown id is `404`.
+    """
+    try:
+        if ctx.proposals.delete(pron_id):
+            return {"object": "proposal", "id": pron_id, "deleted": True}
+    except proposals.StoreError as exc:
+        raise _store_error(exc) from exc
+    try:
+        outcome = ctx.lexicon.delete_rule(pron_id)
     except MarkupError as exc:
         raise HTTPException(400, str(exc)) from exc
     except PermissionError as exc:
         raise HTTPException(403, str(exc)) from exc
     except OSError as exc:
         raise HTTPException(500, f"could not write learned lexicon: {exc}") from exc
+    if outcome is None:
+        raise HTTPException(404, "pronunciation not found")
+    if outcome == "immutable":
+        raise StateConflict("immutable_rule", "only a learned rule may be deleted")
+    return {"object": "pronunciation", "id": pron_id, "deleted": True}
+
+
+@router.get("/v1/pronunciations/{pron_id}/audio", operation_id="retrievePronunciationAudio")
+def pronunciation_audio(
+    pron_id: str,
+    ctx: Ctx,
+    _: Auth,
+    variant: Annotated[str, Query()] = "proposed",
+    response_format: Annotated[str, Query()] = "mp3",
+) -> Response:
+    """The audition: the proposal's own sentence with and without the reading.
+
+    Approving from spelling is what produced the uppercase markers, so the
+    decision is made on sound: two takes of the same sentence, one difference.
+    `as-is` renders the context with no rule; `proposed` applies the proposal's
+    bare match (a sense marker would not fire in a plain sentence). A proposal
+    with no context renders the word alone. Both variants are available after a
+    decision as well, and rendering here has no side effect on the row.
+    """
+    if variant not in ("as-is", "proposed"):
+        raise HTTPException(400, "variant must be 'as-is' or 'proposed'")
+    try:
+        proposal = ctx.proposals.get(pron_id)
+    except proposals.StoreError as exc:
+        raise _store_error(exc) from exc
+    if proposal is None:
+        raise HTTPException(404, "proposal not found")
+
+    rules = None
+    if variant == "proposed":
+        # The audition text is a plain sentence, so the bare word is the match
+        # even when the proposal carries a sense: a marker would not fire.
+        rules = [{"match": proposal.word, "say": proposal.say}]
+    body = SpeechRequest(
+        input=proposal.context or proposal.word,
+        voice=ctx.settings.default_voice,
+        pronunciations=rules,
+        response_format=response_format,
+    )
+    prepared = pipeline.prepare(body, ctx)
+    try:
+        rendered = pipeline.render(prepared, body, ctx)
+    except audio.AudioError as exc:
+        raise HTTPException(502, f"audio processing failed: {exc}") from exc
+    except UpstreamError as exc:
+        raise HTTPException(exc.status, exc.detail) from exc
+    event(
+        "pronunciation_audition",
+        variant=variant,
+        chars=prepared.chars,
+        bytes=len(rendered.data),
+    )
+    return Response(rendered.data, media_type=rendered.media_type)
 
 
 @router.post("/v1/script/compile", operation_id="compileScript")

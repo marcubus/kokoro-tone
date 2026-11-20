@@ -44,10 +44,12 @@ def test_a_missing_file_is_the_built_in_policy(tmp_path):
     assert policy.allow == frozenset(access.DEFAULT_ALLOW)
 
 
-def test_the_built_in_policy_grants_every_operation_that_exists_today():
-    # No rbac.toml means no behaviour change: every slug a bearer can call
-    # today stays callable. 0017/0018 narrow this to read/render/propose.
-    assert set(access.DEFAULT_ALLOW) == access.OPERATIONS
+def test_the_built_in_policy_grants_every_operation_a_default_key_may_call():
+    # No rbac.toml means no behaviour change for read/render/propose. ADR-0017
+    # keeps the deciding operations (approve, delete, audition) out of it, so a
+    # default key can never decide its own proposal.
+    assert set(access.DEFAULT_ALLOW) == access.OPERATIONS - access.ADMIN_ONLY_SLUGS
+    assert access.DEFAULT_ALLOW
 
 
 def test_the_shipped_example_is_generated_from_the_defaults():
@@ -70,7 +72,7 @@ def test_the_example_names_only_known_operations():
         ('version = 1\n\n[default]\nallow = ["notAnOperation"]\n', "notAnOperation"),
         (
             'version = 1\n\n[default]\nallow = ["updatePronunciation"]\n',
-            "updatePronunciation",
+            "admin-only",
         ),
         ('version = 1\n\n[default]\nallow = "listModels"\n', "[default].allow"),
         ("version = 1\n\n[default]\npermit = []\n", "unknown key 'permit'"),

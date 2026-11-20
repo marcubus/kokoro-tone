@@ -1,6 +1,6 @@
 # The OpenAPI document is the contract, and the pronunciation surface becomes a REST resource
 
-**Status:** proposed
+**Status:** partially implemented
 **Date:** 2026-11-19
 **Author:** marcus
 **Deciders:** marcus
@@ -8,6 +8,11 @@
 [`../../src/kokoro_tone/routes.py`](../../src/kokoro_tone/routes.py),
 [`../../src/kokoro_tone/errors.py`](../../src/kokoro_tone/errors.py),
 [`../../CHANGELOG.md`](../../CHANGELOG.md)
+
+**Implemented so far:** the pronunciation resource (rules 3-6, 8-10) shipped
+with ADR-0017, because a proposal needs a resource to live at. Rule 7 (the dry
+run moves onto `createSpeech`) and the generated-spec assertions (rules 1-2)
+are still open; `POST /v1/script/compile` remains until they land.
 
 ## Context
 

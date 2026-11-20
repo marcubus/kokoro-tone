@@ -107,7 +107,12 @@ collector configuration and alert examples.
 | `PRONUNCIATION_LEXICON` | `/etc/kokoro-tone/lexicon.json` | the shipped rules, per-voice sets and aliases |
 | `PRONUNCIATION_OVERRIDES` | `/etc/kokoro-tone/custom.json` | optional user overlay, composed in memory over the defaults |
 | `PRONUNCIATION_LEARNED` | `/etc/kokoro-tone/learned/learned.json` | machine-written overlay; the only lexicon file the gateway writes |
-| `PRONUNCIATION_WRITE` | `false` | enable `POST /v1/pronunciations/learn` and `/forget` |
+| `PRONUNCIATION_WRITE` | `false` | allow `POST /v1/pronunciations` to apply a rule on the spot (force mode) |
+| `PRONUNCIATION_APPROVAL` | `force` | `force` applies a write; `review` records a proposal an admin must decide (ADR-0017) |
+| `PRONUNCIATION_PROPOSALS` | `/etc/kokoro-tone/learned/proposals.json` | the proposal store: a queue and its decisions, beside `learned.json` |
+| `MAX_PROPOSALS` | `1024` | rows the store may hold; decided rows are trimmed first, and a new proposal is a `400` only when the *pending* rows alone exceed it |
+| `MAX_PROPOSALS_BYTES` | `262144` | size cap for the proposal store file; checked on write |
+| `MAX_CONTEXT_CHARS` | `500` | the audition sentence a proposal may carry |
 | `LOCALE` | `en-AU` | `en-AU`, `en-GB` or `en-US` |
 | `NORMALISE_DEFAULT` | `false` | what an absent `normalise` field means |
 | `KOKORO_TONE_FILTER_MANIFESTS` | unset | a JSON file or directory of `[filter:]` block manifests; see [`plugins.md`](plugins.md) |
@@ -129,9 +134,11 @@ grants:
 | `createSpeech` | `POST /v1/audio/speech` | yes |
 | `listModels` | `GET /v1/models` | yes |
 | `listVoices` | `GET /v1/audio/voices` | yes |
-| `listPronunciations` | `POST /v1/pronunciations/lookup` | yes |
-| `createPronunciation` | `POST /v1/pronunciations/learn` | yes |
-| `deletePronunciation` | `POST /v1/pronunciations/forget` | yes |
+| `listPronunciations` | `GET /v1/pronunciations` | yes |
+| `createPronunciation` | `POST /v1/pronunciations` | yes |
+| `updatePronunciation` | `PATCH /v1/pronunciations/{id}` | **no** - admin only |
+| `deletePronunciation` | `DELETE /v1/pronunciations/{id}` | **no** - admin only |
+| `retrievePronunciationAudio` | `GET /v1/pronunciations/{id}/audio` | **no** - admin only |
 | `compileScript` | `POST /v1/script/compile` | yes |
 | `getHealth` | `GET /health` | public |
 
@@ -141,8 +148,12 @@ credential. That set lives in code, not in the policy file.
 
 A default key may call only the ids named in `[default].allow`; an admin key may
 call every id, including one no list names. A route added in a later release is
-therefore admin-only for a default key until the file names it. The shipped
-example is generated from the built-in defaults and mounted at
+therefore admin-only for a default key until the file names it. The deciding
+operations are the exception: `updatePronunciation`, `deletePronunciation` and
+`retrievePronunciationAudio` are admin-only in the code itself, and a policy
+file that names one is rejected at startup. A default key proposes; it never
+decides its own proposal. The shipped example is generated from the built-in
+defaults and mounted at
 `/etc/kokoro-tone/rbac.example.toml`:
 
 ```toml
@@ -153,7 +164,6 @@ allow = [
   "compileScript",
   "createPronunciation",
   "createSpeech",
-  "deletePronunciation",
   "getHealth",
   "listModels",
   "listPronunciations",
@@ -185,7 +195,40 @@ Errors keep the OpenAI envelope:
 
 `PRONUNCIATION_WRITE_KEY` and the `X-Pronunciation-Key` header are retired:
 writes are granted by operation id like every other route. `PRONUNCIATION_WRITE`
-still decides whether the write routes may write at all.
+still decides whether a force-mode write may reach the file at all.
+
+### Two-stage approval
+
+`PRONUNCIATION_APPROVAL=review` splits the write from the decision (ADR-0017):
+
+- `POST /v1/pronunciations` records a proposal and answers `202` with a UUIDv7.
+  The learned overlay is untouched, so the engine keeps its own reading until a
+  decision exists.
+- `GET /v1/pronunciations?status=pending` is the queue, oldest first.
+- `PATCH /v1/pronunciations/{id}` with `{"status": "approved" | "rejected"}` is
+  how a row becomes policy. An approval applies the rule; a rejection keeps the
+  row and its reason.
+- `GET /v1/pronunciations/{id}/audio?variant=as-is|proposed` renders the
+  proposal's own context sentence twice, so the decision is made on sound.
+- An uppercase run in `say` is a `400` in `review` (a stress guess is the thing
+  under review) and a logged warning in `force`.
+
+An approval writes to the learned overlay even when `PRONUNCIATION_WRITE` is
+false: in review the admin decision is the gate, and `PRONUNCIATION_WRITE` only
+governs the force-mode path.
+
+`review` with no admin key refuses to start: a queue nobody can drain is a
+service that silently stops learning. An unknown `PRONUNCIATION_APPROVAL` value
+also stops the process, because a typo must not change which mode is in force.
+
+The queue does not decide itself. A pending row has no timeout and applies
+nothing until an admin decides; it is never pruned to make room (see
+`MAX_PROPOSALS` above), and the only visibility is `GET
+/v1/pronunciations?status=pending` plus the `normalise.pending_proposals` count
+in `/health`. Nothing pushes or alerts on that count, so a deployment that turns
+review on and never watches it stops learning new names silently - which is the
+safe failure, but a failure. The full boundary list is in
+[Pronunciation](pronunciation.md#what-the-queue-promises-and-what-it-does-not).
 
 ### Token rotation
 
