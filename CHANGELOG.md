@@ -44,6 +44,17 @@ month and increments per release; tags are prefixed with `v`.
   `deletePronunciation` and `retrievePronunciationAudio` are never in the
   built-in default policy, and a policy file that names one is rejected at
   startup. A default key may propose; it may not decide.
+- **The OpenAPI document is the contract (ADR-0018).** `GET /openapi.json` is
+  generated from the route models and carries an `x-kokoro-tone-roles`
+  extension on every operation (`public`, `admin`, or `default` and `admin`),
+  plus the OpenAI error envelope for every status the operation can return.
+  `tests/test_openapi.py` compares the document with the route table in both
+  directions, so a route without a role, a status or a schema fails the suite.
+  FastAPI's unused 422 is removed: validation failures are the same 400
+  envelope as every other failure.
+- **The dry run is the speech route.** `POST /v1/audio/speech?dry_run=1`
+  returns the render's own prepared view (`text`, `turns`, `guesses`,
+  `ambiguities`, `normalise`) as JSON, with no engine call and no audio.
 
 ### Breaking (ADR-0016)
 
@@ -58,7 +69,7 @@ month and increments per release; tags are prefixed with `v`.
 - **A new operation id is admin-only for a default key** until a policy file
   names it. The built-in policy is an explicit list, so adding a route does not
   silently widen what an episode renderer may call.
-### Breaking (ADR-0018, pronunciation resource only)
+### Breaking (ADR-0018)
 
 - **The pronunciation verb routes are removed without aliases.**
   `POST /v1/pronunciations/lookup` becomes `GET
@@ -67,17 +78,17 @@ month and increments per release; tags are prefixed with `v`.
   `201` applied or `202` queued); `POST /v1/pronunciations/forget` becomes
   `DELETE /v1/pronunciations/{id}`, and the id comes from the create response or
   the list. The old paths no longer run the old handlers.
+- **`POST /v1/script/compile` is removed.** The dry run is
+  `POST /v1/audio/speech?dry_run=1`: the same `SpeechRequest` body, the same
+  `pipeline.prepare` result, no audio. The `compileScript` operation id is gone
+  from the route table, the policy vocabulary and the generated
+  `rbac.example.toml`; a policy file that still names it refuses to start.
 - **List responses move to one envelope:** `{"object": "list", "data": [...]}`,
   replacing `{"results": [...]}`. A single row is `{"object":
   "pronunciation", ...}` or `{"object": "proposal", ...}`.
 - **State conflicts are `409` with a code**, not a generic failure:
   `invalid_transition`, `not_pending`, `immutable_rule`.
 - The base OpenAI surface (`createSpeech`, `listModels`) is unchanged.
-
-### Breaking (planned, not yet shipped - ADR-0018 remainder)
-
-- `POST /v1/script/compile` is still present; it becomes `POST
-  /v1/audio/speech?dry_run=1` when the dry-run move lands.
 
 ### Fixed
 

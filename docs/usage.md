@@ -32,7 +32,7 @@ served by this subset:
 | `voice` names, blends (`a(2)+b(1)`), OpenAI aliases | passed through unchanged | podcast, dubbing, OpenAI-client cases |
 | `API_KEYS` bearer | upstream auth | all cases |
 | `GET /health`, `GET /v1/audio/voices` | gateway health, voice list | operations, voice discovery |
-| `POST /v1/pronunciations/lookup`, `/learn`, `/forget` | inspect and extend the deployment lexicon at runtime | agents that discover a name or a heteronym sense |
+| `GET /v1/pronunciations`, `POST /v1/pronunciations`, `DELETE /v1/pronunciations/{id}` | inspect and extend the deployment lexicon at runtime (ADR-0018) | agents that discover a name or a heteronym sense |
 | `stream: true` | SSE passthrough | assistant/chat and any passthrough case |
 
 Nothing else in the engine is required. The gateway does not call
@@ -242,26 +242,35 @@ curl -N -sS http://kokoro-tone:8000/v1/audio/speech \
   -d '{"input":"[voice:af_bella] Hello.","stream_format":"sse","response_format":"mp3"}'
 ```
 
-### Pronunciation lookup and learning
+### Pronunciation list, create and delete
 
 ```bash
-curl -sS http://kokoro-tone:8000/v1/pronunciations/lookup \
-  -H "Authorization: Bearer $KOKORO_TONE_API_KEY" \
-  -H 'Content-Type: application/json' \
-  -d '{"words":["read","Banyule"]}'
+curl -sS 'http://kokoro-tone:8000/v1/pronunciations?word=read&word=Banyule' \
+  -H "Authorization: Bearer $KOKORO_TONE_API_KEY"
 
-curl -sS http://kokoro-tone:8000/v1/pronunciations/learn \
+curl -sS http://kokoro-tone:8000/v1/pronunciations \
   -H "Authorization: Bearer $KOKORO_TONE_API_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"word":"Aurec","say":"AW-rek"}'
 ```
 
-`learn` writes to the learned overlay only when `PRONUNCIATION_WRITE=true`.
-Add `"sense":"present-verb"` to learn a heteronym reading. `forget` removes a
-learned rule and leaves the user overlay and the defaults alone. Both write
-endpoints reject markup and control characters. They are authorised by the
-caller's role like every other route; see
-[Configuration](configuration.md#roles-and-the-allowlist).
+The list returns one row per layer, each with its `source` and `id`. `create`
+answers `201` when the rule is applied, or `202` when `review` mode queues it
+(ADR-0017). Add `"sense":"present-verb"` to learn a heteronym reading.
+`DELETE /v1/pronunciations/{id}` removes a proposal row or a learned rule; it is
+admin-only, as are the decision and audition routes. The full surface is in
+[Pronunciation](pronunciation.md#the-learned-overlay-and-the-pronunciation-api).
+A dry run of a render is the speech route with `?dry_run=1`:
+
+```bash
+curl -sS 'http://kokoro-tone:8000/v1/audio/speech?dry_run=1' \
+  -H "Authorization: Bearer $KOKORO_TONE_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"input":"The bass was loud."}'
+```
+
+It returns the resolved `text`, `guesses` and `ambiguities` with no engine call
+and no audio.
 
 ### Errors
 

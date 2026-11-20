@@ -8,7 +8,6 @@ version = 1
 
 [default]
 allow = [
-  "compileScript",
   "createPronunciation",
   "createSpeech",
   "getHealth",

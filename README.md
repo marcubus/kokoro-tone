@@ -120,8 +120,9 @@ way every time. It runs without the engine and without HTTP.
 | Multi-turn `input` | the OpenAI endpoint takes a string only | an array of `{text, voice, instructions}` turns, rendered with gaps into one file | `tests/test_api.py` |
 | Alias maps | `voice_aliases` is server-side config, not an OpenAI request field | `voice` accepts a map, with an `id` entry setting the default | `tests/test_api.py` |
 | Standalone compiler | not applicable | `python -m kokoro_tone.script_cli`, no server or engine; `--request` compiles a whole speech request, `--env-file` reads the deployment's limits | `tests/test_script.py`, `tests/test_script_cli.py` |
-| Dry-run compile | none | `POST /v1/script/compile` returns the resolved text, the `guesses` and their alternatives without touching the engine | `tests/test_api.py` |
+| Dry-run compile | none | `POST /v1/audio/speech?dry_run=1` returns the resolved text, the `guesses` and their alternatives without touching the engine | `tests/test_api.py`, `tests/test_openapi.py` |
 | Roles and an allowlist | one bearer list, every key equal | `default` and `admin` keys meet a TOML allowlist keyed by OpenAPI `operationId`; a denied slug is a 403 naming `insufficient_scope` | `tests/test_access.py` |
+| OpenAPI contract | a fixed spec | generated from the route models, with `x-kokoro-tone-roles` and every status each operation returns; `GET /openapi.json` is the contract | `tests/test_openapi.py` |
 
 ### Audio layer - experimental
 
@@ -261,10 +262,11 @@ characters rejects a request the deployed gateway accepts at 60000.
 `--learned` is the machine-written overlay, which is why the same file the
 gateway mounts is the one to point at.
 
-The server exposes the same compile as a dry run, with no engine and no audio:
+The server exposes the same compile as a dry run of `createSpeech`, with no
+engine and no audio:
 
 ```bash
-curl -sS http://kokoro-tone:8000/v1/script/compile \
+curl -sS 'http://kokoro-tone:8000/v1/audio/speech?dry_run=1' \
   -H 'Content-Type: application/json' \
   -d '{"input":"The bass was loud."}'
 ```

@@ -1165,7 +1165,12 @@ def test_the_retired_verb_routes_are_gone(learned_gateway):
 def test_compile_reports_the_guesses_without_calling_the_engine(ambiguous_gateway):
     """The dry run is the render's own prepare step: same text, same guesses."""
     client, server = ambiguous_gateway
-    response = client.post("/v1/script/compile", headers=AUTH, json={"input": "The bass was loud."})
+    response = client.post(
+        "/v1/audio/speech",
+        headers=AUTH,
+        params={"dry_run": 1},
+        json={"input": "The bass was loud."},
+    )
 
     assert response.status_code == 200
     body = response.json()
@@ -1180,8 +1185,9 @@ def test_compile_reports_the_guesses_without_calling_the_engine(ambiguous_gatewa
 def test_compile_reports_no_guesses_when_the_rules_settle_every_word(ambiguous_gateway):
     client, server = ambiguous_gateway
     response = client.post(
-        "/v1/script/compile",
+        "/v1/audio/speech",
         headers=AUTH,
+        params={"dry_run": 1},
         json={"input": "He plays bass in the band."},
     )
 
@@ -1194,8 +1200,9 @@ def test_compile_reports_no_guesses_when_the_rules_settle_every_word(ambiguous_g
 def test_compile_ignore_mode_reports_nothing_and_leaves_the_text_alone(ambiguous_gateway):
     client, _ = ambiguous_gateway
     response = client.post(
-        "/v1/script/compile",
+        "/v1/audio/speech",
         headers=AUTH,
+        params={"dry_run": 1},
         json={"input": "The bass was loud.", "ambiguity": "ignore"},
     )
 
@@ -1209,8 +1216,9 @@ def test_compile_rejects_an_unknown_sense_tag_before_any_render(ambiguous_gatewa
     """The 18 Nov failure mode, caught in milliseconds instead of 12 minutes."""
     client, server = ambiguous_gateway
     response = client.post(
-        "/v1/script/compile",
+        "/v1/audio/speech",
         headers=AUTH,
+        params={"dry_run": 1},
         json={"input": "The [sense:bass=jazz] was loud."},
     )
 
@@ -1222,8 +1230,9 @@ def test_compile_rejects_an_unknown_sense_tag_before_any_render(ambiguous_gatewa
 def test_compile_reports_the_normalisation_layers(ambiguous_gateway):
     client, _ = ambiguous_gateway
     response = client.post(
-        "/v1/script/compile",
+        "/v1/audio/speech",
         headers=AUTH,
+        params={"dry_run": 1},
         json={"input": "The bass was loud.", "normalise": {"lexicon": True}},
     )
 

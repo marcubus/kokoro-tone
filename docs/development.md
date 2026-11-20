@@ -14,6 +14,7 @@ The package is flat; each module owns one seam.
 | `log.py` | the logfmt event line and its `logging` backend |
 | `errors.py` | the OpenAI error envelope and `RequestError` |
 | `access.py` | the two roles, the TOML allowlist, operation ids as slugs (ADR-0016) |
+| `openapi.py` | the generated contract: role extensions and the error envelope per status (ADR-0018) |
 | `middleware.py` | the body-size limit and the HTTP metrics middleware |
 | `telemetry.py` | the OpenTelemetry meter, instruments, views and OTLP exporter |
 | `upstream.py` | the `Upstream` client: health probe, voices, PCM synthesis and passthrough streaming |

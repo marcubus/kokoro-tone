@@ -17,6 +17,7 @@ from .errors import AmbiguityError, RequestError, error_body
 from .lexicon import Lexicon
 from .log import configure, event, exception
 from .middleware import BodyLimitMiddleware, TelemetryMiddleware
+from .openapi import ContractApp
 from .proposals import ProposalStore
 from .routes import router
 from .settings import APPROVAL_REVIEW, Settings, SettingsError, load_settings
@@ -126,7 +127,7 @@ def create_app(config: Settings, *, metric_reader: MetricReader | None = None) -
     telemetry = build_telemetry(config, metric_reader=metric_reader)
     telemetry.set_info(config)
 
-    app = FastAPI(title="kokoro-tone", version=__version__, lifespan=lifespan)
+    app = ContractApp(title="kokoro-tone", version=__version__, lifespan=lifespan)
     app.state.ctx = Context(
         settings=config,
         access=policy,

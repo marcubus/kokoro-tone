@@ -24,6 +24,16 @@ from .access import PUBLIC_SLUGS, ROLE_ADMIN, Role
 from .context import Context, get_context
 from .lexicon import validate_say, validate_sense, validate_word
 from .log import event, warning
+from .openapi import (
+    DeletedObject,
+    Health,
+    ModelList,
+    PreparedView,
+    PronunciationList,
+    PronunciationRow,
+    ProposalRow,
+    error_responses,
+)
 from .parse import MarkupError
 from .request import MODELS, SpeechRequest
 from .settings import APPROVAL_REVIEW
@@ -146,7 +156,15 @@ def _store_error(exc: proposals.StoreError) -> HTTPException:
     return HTTPException(500, f"proposal store: {exc}")
 
 
-@router.get("/health", operation_id="getHealth")
+@router.get(
+    "/health",
+    operation_id="getHealth",
+    responses={
+        200: {"model": Health},
+        503: {"model": Health, "description": "The engine is not reachable."},
+        **error_responses(500),
+    },
+)
 def health(ctx: Ctx) -> JSONResponse:
     ok, detail = ctx.upstream.probe()
     data = ctx.lexicon.current()
@@ -190,7 +208,11 @@ def health(ctx: Ctx) -> JSONResponse:
     return JSONResponse(payload, status_code=200 if ok else 503)
 
 
-@router.get("/v1/models", operation_id="listModels")
+@router.get(
+    "/v1/models",
+    operation_id="listModels",
+    responses={200: {"model": ModelList}, **error_responses(401, 403, 500)},
+)
 def models(_: Auth) -> dict:
     return {
         "object": "list",
@@ -201,7 +223,14 @@ def models(_: Auth) -> dict:
     }
 
 
-@router.get("/v1/audio/voices", operation_id="listVoices")
+@router.get(
+    "/v1/audio/voices",
+    operation_id="listVoices",
+    responses={
+        200: {"description": "The engine's voice catalogue."},
+        **error_responses(401, 403, 500, 502),
+    },
+)
 def voices(ctx: Ctx, _: Auth) -> object:
     try:
         return ctx.upstream.voices()
@@ -209,7 +238,11 @@ def voices(ctx: Ctx, _: Auth) -> object:
         raise HTTPException(exc.status, exc.detail) from exc
 
 
-@router.get("/v1/pronunciations", operation_id="listPronunciations")
+@router.get(
+    "/v1/pronunciations",
+    operation_id="listPronunciations",
+    responses={200: {"model": PronunciationList}, **error_responses(400, 401, 403, 500)},
+)
 def list_pronunciations(
     ctx: Ctx,
     _: Auth,
@@ -266,7 +299,16 @@ def list_pronunciations(
     }
 
 
-@router.post("/v1/pronunciations", operation_id="createPronunciation", status_code=201)
+@router.post(
+    "/v1/pronunciations",
+    operation_id="createPronunciation",
+    status_code=201,
+    responses={
+        201: {"model": PronunciationRow},
+        202: {"model": ProposalRow, "description": "Queued for an admin decision."},
+        **error_responses(400, 401, 403, 413, 500),
+    },
+)
 def create_pronunciation(body: CreatePronunciationRequest, ctx: Ctx, role: Auth) -> JSONResponse:
     """Propose a reading, or apply it. The status says which happened.
 
@@ -323,7 +365,14 @@ def create_pronunciation(body: CreatePronunciationRequest, ctx: Ctx, role: Auth)
     )
 
 
-@router.patch("/v1/pronunciations/{pron_id}", operation_id="updatePronunciation")
+@router.patch(
+    "/v1/pronunciations/{pron_id}",
+    operation_id="updatePronunciation",
+    responses={
+        200: {"model": ProposalRow},
+        **error_responses(400, 401, 403, 404, 409, 500),
+    },
+)
 def update_pronunciation(pron_id: str, body: DecideRequest, ctx: Ctx, role: Auth) -> dict:
     """Approve or reject one proposal. Admin only, and only in review mode.
 
@@ -371,7 +420,14 @@ def update_pronunciation(pron_id: str, body: DecideRequest, ctx: Ctx, role: Auth
     return {"object": "proposal", **updated.as_dict()}
 
 
-@router.delete("/v1/pronunciations/{pron_id}", operation_id="deletePronunciation")
+@router.delete(
+    "/v1/pronunciations/{pron_id}",
+    operation_id="deletePronunciation",
+    responses={
+        200: {"model": DeletedObject},
+        **error_responses(400, 401, 403, 404, 409, 500),
+    },
+)
 def delete_pronunciation(pron_id: str, ctx: Ctx, _: Auth) -> dict:
     """Remove a proposal row, or delete one learned rule by id. Admin only.
 
@@ -401,7 +457,21 @@ def delete_pronunciation(pron_id: str, ctx: Ctx, _: Auth) -> dict:
     return {"object": "pronunciation", "id": pron_id, "deleted": True}
 
 
-@router.get("/v1/pronunciations/{pron_id}/audio", operation_id="retrievePronunciationAudio")
+@router.get(
+    "/v1/pronunciations/{pron_id}/audio",
+    operation_id="retrievePronunciationAudio",
+    responses={
+        200: {
+            "description": "One take of the proposal's context sentence.",
+            "content": {
+                "audio/mpeg": {"schema": {"type": "string", "format": "binary"}},
+                "audio/wav": {"schema": {"type": "string", "format": "binary"}},
+                "audio/pcm": {"schema": {"type": "string", "format": "binary"}},
+            },
+        },
+        **error_responses(400, 401, 403, 404, 500, 502),
+    },
+)
 def pronunciation_audio(
     pron_id: str,
     ctx: Ctx,
@@ -454,49 +524,53 @@ def pronunciation_audio(
     return Response(rendered.data, media_type=rendered.media_type)
 
 
-@router.post("/v1/script/compile", operation_id="compileScript")
-def compile_only(body: SpeechRequest, ctx: Ctx, _: Auth) -> Response:
-    """Resolve a request into spoken text without touching the engine.
+@router.post(
+    "/v1/audio/speech",
+    operation_id="createSpeech",
+    responses={
+        200: {
+            "model": PreparedView,
+            "description": (
+                "The rendered audio, or with `dry_run=1` the render's own "
+                "prepared view as JSON and no audio."
+            ),
+            "headers": {
+                "X-Kokoro-Tone-Guessed": {
+                    "description": "The compact `word=sense` list the rules assumed.",
+                    "schema": {"type": "string"},
+                }
+            },
+        },
+        **error_responses(400, 401, 403, 413, 500, 502),
+    },
+)
+def speech(
+    body: SpeechRequest,
+    request: Request,
+    ctx: Ctx,
+    _: Auth,
+    dry_run: Annotated[bool, Query()] = False,
+) -> Response:
+    """Render speech, or with `dry_run=1` return the prepared view.
 
-    This runs the same `pipeline.prepare` the render runs, so the guesses and
-    the resolved text are exactly what a render would produce, in milliseconds
-    instead of minutes. A caller checks them before paying for synthesis; the
-    CLI (`python -m kokoro_tone.script_cli`) is the same compile with no server.
+    The dry run shares this handler's `pipeline.prepare`, so its `text`,
+    `guesses` and `ambiguities` are the render's own; only the engine call and
+    the audio are skipped (ADR-0018 rule 7).
     """
     prepared = pipeline.prepare(body, ctx)
-    payload = prepared.as_dict()
-    event(
-        "compile",
-        status=200,
-        chars=prepared.chars,
-        turns=len(prepared.turns),
-        voice=prepared.voice,
-        normalise=_layers(prepared.flags),
-        guess=_guessed(prepared.found, prepared.ambiguity),
-    )
-    return _mark_guessed(JSONResponse(payload), prepared.found, prepared.ambiguity)
-
-
-def _record_speech(
-    ctx: Context,
-    *,
-    passthrough: bool,
-    stream_format: str,
-    fmt: str,
-    chars: int,
-) -> None:
-    attributes: dict[str, str | bool] = {
-        "kokoro_tone.passthrough": passthrough,
-        "kokoro_tone.stream_format": stream_format,
-        "kokoro_tone.format": fmt.lower(),
-    }
-    ctx.telemetry.speech_requests.add(1, attributes)
-    ctx.telemetry.speech_chars.record(chars, {"kokoro_tone.passthrough": passthrough})
-
-
-@router.post("/v1/audio/speech", operation_id="createSpeech")
-def speech(body: SpeechRequest, request: Request, ctx: Ctx, _: Auth) -> Response:
-    prepared = pipeline.prepare(body, ctx)
+    if dry_run:
+        # The dry run is the render's own preparation, not a second entry
+        # point: same body, same guesses, no engine (ADR-0018 rule 7).
+        event(
+            "compile",
+            status=200,
+            chars=prepared.chars,
+            turns=len(prepared.turns),
+            voice=prepared.voice,
+            normalise=_layers(prepared.flags),
+            guess=_guessed(prepared.found, prepared.ambiguity),
+        )
+        return _mark_guessed(JSONResponse(prepared.as_dict()), prepared.found, prepared.ambiguity)
     started = time.perf_counter()
     spoken = {"chars": prepared.chars, "turns": len(prepared.turns)}
 
@@ -579,6 +653,23 @@ def speech(body: SpeechRequest, request: Request, ctx: Ctx, _: Auth) -> Response
         prepared.found,
         prepared.ambiguity,
     )
+
+
+def _record_speech(
+    ctx: Context,
+    *,
+    passthrough: bool,
+    stream_format: str,
+    fmt: str,
+    chars: int,
+) -> None:
+    attributes: dict[str, str | bool] = {
+        "kokoro_tone.passthrough": passthrough,
+        "kokoro_tone.stream_format": stream_format,
+        "kokoro_tone.format": fmt.lower(),
+    }
+    ctx.telemetry.speech_requests.add(1, attributes)
+    ctx.telemetry.speech_chars.record(chars, {"kokoro_tone.passthrough": passthrough})
 
 
 def _passthrough(

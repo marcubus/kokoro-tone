@@ -9,8 +9,8 @@ rules had to guess. That is the useful part of the gateway on its own: a script
 compiler you can run in a pipeline, a test, or an editor hook.
 
 `--request` compiles a whole speech request (input, voice, pronunciations,
-normalise, ambiguity) exactly as `POST /v1/audio/speech` and
-`POST /v1/script/compile` do, so a pre-flight and a render cannot disagree.
+normalise, ambiguity) exactly as `POST /v1/audio/speech` and its `?dry_run=1`
+view do, so a pre-flight and a render cannot disagree.
 
 `--env-file` reads the deployment's `.env`. The limits and the lexicon paths are
 deployment configuration, not code defaults: the code default of 4096 input

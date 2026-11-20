@@ -139,12 +139,17 @@ grants:
 | `updatePronunciation` | `PATCH /v1/pronunciations/{id}` | **no** - admin only |
 | `deletePronunciation` | `DELETE /v1/pronunciations/{id}` | **no** - admin only |
 | `retrievePronunciationAudio` | `GET /v1/pronunciations/{id}/audio` | **no** - admin only |
-| `compileScript` | `POST /v1/script/compile` | yes |
 | `getHealth` | `GET /health` | public |
 
 `getHealth`, `openapi`, `swagger_ui_html` and `redoc_html` are public by
 contract: the container healthcheck and the documentation must work without a
 credential. That set lives in code, not in the policy file.
+
+`GET /openapi.json` is the contract (ADR-0018). Each operation carries an
+`x-kokoro-tone-roles` extension with the minimum role that may call it:
+`["public"]`, `["admin"]`, or `["default", "admin"]`. The document and the
+route table are compared in both directions by `tests/test_openapi.py`, so an
+operation that exists without a role or a documented status fails the suite.
 
 A default key may call only the ids named in `[default].allow`; an admin key may
 call every id, including one no list names. A route added in a later release is
@@ -161,7 +166,6 @@ version = 1
 
 [default]
 allow = [
-  "compileScript",
   "createPronunciation",
   "createSpeech",
   "getHealth",

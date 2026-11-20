@@ -34,7 +34,6 @@ ROLE_ADMIN: Role = "admin"
 # constraint ADR-0016 accepts.
 OPERATIONS = frozenset(
     {
-        "compileScript",
         "createPronunciation",
         "createSpeech",
         "deletePronunciation",

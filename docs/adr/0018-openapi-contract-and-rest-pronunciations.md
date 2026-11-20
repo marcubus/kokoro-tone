@@ -1,18 +1,21 @@
 # The OpenAPI document is the contract, and the pronunciation surface becomes a REST resource
 
-**Status:** partially implemented
+**Status:** accepted (implemented)
 **Date:** 2026-11-19
 **Author:** marcus
 **Deciders:** marcus
 **Refs:** ADR-0016, ADR-0017, ADR-0009, [`../pronunciation.md`](../pronunciation.md),
 [`../../src/kokoro_tone/routes.py`](../../src/kokoro_tone/routes.py),
+[`../../src/kokoro_tone/openapi.py`](../../src/kokoro_tone/openapi.py),
 [`../../src/kokoro_tone/errors.py`](../../src/kokoro_tone/errors.py),
 [`../../CHANGELOG.md`](../../CHANGELOG.md)
 
-**Implemented so far:** the pronunciation resource (rules 3-6, 8-10) shipped
-with ADR-0017, because a proposal needs a resource to live at. Rule 7 (the dry
-run moves onto `createSpeech`) and the generated-spec assertions (rules 1-2)
-are still open; `POST /v1/script/compile` remains until they land.
+**Implemented:** the pronunciation resource (rules 3-6, 8-10) shipped with
+ADR-0017, because a proposal needs a resource to live at. The dry run now lives
+on `POST /v1/audio/speech?dry_run=1` (rule 7), `POST /v1/script/compile` is gone,
+and `openapi.py` generates the document and adds the role and error-status
+extensions. `tests/test_openapi.py` compares the document with the route table
+in both directions (rules 1-2).
 
 ## Context
 
@@ -168,7 +171,7 @@ would be unnameable in policy.
 
 ## Verification
 
-Not implemented. When it lands, these hold:
+These hold:
 
 - `GET /openapi.json` contains every slug in the table above and no other
   `/v1` path.
@@ -176,7 +179,9 @@ Not implemented. When it lands, these hold:
   ids in both directions, and fails on either extra.
 - An OpenAI SDK's `listModels` and `createSpeech` calls are unchanged.
 - `POST /v1/pronunciations/learn`, `/lookup`, `/forget` and
-  `POST /v1/script/compile` all answer 404.
+  `POST /v1/script/compile` all answer 404. The three verb paths now collide
+  with `/v1/pronunciations/{id}`, so FastAPI answers 405; either way no old
+  handler runs.
 - `POST /v1/audio/speech?dry_run=1` returns the same `guesses` and `text` the
   removed `script/compile` returned for the same body.
 - `GET /v1/pronunciations?word=read` returns one row per layer with `source`
