@@ -7,6 +7,8 @@ month and increments per release; tags are prefixed with `v`.
 
 ## [Unreleased]
 
+## [2026.11.5] - 2026-11-20
+
 ### Added
 
 - **Two roles and a TOML allowlist (ADR-0016).** `KOKORO_TONE_ADMIN_KEY(S)` is
