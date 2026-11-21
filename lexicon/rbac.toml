@@ -1,0 +1,24 @@
+# kokoro-tone RBAC policy for this deployment (ADR-0016).
+#
+# Roles are defined by the key: KOKORO_TONE_ADMIN_KEY(S) is `admin` and may
+# call every operation, listed or not. KOKORO_TONE_API_KEY(S) is `default` and
+# may call only the ids below. The deciding operations - updatePronunciation,
+# deletePronunciation, getPronunciationAudio - are absent on purpose, so an
+# agent holding a default key can propose a reading but cannot apply one.
+#
+# Path: KOKORO_TONE_RBAC, default /etc/kokoro-tone/rbac.toml, which is the
+# lexicon/ directory of this repo mounted read-only into the container.
+# A syntax error, an unknown version, table or operation id stops the process
+# at startup, so a typo cannot silently widen the policy.
+
+version = 1
+
+[default]
+allow = [
+  "createPronunciation",   # propose a reading; review mode answers 202 and queues it
+  "createSpeech",          # render, including ?dry_run=1
+  "getHealth",
+  "listModels",
+  "listPronunciations",    # read rules and the queue
+  "listVoices",
+]
